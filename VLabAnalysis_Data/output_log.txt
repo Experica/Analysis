@@ -8,17 +8,47 @@ Direct3D:
 Begin MonoManager ReloadAssembly
 Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll (this message is harmless)
 Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
 Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll (this message is harmless)
 Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
 Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
 Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
-- Completed reload, in  0.107 seconds
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\LibUsbDotNet.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\LibUsbDotNet.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\mcs.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\mcs.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\VLabAnalysisMATLAB.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\VLabAnalysisMATLAB.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll into Unity Child Domain
+Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll (this message is harmless)
+Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll into Unity Child Domain
+- Completed reload, in  0.496 seconds
 Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Core.dll (this message is harmless)
 Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.dll (this message is harmless)
 desktop: 2736x1824 60Hz; virtual: 2736x1824 at 0,0
 <RI> Initializing input.
 <RI> Input initialized.
 <RI> Initialized touch support.
-UnloadTime: 0.826437 ms
+UnloadTime: 1.017045 ms
+NetworkManager created singleton (DontDestroyOnLoad)
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
+
 Setting up 1 worker threads for Enlighten.
-  Thread -> id: 342c -> priority: 1 
+  Thread -> id: 1ac0 -> priority: 1 
+NetworkManager destroyed
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
+
