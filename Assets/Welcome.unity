@@ -221,8 +221,8 @@ RectTransform:
   - {fileID: 488388058}
   - {fileID: 1544054909}
   - {fileID: 532519014}
-  - {fileID: 1488453930}
   - {fileID: 2130320168}
+  - {fileID: 1488453930}
   m_Father: {fileID: 1801762642}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1350,7 +1350,7 @@ MonoBehaviour:
   m_OnlineScene: 
   m_SpawnPrefabs: []
   m_CustomConfig: 1
-  m_MaxConnections: 20
+  m_MaxConnections: 32
   m_ConnectionConfig:
     m_PacketSize: 1500
     m_FragmentSize: 500
@@ -1382,7 +1382,7 @@ MonoBehaviour:
   m_UseSimulator: 0
   m_SimulatedLatency: 1
   m_PacketLossPercentage: 0
-  m_MaxBufferedPackets: 32
+  m_MaxBufferedPackets: 64
   m_AllowFragmentation: 1
   m_MatchHost: mm.unet.unity3d.com
   m_MatchPort: 443
@@ -1702,7 +1702,7 @@ Prefab:
     - target: {fileID: 224000013618907912, guid: ddafa1c872d688b4db36513eb583eecb,
         type: 2}
       propertyPath: m_RootOrder
-      value: 7
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 224000013618907912, guid: ddafa1c872d688b4db36513eb583eecb,
         type: 2}

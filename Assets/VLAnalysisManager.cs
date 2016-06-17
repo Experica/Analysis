@@ -6,12 +6,6 @@ using System;
 using System.IO;
 using System.Linq;
 using VLab;
-using MathWorks.MATLAB.NET.Arrays;
-using MathWorks.MATLAB.NET.Utility;
-using MsgPack;
-using MsgPack.Serialization;
-using System.Threading;
-using System.Collections;
 
 namespace VLabAnalysis
 {
@@ -23,59 +17,81 @@ namespace VLabAnalysis
 
         void Start()
         {
-            als = new AnalysisDotNet(VLConvert.Convert<int>(uicontroller.appmanager.config["cleardataperanalysis"]));
+            var name = VLConvert.Convert<string>(uicontroller.appmanager.config["defaultanalysissystem"]);
+            var cleardataperanalysis = VLConvert.Convert<int>(uicontroller.appmanager.config["cleardataperanalysis"]);
+            als = GetAnalysisSystem(name, cleardataperanalysis);
+        }
+
+        public IAnalysis GetAnalysisSystem(string name = "DotNet", int cleardataperanalysis = 1)
+        {
+            IAnalysis als;
+            switch (name)
+            {
+                default:
+                    als = new AnalysisDotNet(cleardataperanalysis);
+                    break;
+            }
+            return als;
         }
 
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
-            if (als != null)
-            {
-                als.Reset();
-                als.Signal.StartCollectSignal();
-            }
+            als.Reset();
+            als.Signal.StartCollectSignal(true);
+        }
+
+        [ClientRpc]
+        public void RpcNotifyStopExperiment()
+        {
+            als.Signal.StopCollectSignal();
+        }
+
+        [ClientRpc]
+        public void RpcNotifyPauseExperiment()
+        {
+            als.Signal.StopCollectSignal();
+        }
+
+        [ClientRpc]
+        public void RpcNotifyResumeExperiment()
+        {
+            als.Signal.StartCollectSignal(false);
         }
 
         [ClientRpc]
         public void RpcNotifyExperiment(byte[] exbs)
         {
-            if (als != null)
-            {
-                var serializer = SerializationContext.Default.GetSerializer<Experiment>();
-                var stream = new MemoryStream(exbs);
-                als.DataSet.ex = serializer.Unpack(stream);
-            }
+            als.DataSet.ex =  MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(exbs));
         }
 
         [ClientRpc]
         public void RpcNotifyCondTestData(string name, byte[] value)
         {
-            if (als != null)
+            var v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
+            if (als.CondTest.ContainsKey(name))
             {
-                var serializer = SerializationContext.Default.GetSerializer<List<object>>();
-                var stream = new MemoryStream(value);
-                var v = serializer.Unpack(stream);
-                if (als.CondTest.ContainsKey(name))
-                {
-                    als.CondTest[name].Enqueue(v);
-                }
-                else
-                {
-                    var q = new ConcurrentQueue<List<object>>();
-                    q.Enqueue(v);
-                    als.CondTest[name] = q;
-                }
+                als.CondTest[name].Enqueue(v);
+            }
+            else
+            {
+                var q = new ConcurrentQueue<List<object>>();
+                q.Enqueue(v);
+                als.CondTest[name] = q;
             }
         }
 
         [ClientRpc]
         public void RpcAnalysis()
         {
-            if (als != null)
-            {
-                als.AddAnalysisQueue();
-            }
+            als.AddAnalysisQueue();
+        }
+
+        public void OnClientDisconnect()
+        {
+            als.Signal.StopCollectSignal();
         }
 
     }
+
 }

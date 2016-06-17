@@ -94,6 +94,10 @@ namespace VLabAnalysis
 
         public void OnClientDisconnect()
         {
+            if(alsmanager!=null)
+            {
+                alsmanager.OnClientDisconnect();
+            }
             ResetAutoConnect();
             clientconnect.isOn = false;
         }

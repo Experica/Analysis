@@ -24,10 +24,12 @@ namespace VLabAnalysis
         void RemoveAnalysis(int elecid, SIGNALTYPE signaltype, int chidx);
         double StartTime { get; }
         Dictionary<int, List<SIGNALTYPE>> ElectrodeSignal { get; }
-        void StartCollectSignal();
+        void StartCollectSignal(bool isreset);
+        void StopCollectSignal();
         bool IsReady { get; }
-        void Reset();
-        void GetSignal(out List<double>[] spike, out List<int>[] uid, out List<double[,]> lfp, out List<double> lfpstarttime);
+        void GetSignal(out List<double>[] spike, out List<int>[] uid,
+            out List<double[,]> lfp, out List<double> lfpstarttime,
+            out List<double> digintime,out Dictionary<string,List< int>> digin);
         List<IAnalyzer> Analyzers { get; }
     }
 
@@ -50,6 +52,9 @@ namespace VLabAnalysis
         }
     }
 
+    /// <summary>
+    /// 
+    /// </summary>
     public class RippleSignal : ISignal, IDisposable
     {
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
@@ -72,6 +77,8 @@ namespace VLabAnalysis
         List<int>[] uid, uid0, uid1;
         List<double[,]> lfp, lfp0, lfp1;
         List<double> lfpstarttime, lfpstarttime0, lfpstarttime1;
+        List<double> digintime,digintime0,digintime1;
+        Dictionary<string, List< int>> digin,digin0,digin1;
 
         public RippleSignal(int digitalIPI = 800, int analogIPI = 4700)
         {
@@ -106,7 +113,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void Reset()
+        void Reset()
         {
             InitBuffer();
             activebuffer = 1;
@@ -239,16 +246,31 @@ namespace VLabAnalysis
             }
         }
 
-        public void StartCollectSignal()
+        public void StartCollectSignal(bool isreset)
         {
-            if (thread == null)
+            if (IsReady)
             {
-                if (IsReady)
+                if (isreset)
                 {
                     Reset();
+                }
+                if (thread == null)
+                {
                     thread = new Thread(ThreadCollectSignal);
                     thread.Start();
                 }
+                else
+                {
+                    threadevent.Set();
+                }
+            }
+        }
+
+        public void StopCollectSignal()
+        {
+            if(thread!=null)
+            {
+                threadevent.Reset();
             }
         }
 
@@ -292,6 +314,7 @@ namespace VLabAnalysis
                     {
                         case "digital":
                             CollectSpike();
+                            CollectDigIn();
                             break;
                         case "analog":
                             CollectLFP();
@@ -311,6 +334,7 @@ namespace VLabAnalysis
                     {
                         case "digital":
                             CollectSpike();
+                            CollectDigIn();
                             break;
                         case "analog":
                             CollectLFP();
@@ -327,6 +351,7 @@ namespace VLabAnalysis
         void CollectSignal()
         {
             CollectSpike();
+            CollectDigIn();
             CollectLFP();
         }
 
@@ -348,6 +373,19 @@ namespace VLabAnalysis
             var fp = (double[,])(p[0] as MWNumericArray).ToArray(MWArrayComponent.Real);
             lfpstarttime.Add((p[1] as MWNumericArray).ToScalarDouble() / tickfreq);
             lfp.Add(fp);
+        }
+
+        void CollectDigIn()
+        {
+            var d = xippmexdotnet.xippmex(3, "digin");
+            digintime.AddRange( (double[])(d[1] as MWNumericArray).ToArray(MWArrayComponent.Real));
+            var dd = (d[2] as MWStructArray);
+            var ddn = dd.NumberofDimensions;
+            var fn = dd.FieldNames;
+            foreach (var f in fn)
+            {
+                digin[f] = new List<int>((int[])(dd.GetField(f) as MWNumericArray).ToVector(MWArrayComponent.Real));
+            }
         }
 
         public int[] Electrodes
@@ -386,6 +424,8 @@ namespace VLabAnalysis
             }
             lfp0 = new List<double[,]>();
             lfpstarttime0 = new List<double>();
+            digintime0 = new List<double>();
+            digin0 = new Dictionary<string, List<int>>();
         }
 
         void InitBuffer1()
@@ -401,6 +441,8 @@ namespace VLabAnalysis
             }
             lfp1 = new List<double[,]>();
             lfpstarttime1 = new List<double>();
+            digintime1 = new List<double>();
+            digin1 = new Dictionary<string, List<int>>();
         }
 
         void SwapBuffer()
@@ -412,6 +454,8 @@ namespace VLabAnalysis
                 uid = uid1;
                 lfp = lfp1;
                 lfpstarttime = lfpstarttime1;
+                digintime = digintime1;
+                digin = digin1;
                 activebuffer = 1;
             }
             else
@@ -421,11 +465,15 @@ namespace VLabAnalysis
                 uid = uid0;
                 lfp = lfp0;
                 lfpstarttime = lfpstarttime0;
+                digintime = digintime0;
+                digin = digin0;
                 activebuffer = 0;
             }
         }
 
-        public void GetSignal(out List<double>[] aspike, out List<int>[] auid, out List<double[,]> alfp, out List<double> alfpstarttime)
+        public void GetSignal(out List<double>[] aspike, out List<int>[] auid, 
+            out List<double[,]> alfp, out List<double> alfpstarttime,
+            out List<double> adigintime, out Dictionary<string,List< int>> adigin)
         {
             threadevent.Reset();
             while (true)
@@ -433,7 +481,7 @@ namespace VLabAnalysis
                 if (!IsCaching)
                 {
                     CollectSignal();
-                    GetActiveBuffer(out aspike, out auid, out alfp, out alfpstarttime);
+                    GetActiveBuffer(out aspike, out auid, out alfp, out alfpstarttime,out adigintime,out adigin);
                     SwapBuffer();
                     threadevent.Set();
                     break;
@@ -441,7 +489,9 @@ namespace VLabAnalysis
             }
         }
 
-        void GetActiveBuffer(out List<double>[] aspike, out List<int>[] auid, out List<double[,]> alfp, out List<double> alfpstarttime)
+        void GetActiveBuffer(out List<double>[] aspike, out List<int>[] auid,
+            out List<double[,]> alfp, out List<double> alfpstarttime,
+            out List<double> adigintime, out Dictionary<string, List< int>> adigin)
         {
             if (activebuffer == 0)
             {
@@ -449,6 +499,8 @@ namespace VLabAnalysis
                 auid = uid0;
                 alfp = lfp0;
                 alfpstarttime = lfpstarttime0;
+                adigintime = digintime0;
+                adigin = digin0;
             }
             else
             {
@@ -456,8 +508,12 @@ namespace VLabAnalysis
                 auid = uid1;
                 alfp = lfp1;
                 alfpstarttime = lfpstarttime1;
+                adigintime = digintime1;
+                adigin = digin1;
             }
         }
+
+        
 
         public bool IsSignalOnline
         {
@@ -531,6 +587,8 @@ namespace VLabAnalysis
        public List<int>[] uid;
        public List<double[,]> lfp;
        public List<double> lfpstarttime;
+        public List<double> digintime;
+        public Dictionary<string, List<int>> digin;
        public List<int> CondIndex;
         public Experiment ex;
 
@@ -546,7 +604,10 @@ namespace VLabAnalysis
             CondIndex.Clear();
         }
 
-        public void Add(List<double>[] aspike,  List<int>[] auid,  List<double[,]> alfp,  List<double> alfpstarttime,List<int> acondindex)
+        public void Add(List<double>[] aspike,  List<int>[] auid,
+            List<double[,]> alfp,  List<double> alfpstarttime,
+            List<double> adigintime,Dictionary<string,List<int>> adigin,
+            List<int> acondindex)
         {
             if(spike==null)
             {
@@ -570,6 +631,19 @@ namespace VLabAnalysis
             {
                 lfp.AddRange(alfp);
                 lfpstarttime.AddRange(alfpstarttime);
+            }
+            if(digintime==null)
+            {
+                digintime = adigintime;
+                digin = adigin;
+            }
+            else
+            {
+                digintime.AddRange(adigintime);
+                foreach(var f in digin.Keys)
+                {
+                    digin[f].AddRange(adigin[f]);
+                }
             }
             if(CondIndex==null)
             {
@@ -734,6 +808,8 @@ namespace VLabAnalysis
             List<int>[] uid;
             List<double[,]> lfp;
             List<double> lfpstarttime;
+            List<double> digintime;
+            Dictionary<string, List< int>> digin;
             int[] aq;
             List<object> CondIndex;
             while (true)
@@ -741,8 +817,8 @@ namespace VLabAnalysis
                 if (analysisqueue.TryDequeue(out aq)&&condtest.ContainsKey("CondIndex")&&condtest["CondIndex"].TryDequeue(out CondIndex))
                 {
                     var iscleardata = aq[0];
-                    Signal.GetSignal(out spike, out uid, out lfp, out lfpstarttime);
-                    DataSet.Add(spike, uid, lfp, lfpstarttime, CondIndex.Cast<int>().ToList());
+                    Signal.GetSignal(out spike, out uid, out lfp, out lfpstarttime,out digintime,out digin);
+                    DataSet.Add(spike, uid, lfp, lfpstarttime,digintime,digin, CondIndex.Cast<int>().ToList());
 
                     Parallel.ForEach(Signal.Analyzers,(i)=>i.Analysis(DataSet));
 

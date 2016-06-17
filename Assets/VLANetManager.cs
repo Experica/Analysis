@@ -18,21 +18,34 @@ namespace VLabAnalysis
     public class VLANetManager : NetworkManager
     {
         public VLAUIController uicontroller;
-        public GameObject vlabanalysismanagerprefab;
+        GameObject vlabanalysismanagerprefab;
 
         void RegisterSpawnHandler()
         {
             vlabanalysismanagerprefab = Resources.Load<GameObject>("VLAnalysisManager");
             var assetid = vlabanalysismanagerprefab.GetComponent<NetworkIdentity>().assetId;
-            ClientScene.RegisterSpawnHandler(assetid, new SpawnDelegate(SpawnHandler), new UnSpawnDelegate(UnSpawnHandler));
+            ClientScene.RegisterSpawnHandler(assetid, new SpawnDelegate(AnalysisManagerSpawnHandler),
+                new UnSpawnDelegate(AnalysisManagerUnSpawnHandler));
         }
 
+        /// <summary>
+        /// Prepare network so that when connected to server, will react properly to 
+        /// server commands
+        /// </summary>
+        /// <param name="client"></param>
         public override void OnStartClient(NetworkClient client)
         {
+            // override default handler with our own to deal with server's ChangeScene message.
             client.RegisterHandler(MsgType.Scene, new NetworkMessageDelegate(OnClientScene));
             RegisterSpawnHandler();
         }
 
+        /// <summary>
+        /// our custom handler for server's ChangeScene message, since VLabAnalysis doesn't deal
+        /// with any scene, we just ingore the message, pretending that scene has already been loaded
+        /// and immediatly tell server we have changed the scene and ready to proceed.
+        /// </summary>
+        /// <param name="netMsg"></param>
         void OnClientScene(NetworkMessage netMsg)
         {
             if (IsClientConnected() && !NetworkServer.active)
@@ -41,17 +54,17 @@ namespace VLabAnalysis
             }
         }
 
-        GameObject SpawnHandler(Vector3 position, NetworkHash128 assetId)
+        GameObject AnalysisManagerSpawnHandler(Vector3 position, NetworkHash128 assetId)
         {
             GameObject go;
             if(uicontroller.alsmanager==null)
             {
                 go = Instantiate(vlabanalysismanagerprefab);
+                var als = go.GetComponent<VLAnalysisManager>();
+                als.uicontroller = uicontroller;
+                uicontroller.alsmanager = als;
                 go.name = "VLAnalysisManager";
                 go.transform.SetParent(transform);
-                var als = go.GetComponent<VLAnalysisManager>();
-                uicontroller.alsmanager = als;
-                als.uicontroller = uicontroller;
             }
             else
             {
@@ -60,10 +73,16 @@ namespace VLabAnalysis
             return go;
         }
 
-        void UnSpawnHandler(GameObject spawned)
+        void AnalysisManagerUnSpawnHandler(GameObject spawned)
         {
         }
 
+        /// <summary>
+        /// because the fundamental difference of VLabAnalysis and VLabEnvironment, VLab should treat them
+        /// differently, so whenever a client connected to server, it seeds information about the client, so
+        /// that server could treat them accordingly.
+        /// </summary>
+        /// <param name="conn"></param>
         public override void OnClientConnect(NetworkConnection conn)
         {
             if (LogFilter.logDebug)
@@ -71,20 +90,12 @@ namespace VLabAnalysis
                 UnityEngine.Debug.Log("Send PeerType Message.");
             }
             client.Send(VLMsgType.PeerType, new IntegerMessage((int)VLPeerType.VLabAnalysis));
-
-            Time.fixedDeltaTime = 0.0001f;
-            Process.GetCurrentProcess().PriorityBoostEnabled = true;
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
         }
 
         public override void OnClientDisconnect(NetworkConnection conn)
         {
             base.OnClientDisconnect(conn);
             uicontroller.OnClientDisconnect();
-
-            Time.fixedDeltaTime = 0.02f;
-            Process.GetCurrentProcess().PriorityBoostEnabled = false;
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
         }
 
     }

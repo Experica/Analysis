@@ -2,3 +2,4 @@ isautoconn: false
 autoconntimeout: 10
 serveraddress: localhost
 cleardataperanalysis: 1
+defaultanalysissystem: DotNet

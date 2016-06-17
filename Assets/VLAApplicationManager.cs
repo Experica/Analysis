@@ -49,6 +49,10 @@ namespace VLabAnalysis
             {
                 config["cleardataperanalysis"] = 1;
             }
+            if (!config.ContainsKey("defaultanalysissystem"))
+            {
+                config["defaultanalysissystem"] = "DotNet";
+            }
         }
 
         void OnApplicationQuit()

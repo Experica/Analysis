@@ -96,6 +96,7 @@
     <Compile Include="Assets\Analysis.cs" />
     <Compile Include="Assets\Analyzer.cs" />
     <Compile Include="Assets\Experiment.cs" />
+    <Compile Include="Assets\MsgPackSerializer.cs" />
     <Compile Include="Assets\UI\Drag.cs" />
     <Compile Include="Assets\UI\Focus.cs" />
     <Compile Include="Assets\UI\Resize.cs" />
