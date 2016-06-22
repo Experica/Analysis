@@ -2,50 +2,53 @@ Initialize engine version: 5.4.0b21 (b9b5b8f40e73)
 GfxDevice: creating device client; threaded=1
 Direct3D:
     Version:  Direct3D 11.0 [level 11.0]
-    Renderer: Intel(R) Iris(TM) Graphics 540 (ID=0x1926)
-    Vendor:   Intel
-    VRAM:     4204 MB
+    Renderer: NVIDIA NVS 310 (ID=0x107d)
+    Vendor:   NVIDIA
+    VRAM:     2258 MB
 Begin MonoManager ReloadAssembly
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Drawing.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Drawing.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll into Unity Child Domain
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\ZedGraph.dll (this message is harmless)
-Loading C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\ZedGraph.dll into Unity Child Domain
-- Completed reload, in  0.218 seconds
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.Core.dll (this message is harmless)
-Platform assembly: C:\Users\fff00\VLabAnalysis\VLabAnalysis_Data\Managed\System.dll (this message is harmless)
-desktop: 2736x1824 60Hz; virtual: 2736x1824 at 0,0
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp-firstpass.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MsgPack.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MWArray.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Ripple.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Drawing.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Drawing.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Windows.Forms.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\MathNet.Numerics.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll into Unity Child Domain
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\ZedGraph.dll (this message is harmless)
+Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\ZedGraph.dll into Unity Child Domain
+- Completed reload, in  0.124 seconds
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Core.dll (this message is harmless)
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.dll (this message is harmless)
+desktop: 1920x1080 60Hz; virtual: 3840x1080 at 0,0
 <RI> Initializing input.
+XInput1_3.dll not found. Trying XInput9_1_0.dll instead...
 <RI> Input initialized.
 <RI> Initialized touch support.
-UnloadTime: 0.864464 ms
+UnloadTime: 0.844915 ms
 NetworkManager created singleton (DontDestroyOnLoad)
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
 Setting up 1 worker threads for Enlighten.
-  Thread -> id: 3474 -> priority: 1 
+GfxDevice: creating device client; threaded=1
+  Thread -> id: 31f4 -> priority: 1 
+GfxDevice: creating device client; threaded=1
 Client created version Current
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
@@ -70,7 +73,7 @@ RegisterHandler id:39 handler:OnClientSceneInternal
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
-NetworkManager StartClient address:localhost port:8888
+NetworkManager StartClient address:lyonlab-visual port:8888
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
@@ -138,10 +141,16 @@ RegisterHandlerSafe id:17 handler:OnFragment
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
-Client Connect: localhost:8888
+Client Connect: lyonlab-visual:8888
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
+Async DNS START:lyonlab-visual
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
+
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Configuration.dll (this message is harmless)
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Xml.dll (this message is harmless)
 RegisterHandler replacing 39
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
@@ -175,6 +184,10 @@ RegisterRpcDelegate hash:-2022179304 InvokeRpcRpcNotifyCondTestData
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
 RegisterRpcDelegate hash:-196076627 InvokeRpcRpcAnalysis
+ 
+(Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
+
+Async DNS Result:192.168.42.131 for lyonlab-visual: 192.168.42.131
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
@@ -238,6 +251,27 @@ OnStartClient VLAnalysisManager (UnityEngine.GameObject) GUID:4 localPlayerAutho
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Accessibility.dll (this message is harmless)
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libc
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\libc
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libc
+Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Mono.Posix.dll (this message is harmless)
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libc
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\libc
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libc
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\/System/Library/Frameworks/Carbon.framework/Versions/Current/Carbon
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/lib/System/Library/Frameworks/Carbon.framework/Versions/Current/Carbon
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\lib/System/Library/Frameworks/Carbon.framework/Versions/Current/Carbon
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/lib/System/Library/Frameworks/Carbon.framework/Versions/Current/Carbon
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/.\libX11
+Fallback handler could not load library C:/Users/LyonLab/VLabAnalysis/VLabAnalysis_Data/Mono/libX11
 NetworkManager StopClient
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
@@ -251,7 +285,7 @@ ClientChangeScene newSceneName:Welcome networkSceneName:
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
 Unloading 5 Unused Serialized files (Serialized files now loaded: 0)
-UnloadTime: 0.357101 ms
+UnloadTime: 0.734214 ms
 Multiple NetworkManagers detected in the scene. Only one NetworkManager can exist at a time. The duplicate NetworkManager will not be used.
  
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
@@ -269,8 +303,8 @@ FinishLoadScene client is null
 (Filename: C:/buildslave/unity/build/artifacts/generated/common/runtime/UnityEngineDebugBindings.gen.cpp Line: 42)
 
 
-Unloading 4 unused Assets to reduce memory usage. Loaded Objects now: 496.
-Total: 0.432232 ms (FindLiveObjects: 0.021333 ms CreateObjectMapping: 0.013449 ms MarkObjects: 0.389565 ms  DeleteObjects: 0.006492 ms)
+Unloading 4 unused Assets to reduce memory usage. Loaded Objects now: 11828.
+Total: 18.176119 ms (FindLiveObjects: 0.617282 ms CreateObjectMapping: 0.313773 ms MarkObjects: 17.216105 ms  DeleteObjects: 0.024559 ms)
 
 NetworkManager destroyed
  

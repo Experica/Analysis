@@ -1,6 +1,7 @@
 ﻿using System.Drawing;
 using System.Collections;
 using System.Windows.Forms;
+using System.Linq;
 using System;
 using ZedGraph;
 
@@ -8,7 +9,7 @@ namespace VLabAnalysis
 {
     public interface IVisualizer
     {
-        void Visualize();
+        void Visualize(object result);
     }
 
     public class lineVisualizer :Form, IVisualizer
@@ -27,7 +28,12 @@ namespace VLabAnalysis
             Height = height;
         }
 
-        public void Visualize()
+        public void Visualize(object result)
+        {
+            threadsafecall(result);
+        }
+
+        void vis(object result)
         {
             control.GraphPane.AddCurve("line", new double[] { 0, 1, 2, 3, 4, 5 }, new double[] { 5, 10, 20, 15, 5, 2 }, Color.Red);
 
@@ -39,6 +45,19 @@ namespace VLabAnalysis
             else
             {
                 control.Refresh();
+            }
+        }
+
+        void threadsafecall(object result)
+        {
+            if(this.InvokeRequired)
+            {
+                Action<object> d = new Action<object>(threadsafecall);
+                this.Invoke(d, null);
+            }
+            else
+            {
+                vis(null);
             }
         }
     }

@@ -1,8 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
 using VLab;
+using System;
 
 namespace VLabAnalysis
 {
@@ -10,6 +12,8 @@ namespace VLabAnalysis
     {
         SignalChannel SignalChannel { get; set; }
         void Analysis(DataSet dataset);
+        IVisualizer Visualizer { get; set; }
+        IController Controller { get; set; }
     }
 
     public class mfrAnalyzer : IAnalyzer
@@ -17,16 +21,18 @@ namespace VLabAnalysis
         SignalChannel sigch;
         DataSet dataset;
         IVisualizer visualizer;
+        IController controller;
         List<double> spike;
         List<int> uid;
         List<int> condindex;
         Experiment ex;
 
-        public mfrAnalyzer() : this(new lineVisualizer()) { }
+        public mfrAnalyzer() : this(new lineVisualizer(),new OptimalCondition()) { }
 
-        public mfrAnalyzer(IVisualizer ver)
+        public mfrAnalyzer(IVisualizer ver,IController col)
         {
             visualizer = ver;
+            controller = col;
         }
 
         public SignalChannel SignalChannel
@@ -42,6 +48,32 @@ namespace VLabAnalysis
             }
         }
 
+        public IVisualizer Visualizer
+        {
+            get
+            {
+                return visualizer;
+            }
+
+            set
+            {
+                visualizer = value;
+            }
+        }
+
+        public IController Controller
+        {
+            get
+            {
+                return controller;
+            }
+
+            set
+            {
+                controller = value;
+            }
+        }
+
         public void Analysis(DataSet dataset)
         {
             this.dataset = dataset;
@@ -49,7 +81,6 @@ namespace VLabAnalysis
             {
                 // do analysis
             }
-            visualizer.Visualize();
         }
 
         bool PrepareData()
@@ -61,7 +92,7 @@ namespace VLabAnalysis
                     spike = dataset.spike[sigch.elec];
                     uid = dataset.uid[sigch.elec];
                     condindex = dataset.CondIndex;
-                    ex = dataset.ex;
+                    ex = dataset.Ex;
                     return true;
                 }
                 else

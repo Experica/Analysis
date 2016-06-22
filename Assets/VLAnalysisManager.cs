@@ -19,19 +19,7 @@ namespace VLabAnalysis
         {
             var name = VLConvert.Convert<string>(uicontroller.appmanager.config["defaultanalysissystem"]);
             var cleardataperanalysis = VLConvert.Convert<int>(uicontroller.appmanager.config["cleardataperanalysis"]);
-            als = GetAnalysisSystem(name, cleardataperanalysis);
-        }
-
-        public IAnalysis GetAnalysisSystem(string name = "DotNet", int cleardataperanalysis = 1)
-        {
-            IAnalysis als;
-            switch (name)
-            {
-                default:
-                    als = new AnalysisDotNet(cleardataperanalysis);
-                    break;
-            }
-            return als;
+            als = AnalysisFactory. GetAnalysisSystem(name, cleardataperanalysis);
         }
 
         [ClientRpc]
@@ -62,27 +50,37 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyExperiment(byte[] exbs)
         {
-            als.DataSet.ex =  MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(exbs));
+            als.DataSet.Ex =  MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(exbs));
         }
 
         [ClientRpc]
         public void RpcNotifyCondTestData(string name, byte[] value)
         {
-            var v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
+            object v;
+            if (name == "CondIndex")
+            {
+                v = MsgPackSerializer.ListIntSerializer.Unpack(new MemoryStream(value));
+            }
+            else
+            {
+                v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
+            }
             if (als.CondTest.ContainsKey(name))
             {
                 als.CondTest[name].Enqueue(v);
             }
             else
             {
-                var q = new ConcurrentQueue<List<object>>();
+                var q = new ConcurrentQueue<object>();
+                
                 q.Enqueue(v);
                 als.CondTest[name] = q;
             }
         }
 
+
         [ClientRpc]
-        public void RpcAnalysis()
+        public void RpcNotifyAnalysis()
         {
             als.AddAnalysisQueue();
         }
