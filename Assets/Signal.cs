@@ -85,6 +85,7 @@ namespace VLabAnalysis
         Dictionary<SignalChannel, List<IAnalyzer>> elecsigch = new Dictionary<SignalChannel, List<IAnalyzer>>();
         Thread thread;
         ManualResetEvent threadevent = new ManualResetEvent(true);
+        List<IAnalyzer> analyzers;
         
         // those fields should be accessed only through corresponding property to provide thread safety
         bool iscaching;
@@ -750,17 +751,21 @@ namespace VLabAnalysis
         {
             get
             {
-                List<IAnalyzer> alser = new List<IAnalyzer>();
-                foreach (var sc in elecsigch.Keys)
+                if (analyzers == null)
                 {
-                    var ass = elecsigch[sc];
-                    foreach (var a in ass)
+                    List<IAnalyzer> alser = new List<IAnalyzer>();
+                    foreach (var sc in elecsigch.Keys)
                     {
-                        a.SignalChannel = sc;
+                        var ass = elecsigch[sc];
+                        foreach (var a in ass)
+                        {
+                            a.SignalChannel = sc;
+                        }
+                        alser.AddRange(ass);
                     }
-                    alser.AddRange(ass);
+                    analyzers = alser;
                 }
-                return alser;
+                    return analyzers;
             }
         }
     }

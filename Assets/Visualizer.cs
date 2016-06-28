@@ -28,14 +28,18 @@ namespace VLabAnalysis
             Height = height;
         }
 
-        public void Visualize(object result)
+        ~lineVisualizer()
         {
-            threadsafecall(result);
+            Close();
         }
 
-        void vis(object result)
+        public void Visualize(object oresult)
         {
-            control.GraphPane.AddCurve("line", new double[] { 0, 1, 2, 3, 4, 5 }, new double[] { 5, 10, 20, 15, 5, 2 }, Color.Red);
+            var result = oresult as AnalysisResult;
+            var condidx = result.mfr.Keys.Select(i => (double)i).ToArray();
+            var condrep = result.mfr.Values.Select(i => (double)i.Count).ToArray();
+            control.GraphPane.CurveList.Clear();
+                control.GraphPane.AddCurve("Condition Test Count", condidx, condrep, Color.Red);
 
             control.AxisChange();
             if (!Visible)
@@ -48,17 +52,5 @@ namespace VLabAnalysis
             }
         }
 
-        void threadsafecall(object result)
-        {
-            if(this.InvokeRequired)
-            {
-                Action<object> d = new Action<object>(threadsafecall);
-                this.Invoke(d, null);
-            }
-            else
-            {
-                vis(null);
-            }
-        }
     }
 }

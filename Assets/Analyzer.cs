@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
+using System.Collections.Concurrent;
 using VLab;
 using System;
 
@@ -14,6 +15,7 @@ namespace VLabAnalysis
         void Analysis(DataSet dataset);
         IVisualizer Visualizer { get; set; }
         IController Controller { get; set; }
+        ConcurrentQueue< AnalysisResult> Results { get; }
     }
 
     public class mfrAnalyzer : IAnalyzer
@@ -26,6 +28,9 @@ namespace VLabAnalysis
         List<int> uid;
         List<int> condindex;
         Experiment ex;
+        ConcurrentQueue< AnalysisResult> results=new ConcurrentQueue<AnalysisResult>();
+        AnalysisResult result = new AnalysisResult();
+        int condn;
 
         public mfrAnalyzer() : this(new lineVisualizer(),new OptimalCondition()) { }
 
@@ -74,13 +79,42 @@ namespace VLabAnalysis
             }
         }
 
+        public ConcurrentQueue< AnalysisResult > Results
+        {
+            get
+            {
+                return results;
+            }
+        }
+
         public void Analysis(DataSet dataset)
         {
             this.dataset = dataset;
+           if(result.mfr.Count==0)
+            {
+                foreach(var c in dataset.Ex.cond.Values)
+                {
+                    condn = c.Count;
+                    break;
+                }
+               for(var i=0;i<condn;i++)
+                {
+                    result.mfr[i] = new List<double>();
+                }
+            }
+
             if(PrepareData())
             {
-                // do analysis
+                
             }
+            else
+            {
+                foreach(var ci in dataset.CondIndex)
+                {
+                    result.mfr[ci].Add(0.0);
+                }
+            }
+            results.Enqueue(result.DeepCopy());
         }
 
         bool PrepareData()

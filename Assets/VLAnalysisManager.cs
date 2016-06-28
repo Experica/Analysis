@@ -90,6 +90,21 @@ namespace VLabAnalysis
             als.Signal.StopCollectSignal();
         }
 
+        void Update()
+
+        {
+            if (als.Signal != null && als.Signal.Analyzers != null)
+            {
+                foreach (var a in als.Signal.Analyzers)
+                {
+                    AnalysisResult result;
+                    if (a.Results.TryDequeue(out result))
+                    {
+                        a.Visualizer.Visualize(result);
+                    }
+                }
+            }
+        }
     }
 
 }

@@ -68,7 +68,7 @@ namespace VLabAnalysis
         int ClearDataPerAnalysis { get; set; }
         DataSet DataSet { get; }
         void AddAnalysisQueue();
-        bool IsProcessing { get; set; }
+        bool IsAnalysisDone { get; set; }
     }
 
     /// <summary>
@@ -245,7 +245,7 @@ namespace VLabAnalysis
         int analysisidx = 0;
         Thread thread;
         DataSet dataset = new DataSet();
-        bool isprocessing;
+        bool isanalysisdone=true;
         ManualResetEvent threadevent = new ManualResetEvent(true);
         object lockobj = new object();
 
@@ -316,7 +316,7 @@ namespace VLabAnalysis
             threadevent.Reset();
             while(true)
             {
-                if(!IsProcessing)
+                if(IsAnalysisDone)
                 {
                     CondTest.Clear();
                     DataSet.Clear();
@@ -373,20 +373,22 @@ namespace VLabAnalysis
         /// <summary>
         /// thread safe
         /// </summary>
-        public bool IsProcessing
+        public bool IsAnalysisDone
         {
             get
             {
+                bool t = false;
                 lock(lockobj)
                 {
-                    return isprocessing;
+                    t = isanalysisdone;
                 }
+                return t;
             }
             set
             {
                 lock(lockobj)
                 {
-                    isprocessing = value;
+                    isanalysisdone = value;
                 }
             }
         }
@@ -406,7 +408,6 @@ namespace VLabAnalysis
             Dictionary<string, List< int>> digin;
             bool iscleardata;
             object CondIndex;
-            List<IAnalyzer> Analyzers;
             while (true)
             {
                 threadevent.WaitOne();
@@ -415,22 +416,16 @@ namespace VLabAnalysis
                     Signal.GetSignal(out spike, out uid, out lfp, out lfpstarttime,out digintime,out digin);
 
                     DataSet.Add(spike, uid, lfp, lfpstarttime,digintime,digin, (List<int>)CondIndex);
-                    IsProcessing = true;
-                    Analyzers = Signal.Analyzers;
-                    foreach(var a in Analyzers)
+                    IsAnalysisDone = false;
+                    foreach(var a in Signal.Analyzers)
                     {
                         a.Analysis(DataSet);
                     }
                     //Parallel.ForEach(Signal.Analyzers,(i)=>i.Analysis(DataSet));
-                    IsProcessing = false;
+                    IsAnalysisDone = true;
                     if(iscleardata)
                     {
                         DataSet.Clear();
-                    }
-
-                    foreach(var a in Analyzers)
-                    {
-                        a.Visualizer.Visualize(null);
                     }
                 }
                 else
@@ -442,5 +437,25 @@ namespace VLabAnalysis
 
 
 
+    }
+
+    public class AnalysisResult
+    {
+        public ConcurrentDictionary<int, List<double>> mfr = new ConcurrentDictionary<int, List<double>>();
+
+        public AnalysisResult DeepCopy()
+        {
+            var copy = new AnalysisResult();
+            foreach(var i in mfr.Keys)
+            {
+                var v = new List<double>();
+                foreach(var fr in mfr[i])
+                {
+                    v.Add(fr);
+                }
+                copy.mfr[i] = v;
+            }
+            return copy;
+        }
     }
 }
