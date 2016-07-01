@@ -458,4 +458,21 @@ namespace VLabAnalysis
             return copy;
         }
     }
+
+    public class SpikeAnalysis
+    {
+        public static int Count(List<double> st,double start,double end)
+        {
+            int c = 0;
+            foreach(var t in st)
+            {
+                if(t>=start && t<end)
+                {
+                    c++;
+                }
+            }
+            return c;
+        }
+    }
+
 }
