@@ -20,6 +20,8 @@ namespace VLabAnalysis
             var name = VLConvert.Convert<string>(uicontroller.appmanager.config["defaultanalysissystem"]);
             var cleardataperanalysis = VLConvert.Convert<int>(uicontroller.appmanager.config["cleardataperanalysis"]);
             als = AnalysisFactory. GetAnalysisSystem(name, cleardataperanalysis);
+
+            als.Signal.StartCollectSignal(true);
         }
 
         [ClientRpc]

@@ -859,7 +859,8 @@ MonoBehaviour:
   autoconntext: {fileID: 472454988}
   netmanager: {fileID: 1801762641}
   appmanager: {fileID: 824873394}
-  alsmanager: {fileID: 0}
+  alsmanager: {fileID: 114000013196190390, guid: d069a29ff4100f2428a17e03ebbe436d,
+    type: 2}
 --- !u!1001 &880065169
 Prefab:
   m_ObjectHideFlags: 0
