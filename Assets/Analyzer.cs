@@ -92,20 +92,29 @@ namespace VLabAnalysis
             this.dataset = dataset;
            if(result.mfr.Count==0)
             {
-                foreach(var c in dataset.Ex.cond.Values)
-                {
-                    condn = c.Count;
-                    break;
-                }
-               for(var i=0;i<condn;i++)
+               for(var i=0;i<dataset.CondN;i++)
                 {
                     result.mfr[i] = new List<double>();
                 }
+                result.Elec = SignalChannel.elec;
+                result.ExID = dataset.Ex.id;
             }
-
+            result.cond = dataset.Ex.cond;
+           if(result.mfr.Count==0)
+            {
+                return;
+            }
             if(PrepareData())
             {
-                
+                var st = dataset.spike[SignalChannel.elec-1];
+                for(var i=0;i<dataset.CondIndex.Count;i++)
+                {
+                    var c = dataset.CondIndex[i];
+                    var t1 = dataset.CondState[i].FindCondStateTime("COND")+dataset.exstarttime;
+                    var t2 = dataset.CondState[i].FindCondStateTime( "SUFICI") + dataset.exstarttime;
+                    result.mfr[c].Add(st.MFR(t1, t2));
+                }
+                results.Enqueue(result.DeepCopy());
             }
             else
             {
@@ -113,8 +122,8 @@ namespace VLabAnalysis
                 {
                     result.mfr[ci].Add(0.0);
                 }
+                results.Enqueue(result.DeepCopy());
             }
-            results.Enqueue(result.DeepCopy());
         }
 
         bool PrepareData()
@@ -125,7 +134,7 @@ namespace VLabAnalysis
                 {
                     spike = dataset.spike[sigch.elec];
                     uid = dataset.uid[sigch.elec];
-                    condindex = dataset.CondIndex;
+                    condindex = dataset.AccumCondIndex;
                     ex = dataset.Ex;
                     return true;
                 }

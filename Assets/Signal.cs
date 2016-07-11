@@ -27,10 +27,10 @@ namespace VLabAnalysis
         void RemoveAnalysis(int elecid, SIGNALTYPE signaltype, int chidx);
         double StartTime { get; }
         Dictionary<int, List<SIGNALTYPE>> ElectrodeSignal { get; }
-        void StartCollectSignal(bool isreset);
-        void StopCollectSignal();
+        void StartCollectData(bool iscleanstart);
+        void StopCollectData(bool isonemorecollect);
         bool IsReady { get; }
-        void GetSignal(out List<double>[] spike, out List<int>[] uid,
+        void GetData(out List<double>[] spike, out List<int>[] uid,
             out List<double[,]> lfp, out List<double> lfpstarttime,
             out List<double> digintime, out Dictionary<string, List<int>> digin);
         List<IAnalyzer> Analyzers { get; }
@@ -66,6 +66,20 @@ namespace VLabAnalysis
         }
     }
 
+    public struct DigitalEvent
+    {
+        public int channel;
+        public int value;
+        public double time;
+        public DigitalEvent(int channel,int value,double time)
+        {
+            this.channel = channel;
+            this.value = value;
+            this.time = time;
+        }
+
+    }
+
     /// <summary>
     /// this class does not to be overall thread safe, because that will need alot of work and 
     /// syncronize on class states. we only need to make sure that the signal caching thread is safe
@@ -74,21 +88,22 @@ namespace VLabAnalysis
     public class RippleSignal : ISignal, IDisposable
     {
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
-        readonly int digitalIPI, analogIPI;
-        const int tickfreq = 30000;
-        const int maxelec = 5120;
+        readonly int digitalIPI, analogIPI, tickfreq , maxelec , unitpersec,sleepresolution ;
         object lockobj = new object();
+        object datalock = new object();
+        object eventlock = new object();
 
         
         double starttime = -1;
         Dictionary<int, List<SIGNALTYPE>> elecsignal = new Dictionary<int, List<SIGNALTYPE>>();
         Dictionary<SignalChannel, List<IAnalyzer>> elecsigch = new Dictionary<SignalChannel, List<IAnalyzer>>();
-        Thread thread;
-        ManualResetEvent threadevent = new ManualResetEvent(true);
+        Thread datathread;
+        ManualResetEvent datathreadevent = new ManualResetEvent(true);
         List<IAnalyzer> analyzers;
         
         // those fields should be accessed only through corresponding property to provide thread safety
-        bool iscaching;
+        bool iscollectingdata;
+        bool gotothreadevent;
         bool isonline;
         int[] elec;
         int[] elecchannel;
@@ -101,10 +116,15 @@ namespace VLabAnalysis
         List<double> digintime, digintime0, digintime1;
         Dictionary<string, List<int>> digin, digin0, digin1;
 
-        public RippleSignal(int digitalIPI = 800, int analogIPI = 4700)
+        public RippleSignal(int tickfreq=30000,int maxelec=5120,int unitpersec=1000,
+            int digitalIPI = 800, int analogIPI = 4700,int sleepresolution=2)
         {
+            this.tickfreq = tickfreq;
+            this.maxelec = maxelec;
+            this.unitpersec = unitpersec;
             this.digitalIPI = digitalIPI;
             this.analogIPI = analogIPI;
+            this.sleepresolution = Math.Max(1, sleepresolution);
         }
 
         ~RippleSignal()
@@ -122,6 +142,7 @@ namespace VLabAnalysis
         {
             if (disposing)
             {
+                datathread.Abort();
                 xippmexdotnet.xippmex("close");
             }
         }
@@ -328,22 +349,30 @@ namespace VLabAnalysis
             }
         }
 
-        bool IsCaching
+        bool IsCollectingData
         {
             get
             {
-                lock (lockobj)
+                bool t;
+                lock (datalock)
                 {
-                    return iscaching;
+                    t= iscollectingdata;
                 }
+                return t;
             }
             set
             {
-                lock (lockobj)
+                lock (datalock)
                 {
-                    iscaching = value;
+                    iscollectingdata = value;
                 }
             }
+        }
+
+        bool GotoThreadEvent
+        {
+            get { bool t; lock (lockobj) { t = gotothreadevent; } return gotothreadevent; } 
+            set { lock (lockobj) { gotothreadevent = value; } }
         }
 
         /// <summary>
@@ -428,47 +457,84 @@ namespace VLabAnalysis
         }
         #endregion
 
-        public void StartCollectSignal(bool isreset)
+        public void StartCollectData(bool iscleanstart)
         {
-            if (IsReady)
+            lock (datalock)
             {
-                if (isreset)
+                if (datathread == null)
                 {
-                    Reset();
-                }
-                if (thread == null)
-                {
-                    thread = new Thread(ThreadCollectSignal);
-                    thread.Start();
+                    if (IsReady)
+                    {
+                        datathread = new Thread(ThreadCollectData);
+                        InitDataBuffer();
+                        datathreadevent.Set();
+                        IsCollectingData = true;
+                        datathread.Start();
+                        return;
+                    }
                 }
                 else
                 {
-                    threadevent.Set();
+                    if (!IsCollectingData)
+                    {
+                        if (iscleanstart)
+                        {
+                            InitDataBuffer();
+                        }
+                        IsCollectingData = true;
+                        datathreadevent.Set();
+                    }
+                    else
+                    {
+                        //if (iscleanstart)
+                        //{
+                        //    StopCollectData(false);
+                        //    InitDataBuffer();
+                        //    IsCollectingData = true;
+                        //    datathreadevent.Set();
+                        //}
+                    }
                 }
             }
         }
 
-        public void StopCollectSignal()
+        public void StopCollectData(bool isonemorecollect)
         {
-            if (thread != null)
+            lock (datalock)
             {
-                threadevent.Reset();
+                if (datathread != null&&IsCollectingData)
+                {
+                    lock (eventlock)
+                    {
+                        datathreadevent.Reset();
+                        GotoThreadEvent = true;
+                    }
+                    while (true)
+                    {
+                        if (!GotoThreadEvent)
+                        {
+                            if (isonemorecollect)
+                            {
+                                // make sure to get all data before the time this function is issued.
+                                CollectData();
+                            }
+                            IsCollectingData = false;
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        #region ThreadCachingFunctions
-        /// <summary>
-        /// This is the thread caching function, make sure that this function doesn't
-        /// conflict with the class calling thread.
-        /// </summary>
-        void ThreadCollectSignal()
+        #region ThreadFunctions
+        void ThreadCollectData()
         {
-            // here we use local and readonly variables, threadsafe static Math methods. 
+            // here we use local and readonly variables, threadsafe methods. 
             string fcs = "", scs = "";
             int fi, si, fn;
             if (digitalIPI < analogIPI)
             {
-                fn = (int)Mathf.Floor((float)analogIPI / digitalIPI);
+                fn = (int)Mathf.Floor(analogIPI / digitalIPI);
                 fcs = "digital";
                 scs = "analog";
                 fi = digitalIPI;
@@ -484,87 +550,110 @@ namespace VLabAnalysis
             }
             else
             {
-                fn = (int)Mathf.Floor((float)digitalIPI / analogIPI);
+                fn = (int)Mathf.Floor(digitalIPI / analogIPI);
                 fcs = "analog";
                 scs = "digital";
                 fi = analogIPI;
                 si = digitalIPI % analogIPI;
             }
-
             while (true)
             {
-                // ManualResetEvent is threadsafe
-                threadevent.WaitOne();
+                ThreadEvent:
+                lock (eventlock)
+                {
+                    GotoThreadEvent = false;
+                    datathreadevent.WaitOne();
+                }
                 for (var i = 0; i < fn; i++)
                 {
-                    Thread.Sleep(fi);
-                    IsCaching = true;
+                    if (GotoThreadEvent)
+                    {
+                        goto ThreadEvent;
+                    }
+                    for (var j = 0; j < fi / sleepresolution; j++)
+                    {
+                        Thread.Sleep(sleepresolution);
+                        if (GotoThreadEvent)
+                        {
+                            goto ThreadEvent;
+                        }
+                    }
                     switch (fcs)
                     {
                         case "digital":
-                            CollectSpike();
                             CollectDigIn();
+                            CollectSpike();
                             break;
                         case "analog":
                             CollectLFP();
                             break;
                         default:
-                            CollectSignal();
+                            CollectData();
                             break;
                     }
-                    IsCaching = false;
                 }
-
                 if (!string.IsNullOrEmpty(scs))
                 {
-                    Thread.Sleep(si);
-                    IsCaching = true;
+                    if (GotoThreadEvent)
+                    {
+                        goto ThreadEvent;
+                    }
+                    for (var j = 0; j < si / sleepresolution; j++)
+                    {
+                        Thread.Sleep(sleepresolution);
+                        if (GotoThreadEvent)
+                        {
+                            goto ThreadEvent;
+                        }
+                    }
                     switch (scs)
                     {
                         case "digital":
-                            CollectSpike();
                             CollectDigIn();
+                            CollectSpike();
                             break;
                         case "analog":
                             CollectLFP();
                             break;
                         default:
-                            CollectSignal();
+                            CollectData();
                             break;
                     }
-                    IsCaching = false;
                 }
             }
         }
 
-        void CollectSignal()
+        void CollectData()
         {
-            CollectSpike();
             CollectDigIn();
+            CollectSpike();
             CollectLFP();
         }
 
         void CollectSpike()
         {
             var es = Electrodes;
-            var s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(es.Length, 1, es, null, true, false));
-            var s1 = (object[,])(s[1] as MWCellArray).ToArray();
-            var s3 = (object[,])(s[3] as MWCellArray).ToArray();
-            for (var i = 0; i < s1.Length; i++)
+            // get all works only when electrode ids are in (1,n) row vector of doubles
+            var s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, es.Length, es, null, true, false));
+            var s1 = (s[1] as MWCellArray);
+            var s3 = (s[3] as MWCellArray);
+            for (var i = 0; i < es.Length; i++)
             {
-                var st = (double[,])s1[i, 0];
-                if (st.Length > 0)
+                // MWCellArray indexing is 1-based
+                var idx = new int[] { i + 1, 1 };
+                var st = (s1[idx] as MWNumericArray);
+                if (!st.IsEmpty)
                 {
-                    var u = (double[,])s3[i, 0];
-                    for (var j = 0; j < st.Length; j++)
+                    var ss = (double[])st.ToVector(MWArrayComponent.Real);
+                    var us = (double[])(s3[idx] as MWNumericArray).ToVector(MWArrayComponent.Real);
+                    for (var j = 0; j < ss.Length; j++)
                     {
-                        spike[i].Add(st[j,0]);
-                        uid[i].Add((int)u[j,0]);
+                        spike[es[i]-1].Add((ss[j]/tickfreq)*unitpersec);
+                        uid[es[i]-1].Add((int)us[j]);
                     }
                 }
             }
         }
-
 
         void CollectLFP()
         {
@@ -587,149 +676,65 @@ namespace VLabAnalysis
         {
             var d = xippmexdotnet.xippmex(3, "digin");
             var d1 = (d[1] as MWNumericArray);
-            if(!d1.IsEmpty)
+            if (!d1.IsEmpty)
             {
                 var et = (double[])d1.ToVector(MWArrayComponent.Real);
-                digintime.AddRange(et);
-                var d2 = (d[2] as MWStructArray);
-                var fn = d2.FieldNames;
-                foreach (var f in fn)
+                for (var i = 0; i < et.Length; i++)
                 {
-                    digin[f] = new List<int>((int[])(d2.GetField(f) as MWNumericArray).ToVector(MWArrayComponent.Real));
+                    digintime.Add((et[i]/tickfreq)*unitpersec);
                 }
             }
         }
         #endregion
 
-        #region safe with caching thread only when it has already been stoped
-        /// <summary>
-        /// Stop Caching thread and then safely reset buffers
-        /// </summary>
-        void Reset()
+        public void GetData(out List<double>[] aspike, out List<int>[] auid,
+            out List<double[,]> alfp, out List<double> alfpstarttime,
+            out List<double> adigintime, out Dictionary<string, List<int>> adigin)
         {
-            threadevent.Reset();
-            while (true)
+            lock (datalock)
             {
-                if (!IsCaching)
+                if (IsCollectingData)
                 {
-                    InitBuffer();
-                    activebuffer = 1;
-                    SwapBuffer();
-                    threadevent.Set();
-                    break;
+                    StopCollectData(true);
+                    GetDataBuffer(out aspike, out auid, out alfp, out alfpstarttime, out adigintime, out adigin);
+                    StartCollectData(false);
+                }
+                else
+                {
+                    GetDataBuffer(out aspike, out auid, out alfp, out alfpstarttime, out adigintime, out adigin);
                 }
             }
         }
 
-        void InitBuffer()
-        {
-            InitBuffer0();
-            InitBuffer1();
-        }
-
-        void InitBuffer0()
-        {
-            spike0 = new List<double>[Electrodes.Length];
-            uid0 = new List<int>[Electrodes.Length];
-            for (var i = 0; i < Electrodes.Length; i++)
-            {
-                var s0 = new List<double>();
-                var u0 = new List<int>();
-                spike0[i] = s0;
-                uid0[i] = u0;
-            }
-            lfp0 = new List<double[,]>();
-            lfpstarttime0 = new List<double>();
-            digintime0 = new List<double>();
-            digin0 = new Dictionary<string, List<int>>();
-        }
-
-        void InitBuffer1()
-        {
-            spike1 = new List<double>[Electrodes.Length];
-            uid1 = new List<int>[Electrodes.Length];
-            for (var i = 0; i < Electrodes.Length; i++)
-            {
-                var s1 = new List<double>();
-                var u1 = new List<int>();
-                spike1[i] = s1;
-                uid1[i] = u1;
-            }
-            lfp1 = new List<double[,]>();
-            lfpstarttime1 = new List<double>();
-            digintime1 = new List<double>();
-            digin1 = new Dictionary<string, List<int>>();
-        }
-
-        void SwapBuffer()
-        {
-            if (activebuffer == 0)
-            {
-                InitBuffer1();
-                spike = spike1;
-                uid = uid1;
-                lfp = lfp1;
-                lfpstarttime = lfpstarttime1;
-                digintime = digintime1;
-                digin = digin1;
-                activebuffer = 1;
-            }
-            else
-            {
-                InitBuffer0();
-                spike = spike0;
-                uid = uid0;
-                lfp = lfp0;
-                lfpstarttime = lfpstarttime0;
-                digintime = digintime0;
-                digin = digin0;
-                activebuffer = 0;
-            }
-        }
-
-        public void GetSignal(out List<double>[] aspike, out List<int>[] auid,
+        void GetDataBuffer(out List<double>[] aspike, out List<int>[] auid,
             out List<double[,]> alfp, out List<double> alfpstarttime,
             out List<double> adigintime, out Dictionary<string, List<int>> adigin)
         {
-            threadevent.Reset();
-            while (true)
-            {
-                if (!IsCaching)
-                {
-                    // make sure to get latest data, since caching may be done long before calling here.
-                    CollectSignal();
-                    GetActiveBuffer(out aspike, out auid, out alfp, out alfpstarttime, out adigintime, out adigin);
-                    SwapBuffer();
-                    threadevent.Set();
-                    break;
-                }
-            }
+            aspike = spike;
+            auid = uid;
+            alfp = lfp;
+            alfpstarttime = lfpstarttime;
+            adigintime = digintime;
+            adigin = digin;
+            InitDataBuffer();
         }
 
-        void GetActiveBuffer(out List<double>[] aspike, out List<int>[] auid,
-            out List<double[,]> alfp, out List<double> alfpstarttime,
-            out List<double> adigintime, out Dictionary<string, List<int>> adigin)
+        void InitDataBuffer()
         {
-            if (activebuffer == 0)
+            spike = new List<double>[Electrodes.Length];
+            uid = new List<int>[Electrodes.Length];
+            for (var i = 0; i < Electrodes.Length; i++)
             {
-                aspike = spike0;
-                auid = uid0;
-                alfp = lfp0;
-                alfpstarttime = lfpstarttime0;
-                adigintime = digintime0;
-                adigin = digin0;
+                var s = new List<double>();
+                var u = new List<int>();
+                spike[i] = s;
+                uid[i] = u;
             }
-            else
-            {
-                aspike = spike1;
-                auid = uid1;
-                alfp = lfp1;
-                alfpstarttime = lfpstarttime1;
-                adigintime = digintime1;
-                adigin = digin1;
-            }
+            lfp = new List<double[,]>();
+            lfpstarttime = new List<double>();
+            digintime = new List<double>();
+            digin = new Dictionary<string, List<int>>();
         }
-        #endregion
 
         public double StartTime
         {

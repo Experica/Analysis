@@ -11,7 +11,7 @@ using MathWorks.MATLAB.NET.Utility;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
-using MathNet;
+using MathNet.Numerics.Statistics;
 
 namespace VLabAnalysis
 { 
@@ -63,11 +63,11 @@ namespace VLabAnalysis
     {
         bool SearchSignal();
         ISignal Signal { get; }
-        ConcurrentDictionary<string, ConcurrentQueue<object>> CondTest { get;  }
         void Reset();
         int ClearDataPerAnalysis { get; set; }
         DataSet DataSet { get; }
-        void AddAnalysisQueue();
+        void AnalysisEnqueue(double time);
+        void CondTestEnqueue(string name, object value);
         bool IsAnalysisDone { get; set; }
     }
 
@@ -91,10 +91,14 @@ namespace VLabAnalysis
         public List<double> lfpstarttime;
         public List<double> digintime;
         public Dictionary<string, List<int>> digin;
-        public List<int> CondIndex;
+        public List<int> AccumCondIndex,CondIndex;
+        public List<List<Dictionary<string, double>>> AccumCondState,CondState;
+
+        public double exstarttime = -1;
 
         Experiment ex;
         object lockobj = new object();
+        object datalock = new object();
 
         public Experiment Ex
         {
@@ -114,6 +118,23 @@ namespace VLabAnalysis
             }
         }
 
+        public int CondN
+        {
+            get
+            {
+                int cn = 0;
+                if (Ex.cond != null)
+                {
+                    foreach (var c in Ex.cond.Values)
+                    {
+                        cn = c.Count;
+                        break;
+                    }
+                }
+                return cn;
+            }
+        }
+
         public void Clear()
         {
             if (spike != null)
@@ -129,62 +150,105 @@ namespace VLabAnalysis
                 lfp.Clear();
                 lfpstarttime.Clear();
             }
-            if (CondIndex != null)
+            if (AccumCondIndex != null)
             {
-                CondIndex.Clear();
+                AccumCondIndex.Clear();
+            }
+        }
+
+        public void Remove(double time)
+        {
+            lock (datalock)
+            {
+                double endtime;
+                if (exstarttime > 0)
+                {
+                    endtime = exstarttime + time;
+                    if (spike != null)
+                    {
+                        for (var i = 0; i < spike.Length; i++)
+                        {
+                            AnalysisMethod.Sub(ref spike[i], ref uid[i], endtime,double.PositiveInfinity);
+                        }
+                    }
+                }
             }
         }
 
         public void Add(List<double>[] aspike, List<int>[] auid,
             List<double[,]> alfp, List<double> alfpstarttime,
             List<double> adigintime, Dictionary<string, List<int>> adigin,
-            List<int> acondindex)
+            List<int> acondindex, List<List<Dictionary<string, double>>> acondstate)
         {
-            if (spike == null)
+            lock (datalock)
             {
-                spike = aspike;
-                uid = auid;
-            }
-            else
-            {
-                for (var i = 0; i < spike.Length; i++)
+                if (spike == null)
                 {
-                    spike[i].AddRange(aspike[i]);
-                    uid[i].AddRange(auid[i]);
+                    spike = aspike;
+                    uid = auid;
+                }
+                else
+                {
+                    if (aspike != null)
+                    {
+                        for (var i = 0; i < aspike.Length; i++)
+                        {
+                            spike[i].AddRange(aspike[i]);
+                            uid[i].AddRange(auid[i]);
+                        }
+                    }
+                }
+                if (lfp == null)
+                {
+                    lfp = alfp;
+                    lfpstarttime = alfpstarttime;
+                }
+                else
+                {
+                    lfp.AddRange(alfp);
+                    lfpstarttime.AddRange(alfpstarttime);
+                }
+                if (exstarttime < 0 && adigintime.Count > 1)
+                {
+                    exstarttime = adigintime[1];
+                }
+                if (digintime == null)
+                {
+                    digintime = adigintime;
+                    digin = adigin;
+                }
+                else
+                {
+                    if (adigintime != null)
+                    {
+                        digintime.AddRange(adigintime);
+                        foreach (var f in digin.Keys)
+                        {
+                            digin[f].AddRange(adigin[f]);
+                        }
+                    }
+                }
+                if (CondIndex == null)
+                {
+                    CondIndex = acondindex;
+                    AccumCondIndex = new List<int>();
+                }
+                else
+                {
+                    AccumCondIndex.AddRange(CondIndex);
+                    CondIndex = acondindex;
+                }
+                if(CondState==null)
+                {
+                    CondState = acondstate;
+                    AccumCondState = new List<List<Dictionary<string, double>>>();
+                }
+                else
+                {
+                    AccumCondState.AddRange(CondState);
+                    CondState = acondstate;
                 }
             }
-            if (lfp == null)
-            {
-                lfp = alfp;
-                lfpstarttime = alfpstarttime;
-            }
-            else
-            {
-                lfp.AddRange(alfp);
-                lfpstarttime.AddRange(alfpstarttime);
-            }
-            if (digintime == null)
-            {
-                digintime = adigintime;
-                digin = adigin;
-            }
-            else
-            {
-                digintime.AddRange(adigintime);
-                foreach (var f in digin.Keys)
-                {
-                    digin[f].AddRange(adigin[f]);
-                }
-            }
-            if (CondIndex == null)
-            {
-                CondIndex = acondindex;
-            }
-            else
-            {
-                CondIndex.AddRange(acondindex);
-            }
-
         }
 
         public bool IsData(int elec, SIGNALTYPE signaltype)
@@ -239,26 +303,29 @@ namespace VLabAnalysis
     {
         ISignal signal;
         RippleSignal ripple = new RippleSignal();
-        ConcurrentDictionary<string,ConcurrentQueue< object>> condtest = new ConcurrentDictionary<string, ConcurrentQueue<object>>();
+        ConcurrentDictionary<string, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<string, ConcurrentQueue<object>>();
         int cleardataperanalysis;
-        ConcurrentQueue<bool> analysisqueue = new ConcurrentQueue<bool>();
+        ConcurrentQueue<int[]> analysisqueue = new ConcurrentQueue<int[]>();
+        ConcurrentQueue<double[]> analysistimequeue = new ConcurrentQueue<double[]>();
         int analysisidx = 0;
-        Thread thread;
+        Thread analysisthread;
         DataSet dataset = new DataSet();
-        bool isanalysisdone=true;
-        ManualResetEvent threadevent = new ManualResetEvent(true);
+        bool isanalysisdone = true;
+        ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
+        readonly int sleepresolution;
         object lockobj = new object();
 
-        public DotNetAnalysis(int cleardataperanalysis = 1)
+        public DotNetAnalysis(int cleardataperanalysis = 1, int sleepresolution = 2)
         {
             this.cleardataperanalysis = cleardataperanalysis;
+            this.sleepresolution = Math.Max(0, sleepresolution);
         }
 
         public bool SearchSignal()
         {
-            foreach(var s in Enum.GetValues(typeof( SIGNALSYSTEM)))
+            foreach (var s in Enum.GetValues(typeof(SIGNALSYSTEM)))
             {
-                if(SearchSignal((SIGNALSYSTEM)s))
+                if (SearchSignal((SIGNALSYSTEM)s))
                 {
                     return true;
                 }
@@ -269,10 +336,10 @@ namespace VLabAnalysis
         bool SearchSignal(SIGNALSYSTEM sigsys)
         {
             bool v = false;
-            switch(sigsys)
+            switch (sigsys)
             {
                 case SIGNALSYSTEM.Ripple:
-                    if(ripple.IsSignalOnline)
+                    if (ripple.IsSignalOnline)
                     {
                         signal = ripple;
                         return true;
@@ -289,15 +356,18 @@ namespace VLabAnalysis
             get { return signal; }
         }
 
-        public ConcurrentDictionary<string,ConcurrentQueue< object>> CondTest
-        {
-            get { return condtest; }
-        }
-
         public int ClearDataPerAnalysis
         {
-            get { return cleardataperanalysis; }
-            set { cleardataperanalysis = value; }
+            get
+            {
+                int t = 0;
+                lock (lockobj)
+                {
+                    t = cleardataperanalysis;
+                }
+                return t;
+            }
+            set { lock (lockobj) { cleardataperanalysis = value; } }
         }
 
         public DataSet DataSet
@@ -313,22 +383,22 @@ namespace VLabAnalysis
         /// </summary>
         public void Reset()
         {
-            threadevent.Reset();
-            while(true)
+            analysisthreadevent.Reset();
+            while (true)
             {
-                if(IsAnalysisDone)
+                if (IsAnalysisDone)
                 {
-                    CondTest.Clear();
+                    condtest.Clear();
                     DataSet.Clear();
-                    bool aq;
-                    while(true)
+                    int[] aq;
+                    while (true)
                     {
-                        if(!analysisqueue.TryDequeue(out aq))
+                        if (!analysisqueue.TryDequeue(out aq))
                         {
                             break;
                         }
                     }
-                    threadevent.Set();
+                    analysisthreadevent.Set();
                     break;
                 }
             }
@@ -353,19 +423,35 @@ namespace VLabAnalysis
             }
         }
 
-        public void AddAnalysisQueue()
+        public void CondTestEnqueue(string name, object value)
+        {
+            if (condtest.ContainsKey(name))
+            {
+                condtest[name].Enqueue(value);
+            }
+            else
+            {
+                var q = new ConcurrentQueue<object>();
+                q.Enqueue(value);
+                condtest[name] = q;
+            }
+        }
+
+        public void AnalysisEnqueue(double time)
         {
             analysisidx++;
-            bool iscleardata=false;
+            int iscleardata = 0;
             if (cleardataperanalysis > 0)
             {
-                iscleardata = analysisidx % cleardataperanalysis == 0;
+                iscleardata = analysisidx % cleardataperanalysis == 0 ? 1 : 0;
             }
-            analysisqueue.Enqueue(iscleardata);
-            if (thread == null)
+            analysisqueue.Enqueue(new int[] { analysisidx, iscleardata });
+            analysistimequeue.Enqueue(new double[] { analysisidx, time });
+            if (analysisthread == null)
             {
-                thread = new Thread(ProcessAnalysisQueue);
-                thread.Start();
+                analysisthread = new Thread(ProcessAnalysisQueue);
+                analysisthreadevent.Set();
+                analysisthread.Start();
             }
         }
 
@@ -378,7 +464,7 @@ namespace VLabAnalysis
             get
             {
                 bool t = false;
-                lock(lockobj)
+                lock (lockobj)
                 {
                     t = isanalysisdone;
                 }
@@ -386,7 +472,7 @@ namespace VLabAnalysis
             }
             set
             {
-                lock(lockobj)
+                lock (lockobj)
                 {
                     isanalysisdone = value;
                 }
@@ -405,36 +491,62 @@ namespace VLabAnalysis
             List<double[,]> lfp;
             List<double> lfpstarttime;
             List<double> digintime;
-            Dictionary<string, List< int>> digin;
-            bool iscleardata;
-            object CondIndex;
+            Dictionary<string, List<int>> digin;
+            int[] aq;
+            object CondIndex, CondState;
             while (true)
             {
-                threadevent.WaitOne();
-                if (analysisqueue.TryDequeue(out iscleardata) &&condtest.ContainsKey("CondIndex")&&condtest["CondIndex"].TryDequeue(out CondIndex))
+                analysisthreadevent.WaitOne();
+                if (analysisqueue.TryDequeue(out aq) && condtest.ContainsKey("CondIndex")
+                    && condtest["CondIndex"].TryDequeue(out CondIndex) && condtest.ContainsKey("CONDSTATE")
+                    && condtest["CONDSTATE"].TryDequeue(out CondState))
                 {
-                    Signal.GetSignal(out spike, out uid, out lfp, out lfpstarttime,out digintime,out digin);
-
-                    DataSet.Add(spike, uid, lfp, lfpstarttime,digintime,digin, (List<int>)CondIndex);
+                    if (Signal != null)
+                    {
+                        Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out digintime, out digin);
+                        DataSet.Add(spike, uid, lfp, lfpstarttime, digintime, digin,
+                        (List<int>)CondIndex, (List<List<Dictionary<string, double>>>)CondState);
+                    }
+                    else
+                    {
+                        DataSet.Add(null, null, null, null, null, null,
+                            (List<int>)CondIndex, (List<List<Dictionary<string, double>>>)CondState);
+                    }
                     IsAnalysisDone = false;
-                    foreach(var a in Signal.Analyzers)
+                    foreach (var a in Signal.Analyzers)
                     {
                         a.Analysis(DataSet);
                     }
                     //Parallel.ForEach(Signal.Analyzers,(i)=>i.Analysis(DataSet));
                     IsAnalysisDone = true;
-                    if(iscleardata)
+                    // Clearing old data
+                    var aqidx = aq[0];
+                    var aqclear = aq[1] == 1;
+                    if (aqclear)
                     {
-                        DataSet.Clear();
+                        double[] atq;
+                    FindTime:
+                        if (analysistimequeue.TryDequeue(out atq))
+                        {
+                            var atqidx = atq[0];
+                            var atqtime = atq[1];
+                            if (atqidx >= aqidx - ClearDataPerAnalysis + 1)
+                            {
+                                DataSet.Remove(atqtime);
+                            }
+                            else
+                            {
+                                goto FindTime;
+                            }
+                        }
                     }
                 }
                 else
                 {
-                    Thread.Sleep(500);
+                    Thread.Sleep(sleepresolution);
                 }
             }
         }
-
 
 
     }
@@ -442,10 +554,19 @@ namespace VLabAnalysis
     public class AnalysisResult
     {
         public ConcurrentDictionary<int, List<double>> mfr = new ConcurrentDictionary<int, List<double>>();
+        public int Elec;
+        public Dictionary<string, List<object>> cond=new Dictionary<string, List<object>>();
+        public string ExID;
+
+        public AnalysisResult(int elec=1,string exid="")
+        {
+            Elec = elec;
+            ExID = exid;
+        }
 
         public AnalysisResult DeepCopy()
         {
-            var copy = new AnalysisResult();
+            var copy = new AnalysisResult(Elec,ExID);
             foreach(var i in mfr.Keys)
             {
                 var v = new List<double>();
@@ -455,24 +576,103 @@ namespace VLabAnalysis
                 }
                 copy.mfr[i] = v;
             }
+            foreach(var c in cond.Keys)
+            {
+                var v = new List<object>();
+                foreach(var cv in cond[c])
+                {
+                    v.Add(cv);
+                }
+                copy.cond[c] = v;
+            }
             return copy;
         }
     }
 
-    public class SpikeAnalysis
+    public static class AnalysisMethod
     {
-        public static int Count(List<double> st,double start,double end)
+        public static int Count(this List<double> st, double start,double end)
         {
             int c = 0;
-            foreach(var t in st)
+            if (end > start)
             {
-                if(t>=start && t<end)
+                foreach (var t in st)
                 {
-                    c++;
+                    if (t >= start && t < end)
+                    {
+                        c++;
+                    }
                 }
             }
             return c;
         }
+
+        public static void Sub(ref List<double> st,ref List<int> uid,double start,double end)
+        {
+            var si = st.FindIndex(i => i >= start);
+            if(si<0)
+            {
+                st.Clear();
+                if(uid!=null)
+                {
+                    uid.Clear();
+                }
+            }
+            else
+            {
+                st.RemoveRange(0, si);
+                var ei = st.FindIndex(i => i >= end);
+                if(ei>=si)
+                {
+                    var l = st.Count;
+                    st.RemoveRange(ei, l - ei);
+                    if (uid != null)
+                    {
+                        uid.RemoveRange(0, si);
+                        uid.RemoveRange(ei, l - ei);
+                    }
+                }
+            } 
+        }
+
+        public static double FindCondStateTime(this List<Dictionary<string, double>> condstate,string state)
+        {
+            foreach(var c in condstate)
+            {
+                if(c.ContainsKey(state))
+                {
+                    return c[state];
+                }
+            }
+            return 0;
+        }
+
+        public static double MFR(this List<double> st, double start, double end)
+        {
+            if (end > start)
+            {
+                return st.Count(start, end) / ((end - start) / 1000);
+            }
+            return 0;
+        }
+
+        public static double SEM(this List<double> x)
+        {
+           return x.StandardDeviation() / Math.Sqrt(x.Count);
+        }
+
+        public static string GetUnit(this string factorname)
+        {
+            string u = "";
+            switch(factorname)
+            {
+                case "ori":
+                    u = "deg";
+                    break;
+            }
+            return u;
+        }
+
     }
 
 }

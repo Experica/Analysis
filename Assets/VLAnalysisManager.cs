@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Linq;
 using VLab;
+using MsgPack;
 
 namespace VLabAnalysis
 {
@@ -20,80 +21,83 @@ namespace VLabAnalysis
             var name = VLConvert.Convert<string>(uicontroller.appmanager.config["defaultanalysissystem"]);
             var cleardataperanalysis = VLConvert.Convert<int>(uicontroller.appmanager.config["cleardataperanalysis"]);
             als = AnalysisFactory. GetAnalysisSystem(name, cleardataperanalysis);
-
-            als.Signal.StartCollectSignal(true);
         }
 
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
             als.Reset();
-            als.Signal.StartCollectSignal(true);
+            als.Signal.StartCollectData(true);
         }
 
         [ClientRpc]
         public void RpcNotifyStopExperiment()
         {
-            als.Signal.StopCollectSignal();
+            als.Signal.StopCollectData(false);
         }
 
         [ClientRpc]
         public void RpcNotifyPauseExperiment()
         {
-            als.Signal.StopCollectSignal();
+            als.Signal.StopCollectData(true);
         }
 
         [ClientRpc]
         public void RpcNotifyResumeExperiment()
         {
-            als.Signal.StartCollectSignal(false);
+            als.Signal.StartCollectData(false);
         }
 
         [ClientRpc]
         public void RpcNotifyExperiment(byte[] exbs)
         {
-            als.DataSet.Ex =  MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(exbs));
+            var ex = MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(exbs));
+            if(ex.cond!=null&&ex.cond.Count>0)
+            {
+                foreach(var c in ex.cond.Keys)
+                {
+                    var vs = new List<double>();
+                    for(var i=0;i<ex.cond[c].Count;i++)
+                    {
+                        ex.cond[c][i]= ((MessagePackObject)ex.cond[c][i]).ToObject();
+                    }
+                }
+            }
+            als.DataSet.Ex = ex;
         }
 
         [ClientRpc]
         public void RpcNotifyCondTestData(string name, byte[] value)
         {
             object v;
-            if (name == "CondIndex")
+            switch(name)
             {
-                v = MsgPackSerializer.ListIntSerializer.Unpack(new MemoryStream(value));
+                case "CondIndex":
+                    v = MsgPackSerializer.ListIntSerializer.Unpack(new MemoryStream(value));
+                    break;
+                case "CONDSTATE":
+                    v = MsgPackSerializer.CONDSTATESerializer.Unpack(new MemoryStream(value));
+                    break;
+                default:
+                    v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
+                    break;
             }
-            else
-            {
-                v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
-            }
-            if (als.CondTest.ContainsKey(name))
-            {
-                als.CondTest[name].Enqueue(v);
-            }
-            else
-            {
-                var q = new ConcurrentQueue<object>();
-                
-                q.Enqueue(v);
-                als.CondTest[name] = q;
-            }
+            als.CondTestEnqueue(name, v);
         }
 
 
         [ClientRpc]
-        public void RpcNotifyAnalysis()
+        public void RpcNotifyAnalysis(double time)
         {
-            als.AddAnalysisQueue();
+            als.AnalysisEnqueue(time);
         }
 
         public void OnClientDisconnect()
         {
-            als.Signal.StopCollectSignal();
+            als.Signal.StopCollectData(false);
         }
 
         void Update()
-
         {
             if (als.Signal != null && als.Signal.Analyzers != null)
             {

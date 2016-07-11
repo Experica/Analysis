@@ -102,7 +102,5 @@ namespace VLabAnalysis
             clientconnect.isOn = false;
         }
 
-        
-
     }
 }
