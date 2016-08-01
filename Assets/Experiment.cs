@@ -31,8 +31,8 @@ namespace VLab
 
         public string recordsession { get; set; }
         public string recordsite { get; set; }
-        public string condtestdir { get; set; }
-        public string condtestpath { get; set; }
+        public string dir { get; set; }
+        public string path { get; set; }
         public Dictionary<string, List<object>> condtest { get; set; }
         public SampleMethod condsampling { get; set; }
         public int condrepeat { get; set; }
@@ -97,18 +97,18 @@ namespace VLab
         public virtual string CondTestPath(string ext = ".yaml")
         {
             var filename = subject_id + "_" + recordsession + "_" + recordsite + "_" + id + "_";
-            if (string.IsNullOrEmpty(condtestdir))
+            if (string.IsNullOrEmpty(dir))
             {
-                condtestdir = Directory.GetCurrentDirectory();
+                dir = Directory.GetCurrentDirectory();
             }
             else
             {
-                if (!Directory.Exists(condtestdir))
+                if (!Directory.Exists(dir))
                 {
-                    Directory.CreateDirectory(condtestdir);
+                    Directory.CreateDirectory(dir);
                 }
             }
-            var subjectdir = Path.Combine(condtestdir, subject_id);
+            var subjectdir = Path.Combine(dir, subject_id);
             if (!Directory.Exists(subjectdir))
             {
                 Directory.CreateDirectory(subjectdir);
@@ -129,8 +129,8 @@ namespace VLab
                 }
                 filename = filename + (ns.Max() + 1).ToString() + ext;
             }
-            condtestpath = Path.Combine(subjectdir, filename);
-            return condtestpath;
+            path = Path.Combine(subjectdir, filename);
+            return path;
         }
     }
 

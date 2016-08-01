@@ -17,7 +17,7 @@
     </CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows64:19</UnityBuildTarget>
-    <UnityVersion>5.4.0b21</UnityVersion>
+    <UnityVersion>5.4.0b25</UnityVersion>
     <RootNamespace>
     </RootNamespace>
     <LangVersion Condition=" '$(VisualStudioVersion)' != '10.0' ">4</LangVersion>
