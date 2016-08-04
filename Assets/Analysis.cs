@@ -59,6 +59,11 @@ namespace VLabAnalysis
         }
     }
 
+    public enum AnalysisSystem
+    {
+        DotNet
+    }
+
     public interface IAnalysis
     {
         bool SearchSignal();

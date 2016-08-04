@@ -12,46 +12,71 @@ using VLab;
 
 namespace VLabAnalysis
 {
+    public enum VLACFG
+    {
+        AutoConnect,
+        AutoConnectTimeOut,
+        ServerAddress,
+        ClearDataPerAnalysis,
+        DefaultAnalysisSystem
+    }
+
     public class VLAApplicationManager : MonoBehaviour
     {
         public VLAUIController uicontroller;
-        public Dictionary<string, object> config;
+        public Dictionary<VLACFG, object> config;
         public readonly string configpath = "VLabAnalysisConfig.yaml";
 
         void Awake()
         {
             if (File.Exists(configpath))
             {
-                config = Yaml.ReadYaml<Dictionary<string, object>>(configpath);
+                config = Yaml.ReadYaml<Dictionary<VLACFG, object>>(configpath);
             }
             if(config==null)
             {
-                config = new Dictionary<string, object>();
+                config = new Dictionary<VLACFG, object>();
             }
             ValidateConfig();
         }
 
         void ValidateConfig()
         {
-            if (!config.ContainsKey("isautoconn"))
+            if (!config.ContainsKey(VLACFG.AutoConnect))
             {
-                config["isautoconn"] = true;
+                config[VLACFG.AutoConnect] = true;
             }
-            if (!config.ContainsKey("autoconntimeout"))
+            else
             {
-                config["autoconntimeout"] = 10;
+                config[VLACFG.AutoConnect] = config[VLACFG.AutoConnect].Convert<bool>();
             }
-            if (!config.ContainsKey("serveraddress"))
+            if (!config.ContainsKey(VLACFG.AutoConnectTimeOut))
             {
-                config["serveraddress"] = "localhost";
+                config[VLACFG.AutoConnectTimeOut] = 10;
             }
-            if (!config.ContainsKey("cleardataperanalysis"))
+            else
             {
-                config["cleardataperanalysis"] = 1;
+                config[VLACFG.AutoConnectTimeOut] = config[VLACFG.AutoConnectTimeOut].Convert<int>();
             }
-            if (!config.ContainsKey("defaultanalysissystem"))
+            if (!config.ContainsKey(VLACFG.ServerAddress))
             {
-                config["defaultanalysissystem"] = "DotNet";
+                config[VLACFG.ServerAddress] = "localhost";
+            }
+            if (!config.ContainsKey(VLACFG.ClearDataPerAnalysis))
+            {
+                config[VLACFG.ClearDataPerAnalysis] = 1;
+            }
+            else
+            {
+                config[VLACFG.ClearDataPerAnalysis] = config[VLACFG.ClearDataPerAnalysis].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.DefaultAnalysisSystem))
+            {
+                config[VLACFG.DefaultAnalysisSystem] = AnalysisSystem.DotNet;
+            }
+            else
+            {
+                config[VLACFG.DefaultAnalysisSystem] = config[VLACFG.DefaultAnalysisSystem].Convert<AnalysisSystem>();
             }
         }
 

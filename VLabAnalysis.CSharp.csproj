@@ -17,7 +17,7 @@
     </CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows64:19</UnityBuildTarget>
-    <UnityVersion>5.4.0b25</UnityVersion>
+    <UnityVersion>5.4.0f3</UnityVersion>
     <RootNamespace>
     </RootNamespace>
     <LangVersion Condition=" '$(VisualStudioVersion)' != '10.0' ">4</LangVersion>
@@ -99,6 +99,7 @@
     <Compile Include="Assets\Analyzer.cs" />
     <Compile Include="Assets\Controller.cs" />
     <Compile Include="Assets\Experiment.cs" />
+    <Compile Include="Assets\Extention.cs" />
     <Compile Include="Assets\MsgPackSerializer.cs" />
     <Compile Include="Assets\Signal.cs" />
     <Compile Include="Assets\UI\Drag.cs" />
@@ -111,7 +112,6 @@
     <Compile Include="Assets\VLAApplicationManager.cs" />
     <Compile Include="Assets\VLANetManager.cs" />
     <Compile Include="Assets\VLAnalysisManager.cs" />
-    <Compile Include="Assets\VLConvert.cs" />
     <Compile Include="Assets\VLIO.cs" />
     <Compile Include="Assets\VLNetwork.cs" />
     <Compile Include="Assets\VLTimer.cs" />
