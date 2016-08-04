@@ -85,6 +85,9 @@
     <Reference Include="ZedGraph">
       <HintPath>Assets\Plugins\ZedGraph\ZedGraph.dll</HintPath>
     </Reference>
+    <Reference Include="Fasterflect">
+      <HintPath>Assets\Plugins\Fasterflect\Fasterflect.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Plugins\YamlDotNet\Core\AnchorNotFoundException.cs" />
@@ -256,6 +259,7 @@
     <Compile Include="Assets\Plugins\YamlDotNet\Serialization\YamlMember.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Plugins\Fasterflect\Fasterflect.XML" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\license.txt" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\net35\MathNet.Numerics.xml" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\readme.txt" />

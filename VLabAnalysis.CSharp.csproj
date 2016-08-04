@@ -87,6 +87,9 @@
     <Reference Include="ZedGraph">
       <HintPath>Assets\Plugins\ZedGraph\ZedGraph.dll</HintPath>
     </Reference>
+    <Reference Include="Fasterflect">
+      <HintPath>Assets\Plugins\Fasterflect\Fasterflect.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="VLabAnalysis.CSharp.Plugins.csproj">
@@ -120,6 +123,7 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Assets\Plugins\Fasterflect\Fasterflect.XML" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\license.txt" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\net35\MathNet.Numerics.xml" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\readme.txt" />
@@ -128,6 +132,7 @@
     <None Include="Assets\Plugins\YamlDotNet\Readme.txt" />
     <None Include="Assets\Plugins\YamlDotNet\YamlDotNet.license.txt" />
     <None Include="Assets\Plugins\ZedGraph\ZedGraph.XML" />
+    <None Include="VLAB.licenseheader" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\SyntaxTree\UnityVS\2015\UnityVS.CSharp.targets" />
 </Project>

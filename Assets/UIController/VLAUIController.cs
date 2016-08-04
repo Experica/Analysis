@@ -1,17 +1,31 @@
-﻿// --------------------------------------------------------------
-// VLEUIController.cs is part of the VLAB project.
-// Copyright (c) 2016 All Rights Reserved
-// Li Alex Zhang fff008@gmail.com
-// 5-16-2016
-// --------------------------------------------------------------
+﻿// -----------------------------------------------------------------------------
+// VLAUIController.cs is part of the VLAB project.
+// Copyright (c) 2016 Li Alex Zhang and Contributors
+//
+// Permission is hereby granted, free of charge, to any person obtaining a 
+// copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the 
+// Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included 
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+// OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// -----------------------------------------------------------------------------
 
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Diagnostics;
 using System.Collections;
 using VLab;
-using System.Windows.Forms;
-using ZedGraph;
 
 namespace VLabAnalysis
 {
@@ -24,9 +38,9 @@ namespace VLabAnalysis
         public VLAApplicationManager appmanager;
         public VLAnalysisManager alsmanager;
 
-        private bool isautoconn;
-        private int autoconncountdown;
-        private float lastautoconntime;
+        bool isautoconn, isconnect;
+        int autoconncountdown;
+        float lastautoconntime;
 
         public void OnToggleClientConnect(bool isconn)
         {
@@ -38,24 +52,25 @@ namespace VLabAnalysis
             else
             {
                 netmanager.StopClient();
+                OnClientDisconnect();
             }
         }
 
         public void OnServerAddressEndEdit(string v)
         {
-            appmanager.config["serveraddress"] = v;
+            appmanager.config[VLACFG.ServerAddress] = v;
         }
 
         public void OnToggleAutoConnect(bool ison)
         {
-            appmanager.config["isautoconn"] = ison;
+            appmanager.config[VLACFG.AutoConnect] = ison;
             ResetAutoConnect();
         }
 
         public void ResetAutoConnect()
         {
-            autoconncountdown = VLConvert.Convert<int>(appmanager.config["autoconntimeout"]);
-            isautoconn = VLConvert.Convert<bool>(appmanager.config["isautoconn"]);
+            autoconncountdown = (int)appmanager.config[VLACFG.AutoConnectTimeOut];
+            isautoconn = (bool)appmanager.config[VLACFG.AutoConnect];
             if (!isautoconn)
             {
                 autoconntext.text = "Auto Connect OFF";
@@ -65,31 +80,42 @@ namespace VLabAnalysis
 
         void Start()
         {
+            serveraddress.text = (string)appmanager.config[VLACFG.ServerAddress];
             ResetAutoConnect();
-            serveraddress.text = VLConvert.Convert< string>(appmanager.config["serveraddress"]);
         }
 
         void Update()
         {
-            if (isautoconn && !netmanager.IsClientConnected())
+            if (!isconnect)
             {
-                if (Time.unscaledTime - lastautoconntime >= 1)
+                if (isautoconn)
                 {
-                    autoconncountdown--;
-                    if (autoconncountdown > 0)
+                    if (Time.unscaledTime - lastautoconntime >= 1)
                     {
-                        autoconntext.text = "Auto Connect " + autoconncountdown + "s";
-                        lastautoconntime = Time.unscaledTime;
-                    }
-                    else
-                    {
-                        clientconnect.isOn = true;
-                        clientconnect.onValueChanged.Invoke(true);
-                        isautoconn = false;
-                        autoconntext.text = "";
+                        autoconncountdown--;
+                        if (autoconncountdown > 0)
+                        {
+                            lastautoconntime = Time.unscaledTime;
+                            autoconntext.text = "Auto Connect " + autoconncountdown + "s";
+                        }
+                        else
+                        {
+                            clientconnect.isOn = true;
+                            clientconnect.onValueChanged.Invoke(true);
+                            autoconntext.text = "Connecting ...";
+                            isautoconn = false;
+                        }
                     }
                 }
             }
+        }
+
+        public void OnClientConnect()
+        {
+            isconnect = true;
+            autoconntext.text = "Connected";
+
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
         }
 
         public void OnClientDisconnect()
@@ -98,8 +124,11 @@ namespace VLabAnalysis
             {
                 alsmanager.OnClientDisconnect();
             }
+            isconnect = false;
             ResetAutoConnect();
             clientconnect.isOn = false;
+
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
         }
 
     }

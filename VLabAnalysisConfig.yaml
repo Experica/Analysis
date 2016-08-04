@@ -1,5 +1,0 @@
-isautoconn: false
-autoconntimeout: 10
-serveraddress: lyonlab-visual
-cleardataperanalysis: 1
-defaultanalysissystem: DotNet

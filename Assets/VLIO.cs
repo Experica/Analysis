@@ -1,6 +1,6 @@
 ﻿// -----------------------------------------------------------------------------
 // VLIO.cs is part of the VLAB project.
-// Copyright (c) 2016  Li Alex Zhang  fff008@gmail.com
+// Copyright (c) 2016 Li Alex Zhang and Contributors
 //
 // Permission is hereby granted, free of charge, to any person obtaining a 
 // copy of this software and associated documentation files (the "Software"),
@@ -31,7 +31,6 @@ using System.Threading;
 using YamlDotNet.Serialization.NamingConventions;
 using YamlDotNet.Serialization;
 using System.Runtime.InteropServices;
-using LibUsbDotNet;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 

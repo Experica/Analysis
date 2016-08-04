@@ -1,4 +1,26 @@
-﻿using UnityEngine;
+﻿// -----------------------------------------------------------------------------
+// Analysis.cs is part of the VLAB project.
+// Copyright (c) 2016 Li Alex Zhang and Contributors
+//
+// Permission is hereby granted, free of charge, to any person obtaining a 
+// copy of this software and associated documentation files (the "Software"),
+// to deal in the Software without restriction, including without limitation
+// the rights to use, copy, modify, merge, publish, distribute, sublicense,
+// and/or sell copies of the Software, and to permit persons to whom the 
+// Software is furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included 
+// in all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+// OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+// -----------------------------------------------------------------------------
+
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using VLab;
@@ -14,7 +36,12 @@ using System.Collections.Concurrent;
 using MathNet.Numerics.Statistics;
 
 namespace VLabAnalysis
-{ 
+{
+    public enum AnalysisSystem
+    {
+        DotNet
+    }
+
     public enum ANALYSISINTERFACE
     {
         IAnalyzer,
@@ -24,10 +51,10 @@ namespace VLabAnalysis
 
     public static class AnalysisFactory
     {
-        public static IAnalysis GetAnalysisSystem(string name = "DotNet", int cleardataperanalysis = 1)
+        public static IAnalysis GetAnalysisSystem(this AnalysisSystem analysissystem, int cleardataperanalysis = 1)
         {
             IAnalysis als;
-            switch (name)
+            switch (analysissystem)
             {
                 default:
                     als = new DotNetAnalysis(cleardataperanalysis);
@@ -59,10 +86,7 @@ namespace VLabAnalysis
         }
     }
 
-    public enum AnalysisSystem
-    {
-        DotNet
-    }
+    
 
     public interface IAnalysis
     {
@@ -71,8 +95,8 @@ namespace VLabAnalysis
         void Reset();
         int ClearDataPerAnalysis { get; set; }
         DataSet DataSet { get; }
-        void AnalysisEnqueue(double time);
-        void CondTestEnqueue(string name, object value);
+        void CondTestEndEnqueue(double time);
+        void CondTestEnqueue(CONDTESTPARAM name, object value);
         bool IsAnalysisDone { get; set; }
     }
 
@@ -128,9 +152,9 @@ namespace VLabAnalysis
             get
             {
                 int cn = 0;
-                if (Ex.cond != null)
+                if (Ex.Cond != null)
                 {
-                    foreach (var c in Ex.cond.Values)
+                    foreach (var c in Ex.Cond.Values)
                     {
                         cn = c.Count;
                         break;
@@ -308,7 +332,7 @@ namespace VLabAnalysis
     {
         ISignal signal;
         RippleSignal ripple = new RippleSignal();
-        ConcurrentDictionary<string, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<string, ConcurrentQueue<object>>();
+        ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
         int cleardataperanalysis;
         ConcurrentQueue<int[]> analysisqueue = new ConcurrentQueue<int[]>();
         ConcurrentQueue<double[]> analysistimequeue = new ConcurrentQueue<double[]>();
@@ -428,7 +452,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void CondTestEnqueue(string name, object value)
+        public void CondTestEnqueue(CONDTESTPARAM name, object value)
         {
             if (condtest.ContainsKey(name))
             {
@@ -442,7 +466,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void AnalysisEnqueue(double time)
+        public void CondTestEndEnqueue(double time)
         {
             analysisidx++;
             int iscleardata = 0;
@@ -502,9 +526,9 @@ namespace VLabAnalysis
             while (true)
             {
                 analysisthreadevent.WaitOne();
-                if (analysisqueue.TryDequeue(out aq) && condtest.ContainsKey("CondIndex")
-                    && condtest["CondIndex"].TryDequeue(out CondIndex) && condtest.ContainsKey("CONDSTATE")
-                    && condtest["CONDSTATE"].TryDequeue(out CondState))
+                if (analysisqueue.TryDequeue(out aq) && condtest.ContainsKey( CONDTESTPARAM.CondIndex)
+                    && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex) && condtest.ContainsKey( CONDTESTPARAM.CONDSTATE)
+                    && condtest[ CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState))
                 {
                     if (Signal != null)
                     {
