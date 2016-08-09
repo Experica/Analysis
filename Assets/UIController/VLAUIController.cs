@@ -1,25 +1,24 @@
-﻿// -----------------------------------------------------------------------------
-// VLAUIController.cs is part of the VLAB project.
-// Copyright (c) 2016 Li Alex Zhang and Contributors
-//
-// Permission is hereby granted, free of charge, to any person obtaining a 
-// copy of this software and associated documentation files (the "Software"),
-// to deal in the Software without restriction, including without limitation
-// the rights to use, copy, modify, merge, publish, distribute, sublicense,
-// and/or sell copies of the Software, and to permit persons to whom the 
-// Software is furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included 
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
-// OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// -----------------------------------------------------------------------------
+﻿/*
+VLAUIController.cs is part of the VLAB project.
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
+Permission is hereby granted, free of charge, to any person obtaining a 
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the 
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included 
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -37,6 +36,8 @@ namespace VLabAnalysis
         public VLANetManager netmanager;
         public VLAApplicationManager appmanager;
         public VLAnalysisManager alsmanager;
+        public ControlPanel controlpanel;
+        public SignalPanel signalpanel;
 
         bool isautoconn, isconnect;
         int autoconncountdown;
@@ -114,13 +115,17 @@ namespace VLabAnalysis
         {
             isconnect = true;
             autoconntext.text = "Connected";
+        }
 
+        public void OnAnalysisManagerSpwaned()
+        {
+            autoconntext.text = "Ready";
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
         }
 
         public void OnClientDisconnect()
         {
-            if(alsmanager!=null)
+            if (alsmanager != null)
             {
                 alsmanager.OnClientDisconnect();
             }
@@ -129,6 +134,16 @@ namespace VLabAnalysis
             clientconnect.isOn = false;
 
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
+        }
+
+        public void SearchSignal()
+        {
+            if (alsmanager != null)
+            {
+                var ss = controlpanel.signalsystemdropdown.captionText.text;
+                var sr = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SIGNALSYSTEM>());
+                signalpanel.UpdateSignal(sr);
+            }
         }
 
     }

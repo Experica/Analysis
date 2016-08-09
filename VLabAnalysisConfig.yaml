@@ -1,0 +1,6 @@
+AutoConnect: false
+AutoConnectTimeOut: 10
+ServerAddress: localhost
+ClearDataPerAnalysis: 1
+DefaultAnalysisSystem: DotNet
+AddSpikeAnalysisWhenSearchSignal: true
