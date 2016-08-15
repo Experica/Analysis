@@ -37,7 +37,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.12758505, g: 0.13438115, b: 0.121169925, a: 1}
+  m_IndirectSpecularColor: {r: 0.12758556, g: 0.13438153, b: 0.12117006, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -107,7 +107,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uicontroller: {fileID: 835844596}
-  electrodepanelprefab: {fileID: 1000010377120450, guid: f936c0f6040e73d428cc6b5e921d5e2b,
+  electrodepanelprefab: {fileID: 1000013477540880, guid: b5d8e7c17ed6f3c48981b455856aaa97,
     type: 2}
   content: {fileID: 1917458672}
   title: {fileID: 130955821}
@@ -405,6 +405,11 @@ Prefab:
   m_Modification:
     m_TransformParent: {fileID: 1784505064}
     m_Modifications:
+    - target: {fileID: 114000010590748198, guid: 265bd88ce4d04e84dacdbcbda6765a81,
+        type: 2}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.size
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 224000011625709684, guid: 265bd88ce4d04e84dacdbcbda6765a81,
         type: 2}
       propertyPath: m_LocalPosition.x
@@ -498,6 +503,21 @@ Prefab:
     - target: {fileID: 1000010629382824, guid: 265bd88ce4d04e84dacdbcbda6765a81, type: 2}
       propertyPath: m_Name
       value: SignalSystem
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010590748198, guid: 265bd88ce4d04e84dacdbcbda6765a81,
+        type: 2}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OnExDropdownValueChange
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010590748198, guid: 265bd88ce4d04e84dacdbcbda6765a81,
+        type: 2}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010590748198, guid: 265bd88ce4d04e84dacdbcbda6765a81,
+        type: 2}
+      propertyPath: m_OnValueChanged.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: 265bd88ce4d04e84dacdbcbda6765a81, type: 2}
@@ -664,6 +684,11 @@ Prefab:
   m_Modification:
     m_TransformParent: {fileID: 1784505064}
     m_Modifications:
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 224000010702276182, guid: c8d49a851226ddb47bc5a87d3520e04f,
         type: 2}
       propertyPath: m_LocalPosition.x
@@ -757,6 +782,31 @@ Prefab:
     - target: {fileID: 1000010142392592, guid: c8d49a851226ddb47bc5a87d3520e04f, type: 2}
       propertyPath: m_Name
       value: ServerAddress
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 835844596}
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OnServerAddressEndEdit
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000010859336898, guid: c8d49a851226ddb47bc5a87d3520e04f,
+        type: 2}
+      propertyPath: m_OnEndEdit.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: c8d49a851226ddb47bc5a87d3520e04f, type: 2}
@@ -2324,6 +2374,21 @@ Prefab:
         type: 2}
       propertyPath: m_CellSize.x
       value: 925
+      objectReference: {fileID: 0}
+    - target: {fileID: 114000012670045710, guid: ddafa1c872d688b4db36513eb583eecb,
+        type: 2}
+      propertyPath: m_StartAxis
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 224000011435201336, guid: ddafa1c872d688b4db36513eb583eecb,
+        type: 2}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 224000011435201336, guid: ddafa1c872d688b4db36513eb583eecb,
+        type: 2}
+      propertyPath: m_SizeDelta.x
+      value: 933
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: ddafa1c872d688b4db36513eb583eecb, type: 2}

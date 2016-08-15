@@ -221,7 +221,7 @@ namespace VLabAnalysis
         }
 
         public Dictionary<int, List<double>> CondResponse
-        { get { return CondResponse; } }
+        { get { return mfr; } }
 
         public Dictionary<string, List<object>> Cond
         { get { return cond; } set { cond = value; } }

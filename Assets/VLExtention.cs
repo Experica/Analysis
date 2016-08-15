@@ -52,13 +52,16 @@ namespace VLab
     public class Param
     {
         ParamType t;
-        public ParamType Type { get { return t; } }
+        public ParamType Type { get { return t; }set { t = value; } }
         object v;
         public object Value
         {
             get { return v; }
             set { v = value.Convert(t); }
         }
+
+        public Param()
+        { }
 
         public Param(ParamType t, object v)
         {

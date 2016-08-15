@@ -30,7 +30,6 @@ namespace VLabAnalysis
         public VLAUIController uicontroller;
         public GameObject electrodepanelprefab,content;
         public Text title;
-        Dictionary<int, GameObject> electrodepanel=new Dictionary<int, GameObject>();
 
         public void UpdateSignal(bool issignal)
         {
@@ -40,6 +39,7 @@ namespace VLabAnalysis
                 AddSignalView();
                 title.text = "Signal ("+uicontroller.alsmanager.als.Signal.System+")";
             }
+            else
             {
                 ClearSignalView();
                 title.text = "Signal";
@@ -48,11 +48,10 @@ namespace VLabAnalysis
 
         void ClearSignalView()
         {
-            foreach(var v in electrodepanel.Values)
+            for (var i = 0; i < content.transform.childCount; i++)
             {
-                Destroy(v);
+                Destroy(content.transform.GetChild(i).gameObject);
             }
-            electrodepanel.Clear();
         }
 
         void AddSignalView()
@@ -78,8 +77,6 @@ namespace VLabAnalysis
         {
             var go = Instantiate(electrodepanelprefab);
             go.name = electrodeid.ToString();
-            go.transform.SetParent(content.transform, false);
-            electrodepanel[electrodeid] = go;
             var ep = go.GetComponent<ElectrodePanel>();
             ep.uicontroller = uicontroller;
             ep.electrodeid = electrodeid;
@@ -88,6 +85,7 @@ namespace VLabAnalysis
             {
                 ep.AddAnalysis(SIGNALTYPE.Spike);
             }
+            go.transform.SetParent(content.transform, false);
         }
     }
 }

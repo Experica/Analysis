@@ -36,7 +36,7 @@ namespace VLabAnalysis
 
     public class OptimalController : IController
     {
-        ConcurrentQueue<ICommand> commandqueue;
+        ConcurrentQueue<ICommand> commandqueue= new ConcurrentQueue<ICommand>();
 
         public ConcurrentQueue<ICommand> CommandQueue
         {
