@@ -120,7 +120,7 @@ namespace VLabAnalysis
         public void OnAnalysisManagerSpwaned()
         {
             autoconntext.text = "Ready";
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
         }
 
         public void OnClientDisconnect()

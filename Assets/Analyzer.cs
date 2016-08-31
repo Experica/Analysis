@@ -53,7 +53,7 @@ namespace VLabAnalysis
         MFRResult result;
 
 
-        public MFRAnalyzer(SignalChannel sc) : this(sc, new LineVisualizer(), new OptimalController()) { }
+        public MFRAnalyzer(SignalChannel sc) : this(sc, new D2Visualizer(), new OptimalController()) { }
 
         public MFRAnalyzer(SignalChannel sc, IVisualizer ver, IController col)
         {
@@ -127,12 +127,16 @@ namespace VLabAnalysis
             }
             if (Prepare(dataset))
             {
+                var latency = dataset.Ex.Latency;
+                var timerdriftspeed = dataset.Ex.TimerDriftSpeed;
                 var st = dataset.spike[SignalChannel.ElectrodID - 1];
                 for (var i = 0; i < dataset.CondIndex.Count; i++)
                 {
                     var c = dataset.CondIndex[i];
-                    var t1 = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString()) + dataset.FirstDigitalEventTime;
-                    var t2 = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString()) + dataset.FirstDigitalEventTime;
+                    var t1 = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString());
+                    var t2 = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString());
+                    t1 = t1 + t1 * timerdriftspeed + latency + dataset.FirstDigitalEventTime;
+                    t2 = t2 + t2 * timerdriftspeed + latency + dataset.FirstDigitalEventTime;
                     if (result.CondResponse.ContainsKey(c))
                     {
                         result.CondResponse[c].Add(st.MFR(t1, t2));

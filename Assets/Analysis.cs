@@ -330,6 +330,8 @@ namespace VLabAnalysis
         DataSet DataSet { get; }
         void CondTestEndEnqueue(double time);
         void CondTestEnqueue(CONDTESTPARAM name, object value);
+        void ExperimentEndEnqueue();
+        bool IsAnalysisDone { get; set; }
     }
 
     public class DotNetAnalysis : IAnalysis, IDisposable
@@ -343,6 +345,7 @@ namespace VLabAnalysis
         Thread analysisthread;
         DataSet dataset = new DataSet();
         bool gotothreadevent = false;
+        bool isanalysisdone = false;
         ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
         readonly int sleepresolution;
 
@@ -465,6 +468,12 @@ namespace VLabAnalysis
             get { lock (lockobj) { return cleardataperanalysis; } }
             set { lock (lockobj) { cleardataperanalysis = value; } }
         }
+
+        public bool IsAnalysisDone
+        {
+            get { lock (lockobj) { return isanalysisdone; } }
+            set { lock (lockobj) { isanalysisdone = value; } }
+        }
         #endregion
 
         public void CondTestEnqueue(CONDTESTPARAM name, object value)
@@ -505,6 +514,21 @@ namespace VLabAnalysis
             }
         }
 
+        public void ExperimentEndEnqueue()
+        {
+            lock(datalock)
+            {
+                if (analysisthread != null)
+                {
+                    analysisqueue.Enqueue(new int[] { -1, 0 });
+                }
+                else
+                {
+                    IsAnalysisDone = true;
+                }
+            }
+        }
+
         #region ThreadFunction
         void ProcessAnalysisQueue()
         {
@@ -515,6 +539,7 @@ namespace VLabAnalysis
             List<double> digintime;
             Dictionary<string, List<int>> digin;
             int[] aq;object CondIndex, CondState;
+            bool isanalysisqueue;
 
             while (true)
             {
@@ -524,7 +549,13 @@ namespace VLabAnalysis
                     GotoThreadEvent = false;
                     analysisthreadevent.WaitOne();
                 }
-                if (analysisqueue.TryDequeue(out aq) && condtest.ContainsKey( CONDTESTPARAM.CondIndex)
+                isanalysisqueue = analysisqueue.TryDequeue(out aq);
+                if(isanalysisqueue&&aq[0]<0)
+                {
+                    IsAnalysisDone = true;
+                    continue;
+                }
+                if (isanalysisqueue && condtest.ContainsKey( CONDTESTPARAM.CondIndex)
                     && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex) && condtest.ContainsKey( CONDTESTPARAM.CONDSTATE)
                     && condtest[ CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState))
                 {
@@ -590,6 +621,8 @@ namespace VLabAnalysis
                 }
             }
         }
+
+        
         #endregion
 
         public ISignal Signal
@@ -604,6 +637,8 @@ namespace VLabAnalysis
                 return dataset;
             }
         }
+
+        
     }
 
 }

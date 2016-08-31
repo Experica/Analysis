@@ -1,6 +1,10 @@
-AutoConnect: true
+AutoConnect: false
 AutoConnectTimeOut: 10
 ServerAddress: lyonlab-visual
 ClearDataPerAnalysis: 1
-DefaultAnalysisSystem: DotNet
-AddSpikeAnalysisWhenSearchSignal: true
+AnalysisSystem: DotNet
+AddSpikeAnalysisWhenSignalOnLine: true
+SaveVisualizationWhenExperimentStop: true
+VisualizationWidth: 1280
+VisualizationHeight: 854
+VisualizationDPI: 120

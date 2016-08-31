@@ -39,17 +39,17 @@ namespace VLabAnalysis
         void AddAnalysisGroup(int analyzerid, string analyzer, string visualizer, string controller)
         {
             var ag = Instantiate(analysisgroupprefab);
-            ag.transform.SetParent( analysispanel. transform,false);
             var agag = ag.GetComponent<AnalysisGroup>();
             agag.electrodepanel = this;
             analysisgroup[analyzerid]=agag;
             analysisgroupselect.Add(ag.GetComponentInChildren<Toggle>());
             agag.UpdateUI(analyzer, visualizer, controller);
+            ag.transform.SetParent(analysispanel.transform, false);
         }
 
         public void AddAnalysis(SIGNALTYPE signaltype)
         {
-            if( uicontroller.alsmanager.als.Signal.GetSignalType(electrodeid,true).Contains(signaltype))
+            if( uicontroller.alsmanager.als.Signal.IsSignalChannelOn(electrodeid,signaltype))
             {
                 var a = electrodeid.Get(signaltype);
                 uicontroller.alsmanager.als.Signal.AddAnalyzer(a);

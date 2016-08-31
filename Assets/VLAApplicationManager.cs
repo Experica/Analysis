@@ -32,8 +32,12 @@ namespace VLabAnalysis
         AutoConnectTimeOut,
         ServerAddress,
         ClearDataPerAnalysis,
-        DefaultAnalysisSystem,
-        AddSpikeAnalysisWhenSearchSignal
+        AnalysisSystem,
+        AddSpikeAnalysisWhenSignalOnLine,
+        SaveVisualizationWhenExperimentStop,
+        VisualizationWidth,
+        VisualizationHeight,
+        VisualizationDPI
     }
 
     public class VLAApplicationManager : MonoBehaviour
@@ -48,7 +52,7 @@ namespace VLabAnalysis
             {
                 config = Yaml.ReadYaml<Dictionary<VLACFG, object>>(configpath);
             }
-            if(config==null)
+            if (config == null)
             {
                 config = new Dictionary<VLACFG, object>();
             }
@@ -75,7 +79,7 @@ namespace VLabAnalysis
             }
             if (!config.ContainsKey(VLACFG.ServerAddress))
             {
-                config[VLACFG.ServerAddress] = "localhost";
+                config[VLACFG.ServerAddress] = "LocalHost";
             }
             if (!config.ContainsKey(VLACFG.ClearDataPerAnalysis))
             {
@@ -85,21 +89,53 @@ namespace VLabAnalysis
             {
                 config[VLACFG.ClearDataPerAnalysis] = config[VLACFG.ClearDataPerAnalysis].Convert<int>();
             }
-            if (!config.ContainsKey(VLACFG.DefaultAnalysisSystem))
+            if (!config.ContainsKey(VLACFG.AnalysisSystem))
             {
-                config[VLACFG.DefaultAnalysisSystem] = AnalysisSystem.DotNet;
+                config[VLACFG.AnalysisSystem] = AnalysisSystem.DotNet;
             }
             else
             {
-                config[VLACFG.DefaultAnalysisSystem] = config[VLACFG.DefaultAnalysisSystem].Convert<AnalysisSystem>();
+                config[VLACFG.AnalysisSystem] = config[VLACFG.AnalysisSystem].Convert<AnalysisSystem>();
             }
-            if (!config.ContainsKey(VLACFG.AddSpikeAnalysisWhenSearchSignal))
+            if (!config.ContainsKey(VLACFG.AddSpikeAnalysisWhenSignalOnLine))
             {
-                config[VLACFG.AddSpikeAnalysisWhenSearchSignal] = true;
+                config[VLACFG.AddSpikeAnalysisWhenSignalOnLine] = true;
             }
             else
             {
-                config[VLACFG.AddSpikeAnalysisWhenSearchSignal] = config[VLACFG.AddSpikeAnalysisWhenSearchSignal].Convert<bool>();
+                config[VLACFG.AddSpikeAnalysisWhenSignalOnLine] = config[VLACFG.AddSpikeAnalysisWhenSignalOnLine].Convert<bool>();
+            }
+            if (!config.ContainsKey(VLACFG.SaveVisualizationWhenExperimentStop))
+            {
+                config[VLACFG.SaveVisualizationWhenExperimentStop] = true;
+            }
+            else
+            {
+                config[VLACFG.SaveVisualizationWhenExperimentStop] = config[VLACFG.SaveVisualizationWhenExperimentStop].Convert<bool>();
+            }
+            if (!config.ContainsKey(VLACFG.VisualizationWidth))
+            {
+                config[VLACFG.VisualizationWidth] = 1280;
+            }
+            else
+            {
+                config[VLACFG.VisualizationWidth] = config[VLACFG.VisualizationWidth].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.VisualizationHeight))
+            {
+                config[VLACFG.VisualizationHeight] = 854;
+            }
+            else
+            {
+                config[VLACFG.VisualizationHeight] = config[VLACFG.VisualizationHeight].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.VisualizationDPI))
+            {
+                config[VLACFG.VisualizationDPI] = 120f;
+            }
+            else
+            {
+                config[VLACFG.VisualizationDPI] = config[VLACFG.VisualizationDPI].Convert<float>();
             }
         }
 

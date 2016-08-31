@@ -28,16 +28,16 @@ namespace VLabAnalysis
     public class SignalPanel : MonoBehaviour
     {
         public VLAUIController uicontroller;
-        public GameObject electrodepanelprefab,content;
+        public GameObject electrodepanelprefab, content;
         public Text title;
 
         public void UpdateSignal(bool issignal)
         {
-            if(issignal)
+            if (issignal)
             {
                 ClearSignalView();
                 AddSignalView();
-                title.text = "Signal ("+uicontroller.alsmanager.als.Signal.System+")";
+                title.text = "Signal (" + uicontroller.alsmanager.als.Signal.System + ")";
             }
             else
             {
@@ -58,22 +58,22 @@ namespace VLabAnalysis
         {
             foreach (var e in uicontroller.alsmanager.als.Signal.ElectrodeIDs)
             {
-                AddElectrodPanel(e);
+                AddElectrodePanel(e);
             }
             UpdateContentRect();
         }
 
         void UpdateContentRect()
         {
-            var np = content.transform.childCount;
+            var n = content.transform.childCount;
             var grid = content.GetComponent<GridLayoutGroup>();
             var cn = grid.constraintCount;
-            var rn = Mathf.Floor(np / cn) + 1;
+            var rn = Mathf.Floor(n / cn) + 1;
             var rt = (RectTransform)content.transform;
-            rt.sizeDelta = new Vector2((grid.cellSize.x + grid.spacing.x) * cn, (grid.cellSize.y+grid.spacing.y) * rn);
+            rt.sizeDelta = new Vector2((grid.cellSize.x + grid.spacing.x) * cn, (grid.cellSize.y + grid.spacing.y) * rn);
         }
 
-        void AddElectrodPanel(int electrodeid)
+        void AddElectrodePanel(int electrodeid)
         {
             var go = Instantiate(electrodepanelprefab);
             go.name = electrodeid.ToString();
@@ -81,7 +81,7 @@ namespace VLabAnalysis
             ep.uicontroller = uicontroller;
             ep.electrodeid = electrodeid;
             ep.title.text = electrodeid.ToString();
-            if ((bool)uicontroller.appmanager.config[VLACFG.AddSpikeAnalysisWhenSearchSignal])
+            if ((bool)uicontroller.appmanager.config[VLACFG.AddSpikeAnalysisWhenSignalOnLine])
             {
                 ep.AddAnalysis(SIGNALTYPE.Spike);
             }

@@ -39,7 +39,7 @@ namespace VLabAnalysis
 
         void Start()
         {
-            var asn = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.DefaultAnalysisSystem];
+            var asn = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.AnalysisSystem];
             var cdpa = (int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis];
             als = asn.GetAnalysisSystem(cdpa);
         }
@@ -60,6 +60,7 @@ namespace VLabAnalysis
             if (als.Signal != null)
             {
                 als.Signal.StopCollectData(true);
+                als.ExperimentEndEnqueue();
             }
         }
 
@@ -84,15 +85,14 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyExperiment(byte[] value)
         {
-            var ex = MsgPackSerializer.ExSerializer.Unpack(new MemoryStream(value));
+            var ex = VLMsgPack.ExSerializer.Unpack(new MemoryStream(value));
             if(ex.Cond!=null&&ex.Cond.Count>0)
             {
-                foreach(var c in ex.Cond.Keys)
+                foreach(var fl in ex.Cond.Values)
                 {
-                    var vs = new List<double>();
-                    for(var i=0;i<ex.Cond[c].Count;i++)
+                    for(var i=0;i<fl.Count;i++)
                     {
-                        ex.Cond[c][i]= ((MessagePackObject)ex.Cond[c][i]).ToObject();
+                        fl[i] = fl[i].MsgPackToObject();
                     }
                 }
             }
@@ -106,13 +106,13 @@ namespace VLabAnalysis
             switch(name)
             {
                 case CONDTESTPARAM.CondIndex:
-                    v = MsgPackSerializer.ListIntSerializer.Unpack(new MemoryStream(value));
+                    v = VLMsgPack.ListIntSerializer.Unpack(new MemoryStream(value));
                     break;
                 case CONDTESTPARAM.CONDSTATE:
-                    v = MsgPackSerializer.CONDSTATESerializer.Unpack(new MemoryStream(value));
+                    v = VLMsgPack.CONDSTATESerializer.Unpack(new MemoryStream(value));
                     break;
                 default:
-                    v = MsgPackSerializer.ListObjectSerializer.Unpack(new MemoryStream(value));
+                    v = VLMsgPack.ListObjectSerializer.Unpack(new MemoryStream(value));
                     break;
             }
             als.CondTestEnqueue(name, v);
@@ -160,14 +160,41 @@ namespace VLabAnalysis
         {
             if (als.Signal != null && als.Signal.Analyzer != null)
             {
-                foreach (var a in als.Signal.Analyzer.Values)
+                if (als.IsAnalysisDone)
                 {
-                    IResult result;
-                    if (a.ResultQueue.TryDequeue(out result))
+                    var datapath = als.DataSet.Ex.DataPath;
+                    var datadir = Path.GetDirectoryName(datapath);
+                    var dataname = Path.GetFileNameWithoutExtension(datapath);
+                    int width = (int)uicontroller.appmanager.config[VLACFG.VisualizationWidth];
+                    int height = (int)uicontroller.appmanager.config[VLACFG.VisualizationHeight];
+                    float dpi = (float)uicontroller.appmanager.config[VLACFG.VisualizationDPI];
+                    foreach (var a in als.Signal.Analyzer.Values)
                     {
-                        if (a.Visualizer != null)
+                            if (a.Visualizer != null)
+                            {
+                            var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name
+                                + "_E" + a.SignalChannel.ElectrodID;
+                            var filedir = Path.Combine(datadir, "E" + a.SignalChannel.ElectrodID);
+                            if(!Directory.Exists(filedir))
+                            {
+                                Directory.CreateDirectory(filedir);
+                            }
+                            a.Visualizer.Save(Path.Combine(filedir,filename) ,width,height,dpi);
+                            }
+                    }
+                    als.IsAnalysisDone = false;
+                }
+                else
+                {
+                    foreach (var a in als.Signal.Analyzer.Values)
+                    {
+                        IResult result;
+                        if (a.ResultQueue.TryDequeue(out result))
                         {
-                            a.Visualizer.Visualize(result);
+                            if (a.Visualizer != null)
+                            {
+                                a.Visualizer.Visualize(result);
+                            }
                         }
                     }
                 }

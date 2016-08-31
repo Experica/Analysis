@@ -107,6 +107,8 @@ namespace VLab
         public List<string> ExInheritParam { get; set; }
         public List<string> EnvInheritParam { get; set; }
         public Dictionary<string, Param> Param { get; set; }
+        public double Latency { get; set; }
+        public double TimerDriftSpeed { get; set; }
         public Dictionary<CONDTESTPARAM, List<object>> CondTest { get; set; }
 
         [MessagePackIgnore]

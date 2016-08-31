@@ -109,30 +109,134 @@ namespace VLabAnalysis
             return x.StandardDeviation() / Math.Sqrt(x.Count);
         }
 
-        public static string GetUnit(this string factorname)
+        public static string GetFactorUnit(this string factorname,out List<bool> valuedim,string exid="")
         {
+            valuedim = new List<bool> { true };
             switch (factorname)
             {
                 case "Diameter":
                 case "Ori":
-                    return "Deg";
+                    return factorname+" (Deg)";
                 case "SpatialFreq":
-                    return "Cycle/Deg";
+                    return factorname+" (Cycle/Deg)";
                 case "TemporalFreq":
-                    return "Cycle/Sec";
+                    return factorname+ " (Cycle/Sec)";
+                case "PositionOffset":
+                    if (exid.StartsWith("RF"))
+                    {
+                        if (exid.Contains('X'))
+                        {
+                            valuedim = new List<bool> { true, false, false };
+                            return factorname + "_X (Deg)";
+                        }
+                        else if (exid.Contains('Y'))
+                        {
+                            valuedim = new List<bool> { false, true, false };
+                            return factorname + "_Y (Deg)";
+                        }
+                        else if (exid.Contains('Z'))
+                        {
+                            valuedim = new List<bool> { false, false, true };
+                            return factorname + "_Z (Deg)";
+                        }
+                        else
+                        {
+                            valuedim = new List<bool> { true, true, false };
+                            return factorname + " (Deg)";
+                        }
+                    }
+                    else
+                    {
+                        valuedim = new List<bool> { true, true, true };
+                        return factorname + " (Deg)";
+                    }
                 default:
-                    return "";
+                    return factorname;
             }
         }
 
-        public static string GetResponseAndUnit(this ResultType type)
+        public static List< T[]> GetFactorLevel<T>(this IEnumerable<object> vs, List<bool> valuedim)
+        {
+            var dn = valuedim.Count;
+            if (dn <= 1)
+            {
+                return new List<T[]> {  vs.Select(i=>i.Convert<T>()).ToArray()} ;
+            }
+            else
+            {
+                var v = new List<T[]>();
+                for (var i = 0; i < dn; i++)
+                {
+                    if (valuedim[i])
+                    {
+                        v.Add(vs.Select(j => ((object[])j)[i].Convert<T>()).ToArray());
+                    }
+                    else
+                    {
+                        v.Add(null);
+                    }
+                }
+                return v;
+            }
+        }
+
+        public static List<T> GetFactorLevel<T>(this object value, List<bool> valuedim)
+        {
+            var dn = valuedim.Count;
+            if (dn <= 1)
+            {
+                return new List<T> { value.Convert<T>() };
+            }
+            else
+            {
+                var v = new List<T>();
+                for (var i = 0; i < dn; i++)
+                {
+                    if (valuedim[i])
+                    {
+                        v.Add(((object[])value)[i].Convert<T>());
+                    }
+                }
+                return v;
+            }
+        }
+
+        public static List<double>[] GetFactorLevel(this IEnumerable<object> vs,string factorname,string exid)
+        {
+            switch(factorname)
+            {
+                case "PositionOffset":
+                    if(exid.Contains('X'))
+                    {
+                        return new List<double>[] { vs.Select(i => ((object[])i)[0].Convert<double>()).ToList() };
+                    }
+                    else if(exid.Contains('Y'))
+                    {
+                        return new List<double>[] { vs.Select(i => ((object[])i)[1].Convert<double>()).ToList() };
+                    }
+                    else if (exid.Contains('Z'))
+                    {
+                        return new List<double>[] { vs.Select(i => ((object[])i)[2].Convert<double>()).ToList() };
+                    }
+                    else
+                    {
+                        return new List<double>[] { vs.Select(i => ((object[])i)[0].Convert<double>()).ToList(),
+                        vs.Select(i => ((object[])i)[1].Convert<double>()).ToList(),
+                        vs.Select(i => ((object[])i)[2].Convert<double>()).ToList()};
+                    }
+                default:
+                    return new List<double>[] { vs.Select(i => i.Convert<double>()).ToList() };
+            }
+        }
+
+        public static string GetResponseUnit(this ResultType type)
         {
             switch(type)
             {
                 case ResultType.MFRResult:
                     return "Mean Firing Rate (spike/s)";
                 default:
-                    return "";
+                    return "Response";
             }
         }
 

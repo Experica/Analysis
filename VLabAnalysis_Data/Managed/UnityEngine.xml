@@ -6889,6 +6889,24 @@ The values passed to stereoTargetEye are found in the StereoTargetEyeMask enum. 
         <para>Array of command buffers.</para>
       </returns>
     </member>
+    <member name="M:UnityEngine.Camera.GetStereoProjectionMatrix(UnityEngine.Camera/StereoscopicEye)">
+      <summary>
+        <para>Get the projection matrix of a specific stereo eye.</para>
+      </summary>
+      <param name="eye">Which stereo eye matrix do you want to get?</param>
+      <returns>
+        <para>The matrix of the stereo eye.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Camera.GetStereoViewMatrix(UnityEngine.Camera/StereoscopicEye)">
+      <summary>
+        <para>Get the view matrix of a specific stereo eye.</para>
+      </summary>
+      <param name="eye">Which stereo eye matrix do you want to get?</param>
+      <returns>
+        <para>The matrix of the stereo eye.</para>
+      </returns>
+    </member>
     <member name="M:UnityEngine.Camera.RemoveAllCommandBuffers">
       <summary>
         <para>Remove all command buffers set on this camera.</para>
@@ -7006,17 +7024,31 @@ The values passed to stereoTargetEye are found in the StereoTargetEyeMask enum. 
     </member>
     <member name="M:UnityEngine.Camera.SetStereoProjectionMatrices(UnityEngine.Matrix4x4,UnityEngine.Matrix4x4)">
       <summary>
-        <para>Define the projection matrix for both stereo eye. Only work in 3D flat panel display.</para>
+        <para>Set custom projection matrices for both eyes.</para>
       </summary>
       <param name="leftMatrix">Projection matrix for the stereo left eye.</param>
-      <param name="rightMatrix">Projection matrix for the stereo left eye.</param>
+      <param name="rightMatrix">Projection matrix for the stereo right eye.</param>
+    </member>
+    <member name="M:UnityEngine.Camera.SetStereoProjectionMatrix(UnityEngine.Camera/StereoscopicEye,UnityEngine.Matrix4x4)">
+      <summary>
+        <para>Sets a custom stereo projection matrix.</para>
+      </summary>
+      <param name="eye">Which eye should the matrix be set for.</param>
+      <param name="matrix">The matrix to be set.</param>
     </member>
     <member name="M:UnityEngine.Camera.SetStereoViewMatrices(UnityEngine.Matrix4x4,UnityEngine.Matrix4x4)">
       <summary>
-        <para>Define the view matrices for both stereo eye. Only work in 3D flat panel display.</para>
+        <para>Set custom view matrices for both eyes.</para>
       </summary>
       <param name="leftMatrix">View matrix for the stereo left eye.</param>
       <param name="rightMatrix">View matrix for the stereo right eye.</param>
+    </member>
+    <member name="M:UnityEngine.Camera.SetStereoViewMatrix(UnityEngine.Camera/StereoscopicEye,UnityEngine.Matrix4x4)">
+      <summary>
+        <para>Sets a custom stereo view matrix.</para>
+      </summary>
+      <param name="eye">Which eye should the matrix be set for.</param>
+      <param name="matrix">The matrix to be set.</param>
     </member>
     <member name="M:UnityEngine.Camera.SetTargetBuffers(UnityEngine.RenderBuffer,UnityEngine.RenderBuffer)">
       <summary>
@@ -7031,6 +7063,21 @@ The values passed to stereoTargetEye are found in the StereoTargetEyeMask enum. 
       </summary>
       <param name="colorBuffer">The RenderBuffer(s) to which color information will be rendered.</param>
       <param name="depthBuffer">The RenderBuffer to which depth information will be rendered.</param>
+    </member>
+    <member name="T:UnityEngine.Camera.StereoscopicEye">
+      <summary>
+        <para>Enum used to specify either the left or the right eye of a stereoscopic camera.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.Camera.StereoscopicEye.Left">
+      <summary>
+        <para>Specifies the target to be the left eye.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.Camera.StereoscopicEye.Right">
+      <summary>
+        <para>Specifies the target to be the right eye.</para>
+      </summary>
     </member>
     <member name="M:UnityEngine.Camera.ViewportPointToRay(UnityEngine.Vector3)">
       <summary>
@@ -7223,6 +7270,14 @@ The values passed to stereoTargetEye are found in the StereoTargetEyeMask enum. 
         <para>Returns the default material that can be used for rendering text elements on the Canvas.</para>
       </summary>
     </member>
+    <member name="M:UnityEngine.Canvas.GetETC1SupportedCanvasMaterial">
+      <summary>
+        <para>Gets or generates the ETC1 material.</para>
+      </summary>
+      <returns>
+        <para>The generated ETC1 material from the Canvas.</para>
+      </returns>
+    </member>
     <member name="T:UnityEngine.CanvasGroup">
       <summary>
         <para>A Canvas placable element that can be used to modify children Alpha, Raycasting, Enabled state.</para>
@@ -7386,6 +7441,12 @@ See Also: CanvasRenderer.EnableRectClipping, CanvasRenderer.DisableRectClipping.
         <para>Set the alpha of the renderer. Will be multiplied with the UIVertex alpha and the Canvas alpha.</para>
       </summary>
       <param name="alpha">Alpha.</param>
+    </member>
+    <member name="M:UnityEngine.CanvasRenderer.SetAlphaTexture(UnityEngine.Texture)">
+      <summary>
+        <para>The Alpha Texture that will be passed to the shader under the _AlphaTex property.</para>
+      </summary>
+      <param name="texture">The Texture to be passed.</param>
     </member>
     <member name="M:UnityEngine.CanvasRenderer.SetColor(UnityEngine.Color)">
       <summary>
@@ -10587,7 +10648,7 @@ You can specify either the absolute path or the relative path. When the path you
     </member>
     <member name="T:UnityEngine.Display">
       <summary>
-        <para>Provides access to a display / screen for rendering operations. </para>
+        <para>Provides access to a display / screen for rendering operations.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Display.colorBuffer">
@@ -10607,28 +10668,27 @@ You can specify either the absolute path or the relative path. When the path you
     </member>
     <member name="P:UnityEngine.Display.main">
       <summary>
-        <para>Main Display.
-</para>
+        <para>Main Display.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Display.renderingHeight">
       <summary>
-        <para>Rendering Height.</para>
+        <para>Vertical resolution that the display is rendering at.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Display.renderingWidth">
       <summary>
-        <para>Rendering Width.</para>
+        <para>Horizontal resolution that the display is rendering at.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Display.systemHeight">
       <summary>
-        <para>System Height.</para>
+        <para>Vertical native display resolution.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Display.systemWidth">
       <summary>
-        <para>System Width.</para>
+        <para>Horizontal native display resolution.</para>
       </summary>
     </member>
     <member name="M:UnityEngine.Display.Activate">
@@ -10652,7 +10712,7 @@ You can specify either the absolute path or the relative path. When the path you
     </member>
     <member name="M:UnityEngine.Display.SetParams(System.Int32,System.Int32,System.Int32,System.Int32)">
       <summary>
-        <para>This Windows only function can be used to set Size and Position of the Screen when Multi-Display is enabled.</para>
+        <para>Set rendering size and position on screen (Windows only).</para>
       </summary>
       <param name="width">Change Window Width (Windows Only).</param>
       <param name="height">Change Window Height (Windows Only).</param>
@@ -10661,10 +10721,10 @@ You can specify either the absolute path or the relative path. When the path you
     </member>
     <member name="M:UnityEngine.Display.SetRenderingResolution(System.Int32,System.Int32)">
       <summary>
-        <para>Sets Rendering resolution for the display.</para>
+        <para>Sets rendering resolution for the display.</para>
       </summary>
-      <param name="w">Rendering width.</param>
-      <param name="h">Rendering height.</param>
+      <param name="w">Rendering width in pixels.</param>
+      <param name="h">Rendering height in pixels.</param>
     </member>
     <member name="T:UnityEngine.DistanceJoint2D">
       <summary>
@@ -22469,6 +22529,11 @@ Only usable on Android, Windows Phone or Windows Tablets.</para>
         <para>Shadow mapping constant bias.</para>
       </summary>
     </member>
+    <member name="P:UnityEngine.Light.shadowCustomResolution">
+      <summary>
+        <para>The custom resolution of the shadow map.</para>
+      </summary>
+    </member>
     <member name="P:UnityEngine.Light.shadowNearPlane">
       <summary>
         <para>Near plane value to use for shadow frustums.</para>
@@ -28774,6 +28839,34 @@ If a string, the string will be converted to raw bytes via &lt;a href="http:msdn
       <param name="original">An existing object that you want to make a copy of.</param>
       <param name="position">Position for the new object (default Vector3.zero).</param>
       <param name="rotation">Orientation of the new object (default Quaternion.identity).</param>
+      <param name="parent">The transform the object will be parented to.</param>
+      <param name="worldPositionStays">If when assigning the parent the original world position should be maintained.</param>
+      <returns>
+        <para>A clone of the original object.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Object.Instantiate(UnityEngine.Object,UnityEngine.Transform)">
+      <summary>
+        <para>Returns a copy of the object original.</para>
+      </summary>
+      <param name="original">An existing object that you want to make a copy of.</param>
+      <param name="position">Position for the new object (default Vector3.zero).</param>
+      <param name="rotation">Orientation of the new object (default Quaternion.identity).</param>
+      <param name="parent">The transform the object will be parented to.</param>
+      <param name="worldPositionStays">If when assigning the parent the original world position should be maintained.</param>
+      <returns>
+        <para>A clone of the original object.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Object.Instantiate(UnityEngine.Object,UnityEngine.Transform,System.Boolean)">
+      <summary>
+        <para>Returns a copy of the object original.</para>
+      </summary>
+      <param name="original">An existing object that you want to make a copy of.</param>
+      <param name="position">Position for the new object (default Vector3.zero).</param>
+      <param name="rotation">Orientation of the new object (default Quaternion.identity).</param>
+      <param name="parent">The transform the object will be parented to.</param>
+      <param name="worldPositionStays">If when assigning the parent the original world position should be maintained.</param>
       <returns>
         <para>A clone of the original object.</para>
       </returns>
@@ -28785,6 +28878,21 @@ If a string, the string will be converted to raw bytes via &lt;a href="http:msdn
       <param name="original">An existing object that you want to make a copy of.</param>
       <param name="position">Position for the new object (default Vector3.zero).</param>
       <param name="rotation">Orientation of the new object (default Quaternion.identity).</param>
+      <param name="parent">The transform the object will be parented to.</param>
+      <param name="worldPositionStays">If when assigning the parent the original world position should be maintained.</param>
+      <returns>
+        <para>A clone of the original object.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Object.Instantiate(UnityEngine.Object,UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Transform)">
+      <summary>
+        <para>Returns a copy of the object original.</para>
+      </summary>
+      <param name="original">An existing object that you want to make a copy of.</param>
+      <param name="position">Position for the new object (default Vector3.zero).</param>
+      <param name="rotation">Orientation of the new object (default Quaternion.identity).</param>
+      <param name="parent">The transform the object will be parented to.</param>
+      <param name="worldPositionStays">If when assigning the parent the original world position should be maintained.</param>
       <returns>
         <para>A clone of the original object.</para>
       </returns>
@@ -30750,6 +30858,11 @@ If a string, the string will be converted to raw bytes via &lt;a href="http:msdn
     <member name="P:UnityEngine.ParticleSystem.TriggerModule.outside">
       <summary>
         <para>Choose what action to perform when particles are outside the trigger volume.</para>
+      </summary>
+    </member>
+    <member name="P:UnityEngine.ParticleSystem.TriggerModule.radiusScale">
+      <summary>
+        <para>A multiplier applied to the size of each particle before overlaps are processed.</para>
       </summary>
     </member>
     <member name="M:UnityEngine.ParticleSystem.TriggerModule.GetCollider(System.Int32)">
@@ -33597,6 +33710,11 @@ frame. Minimum value is 1 and maximum is 33.</para>
     <member name="P:UnityEngine.QualitySettings.shadowProjection">
       <summary>
         <para>Directional light shadow projection.</para>
+      </summary>
+    </member>
+    <member name="P:UnityEngine.QualitySettings.shadowResolution">
+      <summary>
+        <para>The default resolution of the shadow maps.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.QualitySettings.softVegetation">
@@ -39366,6 +39484,31 @@ It is required that the GameObject is at the root of its current scene.</para>
     <member name="F:UnityEngine.ShadowProjection.StableFit">
       <summary>
         <para>Stable shadow maps with spherical fadeout.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.ShadowResolution">
+      <summary>
+        <para>Default shadow resolution.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.ShadowResolution.High">
+      <summary>
+        <para>High shadow map resolution.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.ShadowResolution.Low">
+      <summary>
+        <para>Low shadow map resolution.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.ShadowResolution.Medium">
+      <summary>
+        <para>Medium shadow map resolution.</para>
+      </summary>
+    </member>
+    <member name="F:UnityEngine.ShadowResolution.VeryHigh">
+      <summary>
+        <para>Very high shadow map resolution.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.SharedBetweenAnimatorsAttribute">

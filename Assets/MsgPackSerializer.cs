@@ -22,17 +22,18 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using System.Collections.Generic;
 using MsgPack;
 using MsgPack.Serialization;
+using System.Linq;
 
 namespace VLab
 {
-    public static class MsgPackSerializer
+    public static class VLMsgPack
     {
         public static MessagePackSerializer<Experiment> ExSerializer;
         public static MessagePackSerializer<List<object>> ListObjectSerializer;
         public static MessagePackSerializer<List<int>> ListIntSerializer;
         public static MessagePackSerializer<List<List<Dictionary<string, double>>>> CONDSTATESerializer;
 
-        static MsgPackSerializer()
+        static VLMsgPack()
         {
             ExSerializer = GetDefault<Experiment>();
             ListObjectSerializer = GetDefault<List<object>>();
@@ -43,6 +44,19 @@ namespace VLab
         public static MessagePackSerializer<T> GetDefault<T>()
         {
             return SerializationContext.Default.GetSerializer<T>();
+        }
+
+        public static object MsgPackToObject(this object mpo)
+        {
+            var o = (MessagePackObject)mpo;
+            if (o.IsArray)
+            {
+                return o.AsList().Select(i => i.ToObject()).ToArray();
+            }
+            else
+            {
+                return o.ToObject();
+            }
         }
 
     }
