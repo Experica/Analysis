@@ -92,7 +92,7 @@ namespace VLabAnalysis
                 {
                     for(var i=0;i<fl.Count;i++)
                     {
-                        fl[i] = fl[i].MsgPackToObject();
+                        fl[i] = fl[i].MsgPackObjectToObject();
                     }
                 }
             }
@@ -140,9 +140,9 @@ namespace VLabAnalysis
 
         void Update()
         {
-            if(als.Signal!=null&&als.Signal.Analyzer!=null)
+            if(als.Signal!=null&&als.Signal.Analyzers!=null)
             {
-                foreach (var a in als.Signal.Analyzer.Values)
+                foreach (var a in als.Signal.Analyzers.Values)
                 {
                     if(a.Controller!=null)
                     {
@@ -158,7 +158,7 @@ namespace VLabAnalysis
 
         void LateUpdate()
         {
-            if (als.Signal != null && als.Signal.Analyzer != null)
+            if (als.Signal != null && als.Signal.Analyzers != null)
             {
                 if (als.IsAnalysisDone)
                 {
@@ -168,13 +168,13 @@ namespace VLabAnalysis
                     int width = (int)uicontroller.appmanager.config[VLACFG.VisualizationWidth];
                     int height = (int)uicontroller.appmanager.config[VLACFG.VisualizationHeight];
                     float dpi = (float)uicontroller.appmanager.config[VLACFG.VisualizationDPI];
-                    foreach (var a in als.Signal.Analyzer.Values)
+                    foreach (var a in als.Signal.Analyzers.Values)
                     {
                             if (a.Visualizer != null)
                             {
                             var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name
-                                + "_E" + a.SignalChannel.ElectrodID;
-                            var filedir = Path.Combine(datadir, "E" + a.SignalChannel.ElectrodID);
+                                + "_E" + a.SignalChannel.SignalID;
+                            var filedir = Path.Combine(datadir, "E" + a.SignalChannel.SignalID);
                             if(!Directory.Exists(filedir))
                             {
                                 Directory.CreateDirectory(filedir);
@@ -186,8 +186,9 @@ namespace VLabAnalysis
                 }
                 else
                 {
-                    foreach (var a in als.Signal.Analyzer.Values)
+                    for (var i = 0; i < als.Signal.Analyzers.Count; i++)
                     {
+                        var a = als.Signal.Analyzers.ElementAt(i).Value;
                         IResult result;
                         if (a.ResultQueue.TryDequeue(out result))
                         {
@@ -197,6 +198,10 @@ namespace VLabAnalysis
                             }
                         }
                     }
+                    //foreach (var a in als.Signal.Analyzers.Values)
+                    //{
+
+                    //}
                 }
             }
         }

@@ -47,9 +47,9 @@ namespace VLabAnalysis
             ag.transform.SetParent(analysispanel.transform, false);
         }
 
-        public void AddAnalysis(SIGNALTYPE signaltype)
+        public void AddAnalysis(SignalType signaltype)
         {
-            if( uicontroller.alsmanager.als.Signal.IsSignalChannelOn(electrodeid,signaltype))
+            if( uicontroller.alsmanager.als.Signal.IsSignalOn(electrodeid,signaltype))
             {
                 var a = electrodeid.Get(signaltype);
                 uicontroller.alsmanager.als.Signal.AddAnalyzer(a);

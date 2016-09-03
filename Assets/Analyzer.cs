@@ -33,7 +33,7 @@ namespace VLabAnalysis
     public interface IAnalyzer
     {
         int ID { get; set; }
-        SignalChannel SignalChannel { get; set; }
+        Signal SignalChannel { get; set; }
         void Analyze(DataSet dataset);
         IVisualizer Visualizer { get; set; }
         IController Controller { get; set; }
@@ -45,7 +45,7 @@ namespace VLabAnalysis
     public class MFRAnalyzer : IAnalyzer
     {
         int id;
-        SignalChannel sigch;
+        Signal sigch;
         IVisualizer visualizer;
         IController controller;
 
@@ -53,16 +53,16 @@ namespace VLabAnalysis
         MFRResult result;
 
 
-        public MFRAnalyzer(SignalChannel sc) : this(sc, new D2Visualizer(), new OptimalController()) { }
+        public MFRAnalyzer(Signal sc) : this(sc, new D2Visualizer(), new OptimalController()) { }
 
-        public MFRAnalyzer(SignalChannel sc, IVisualizer ver, IController col)
+        public MFRAnalyzer(Signal sc, IVisualizer ver, IController col)
         {
             sigch = sc;
             visualizer = ver;
             controller = col;
         }
 
-        public SignalChannel SignalChannel
+        public Signal SignalChannel
         {
             get { return sigch; }
             set { sigch = value; }
@@ -115,7 +115,7 @@ namespace VLabAnalysis
 
         void Init(DataSet dataset)
         {
-            result = new MFRResult(SignalChannel.ElectrodID, dataset.Ex.ID);
+            result = new MFRResult(SignalChannel.SignalID, dataset.Ex.ID);
             result.Cond = dataset.Ex.Cond;
         }
 
@@ -129,7 +129,7 @@ namespace VLabAnalysis
             {
                 var latency = dataset.Ex.Latency;
                 var timerdriftspeed = dataset.Ex.TimerDriftSpeed;
-                var st = dataset.spike[SignalChannel.ElectrodID - 1];
+                var st = dataset.spike[SignalChannel.SignalID - 1];
                 for (var i = 0; i < dataset.CondIndex.Count; i++)
                 {
                     var c = dataset.CondIndex[i];
@@ -167,9 +167,10 @@ namespace VLabAnalysis
 
         bool Prepare(DataSet dataset)
         {
-            if (sigch.SignalType == SIGNALTYPE.Spike)
+            if (sigch.SignalType == SignalType.Spike)
             {
-                if (dataset.IsData(sigch.ElectrodID, sigch.SignalType))
+                return true;
+                if (dataset.IsData(sigch.SignalID, sigch.SignalType))
                 {
                     return true;
                 }

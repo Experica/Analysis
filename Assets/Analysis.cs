@@ -41,7 +41,7 @@ namespace VLabAnalysis
         DotNet
     }
 
-    public enum ANALYSISINTERFACE
+    public enum AnalysisInterface
     {
         IAnalyzer,
         IVisualizer,
@@ -59,7 +59,7 @@ namespace VLabAnalysis
             }
         }
 
-        public static Type[] FindAll(this ANALYSISINTERFACE i)
+        public static Type[] FindAll(this AnalysisInterface i)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
             var ts = assemblies.Where(a => a.GetName().Name == "Assembly-CSharp").SelectMany(s => s.GetTypes())
@@ -67,22 +67,22 @@ namespace VLabAnalysis
             return ts;
         }
 
-        public static IAnalyzer Get(this int electrodid, SIGNALTYPE signaltype)
+        public static IAnalyzer Get(this int electrodid, SignalType signaltype)
         {
             switch (signaltype)
             {
-                case SIGNALTYPE.Spike:
-                    return new MFRAnalyzer(new SignalChannel(electrodid, signaltype));
+                case SignalType.Spike:
+                    return new MFRAnalyzer(new Signal(electrodid, signaltype));
                 default:
                     return null;
             }
         }
 
-        public static IAnalyzer Get(this Type atype, int electrodid, SIGNALTYPE signaltype)
+        public static IAnalyzer Get(this Type atype, int electrodid, SignalType signaltype)
         {
             if (typeof(IAnalyzer).IsAssignableFrom(atype))
             {
-                return (IAnalyzer)Activator.CreateInstance(atype, new SignalChannel(electrodid, signaltype));
+                return (IAnalyzer)Activator.CreateInstance(atype, new Signal(electrodid, signaltype));
             }
             return null;
         }
@@ -114,16 +114,17 @@ namespace VLabAnalysis
         double firstdigitaleventtime = -1;
         Experiment ex;
         int ncond;
-        object lockobj = new object();
+
+        object objlock = new object();
         object datalock = new object();
 
         #region Thread Safe
         public Experiment Ex
         {
-            get { lock (lockobj) { return ex; } }
+            get { lock (objlock) { return ex; } }
             set
             {
-                lock (lockobj)
+                lock (objlock)
                 {
                     ex = value;
                     ncond = GetCount(ex.Cond);
@@ -133,13 +134,13 @@ namespace VLabAnalysis
 
         public int NCond
         {
-            get { lock (lockobj) { return ncond; } }
+            get { lock (objlock) { return ncond; } }
         }
 
         public double FirstDigitalEventTime
         {
-            get { lock (lockobj) { return firstdigitaleventtime; } }
-            set { lock (lockobj) { firstdigitaleventtime = value; } }
+            get { lock (objlock) { return firstdigitaleventtime; } }
+            set { lock (objlock) { firstdigitaleventtime = value; } }
         }
         #endregion
 
@@ -284,13 +285,13 @@ namespace VLabAnalysis
             }
         }
 
-        public bool IsData(int electrodid, SIGNALTYPE signaltype)
+        public bool IsData(int electrodid, SignalType signaltype)
         {
-            lock (datalock)
-            {
+            //lock (datalock)
+            //{
                 switch (signaltype)
                 {
-                    case SIGNALTYPE.Spike:
+                    case SignalType.Spike:
                         if (spike == null)
                         {
                             return false;
@@ -304,7 +305,7 @@ namespace VLabAnalysis
                             }
                             return true;
                         }
-                    case SIGNALTYPE.LFP:
+                    case SignalType.LFP:
                         if (lfp == null)
                         {
                             return false;
@@ -316,14 +317,14 @@ namespace VLabAnalysis
                     default:
                         return false;
                 }
-            }
+            //}
         }
     }
 
     public interface IAnalysis
     {
         bool SearchSignal();
-        bool SearchSignal(SIGNALSYSTEM sigsys);
+        bool SearchSignal(SignalSource sigsys);
         ISignal Signal { get; }
         void Reset();
         int ClearDataPerAnalysis { get; set; }
@@ -380,9 +381,9 @@ namespace VLabAnalysis
 
         public bool SearchSignal()
         {
-            foreach (var s in Enum.GetValues(typeof(SIGNALSYSTEM)))
+            foreach (var s in Enum.GetValues(typeof(SignalSource)))
             {
-                if (SearchSignal((SIGNALSYSTEM)s))
+                if (SearchSignal((SignalSource)s))
                 {
                     return true;
                 }
@@ -390,13 +391,13 @@ namespace VLabAnalysis
             return false;
         }
 
-        public bool SearchSignal(SIGNALSYSTEM sigsys)
+        public bool SearchSignal(SignalSource sigsys)
         {
             switch (sigsys)
             {
-                case SIGNALSYSTEM.Ripple:
+                case SignalSource.Ripple:
                     var ripple = new RippleSignal();
-                    if (ripple.IsSignalOnline)
+                    if (ripple.IsOnline)
                     {
                         signal = ripple;
                         return true;
@@ -429,7 +430,7 @@ namespace VLabAnalysis
                             InitQueues();
                             if (Signal != null)
                             {
-                                Signal.AnalyzerReset();
+                                Signal.Reset();
                             }
                             analysisidx = 0;
                             analysisthreadevent.Set();
@@ -441,7 +442,7 @@ namespace VLabAnalysis
                 {
                     if(Signal!=null)
                     {
-                        Signal.AnalyzerReset();
+                        Signal.Reset();
                     }
                     InitQueues();
                     analysisidx = 0;
@@ -579,7 +580,7 @@ namespace VLabAnalysis
                     {
                         goto ThreadEvent;
                     }
-                    foreach (var a in Signal.Analyzer.Values)
+                    foreach (var a in Signal.Analyzers.Values)
                     {
                         a.Analyze(DataSet);
                         if(a.Controller!=null)

@@ -35,64 +35,62 @@ using MathNet;
 
 namespace VLabAnalysis
 {
-    public enum SIGNALSYSTEM
+    public enum SignalSource
     {
         Ripple,
         Plexon,
         TDT
     }
 
-    public enum SIGNALTYPE
+    public enum SignalType
     {
-        Spike,
-        LFP,
         Raw,
-        Stim,
-        HiRes,
+        ThirtyKSpS,
+        TwoKSpS,
         OneKSpS,
-        ThirtyKSpS
+        LFP,
+        Event,
+        Spike,
     }
 
-    public struct SignalChannel
+    public struct Signal
     {
-        int eid;
-        public int ElectrodID { get { return eid; } }
-        SIGNALTYPE st;
-        public SIGNALTYPE SignalType { get { return st; } }
+        public int SignalID { get; set; }
+        public SignalType SignalType { get; set; }
 
-        public SignalChannel(int electrodid, SIGNALTYPE signaltype)
+        public Signal(int id, SignalType type)
         {
-            eid = electrodid;
-            st = signaltype;
+            SignalID = id;
+            SignalType = type;
         }
     }
 
-    public interface ISignal
+    /// <summary>
+    /// Implementation should be thread safe because of
+    /// multi-thread and parallel analysis.
+    /// </summary>
+    public interface ISignal:IDisposable
     {
-        bool IsSignalOnline { get; }
-        SIGNALSYSTEM System { get; }
-        int[] ElectrodeIDs { get; }
-        SIGNALTYPE[] GetSignalType(int electrodid,bool checkon);
-        bool IsSignalChannelOn(int electrodid, SIGNALTYPE signaltype);
+        bool IsOnline { get; }
+        SignalSource Source { get; }
+        int[] SignalIDs { get; }
+        SignalType[] GetSignalTypes(int signalid,bool ison);
+        bool IsSignalOn(int signalid, SignalType signaltype);
         void AddAnalyzer(IAnalyzer analyzer);
         void RemoveAnalyzer(int analyzerid);
-        void StartCollectData(bool iscleanstart);
-        void StopCollectData(bool isonemorecollect);
+        void StartCollectData(bool isclean);
+        void StopCollectData(bool iscollectall);
         bool IsReady { get; }
         void GetData(out List<double>[] spike, out List<int>[] uid,
             out List<double[,]> lfp, out List<double> lfpstarttime,
-            out List<double> digintime, out Dictionary<string, List<int>> digin);
-        Dictionary<int, IAnalyzer> Analyzer { get; }
-        void AnalyzerReset();
+            out List<double> eventtime, out Dictionary<string, List<int>> digin);
+        Dictionary<int, IAnalyzer> Analyzers { get; }
+        void Reset();
     }
 
-    /// <summary>
-    /// this class does not to be overall thread safe, because that will need alot of work and 
-    /// syncronize on class states. we only need to make sure that the signal caching thread is safe
-    /// working with the other thread accessing through ISignal interface
-    /// </summary>
-    public class RippleSignal : ISignal, IDisposable
+    public class RippleSignal : ISignal
     {
+        bool disposed = false;
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
         readonly int digitalIPI, analogIPI, tickfreq, maxelectrodid, timeunitpersec, sleepresolution;
         object lockobj = new object();
@@ -129,7 +127,7 @@ namespace VLabAnalysis
 
         ~RippleSignal()
         {
-            Dispose(true);
+            Dispose(false);
         }
 
         public void Dispose()
@@ -140,181 +138,122 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
+            if (disposed) return;
+
             if (disposing)
             {
-                datathread.Abort();
-                xippmexdotnet.xippmex("close");
             }
+            StopCollectData(false);
+            xippmexdotnet.xippmex("close");
+            xippmexdotnet.Dispose();
+
+            disposed = true;
         }
 
-        //public void SetSignal(int elecid, SIGNALTYPE signaltype, bool onoff)
-        //{
-        //    if (IsReady && ElectrodeIDs.Contains(elecid))
-        //    {
-        //        if (starttime < 0)
-        //        {
-        //            starttime = ((MWNumericArray)xippmexdotnet.xippmex(1, "time")[0]).ToScalarDouble() / tickfreq;
-        //        }
-        //        switch (signaltype)
-        //        {
-        //            case SIGNALTYPE.Spike:
-        //                xippmexdotnet.xippmex("signal", elecid, "spk", new MWLogicalArray(onoff));
-        //                SetElectrodeSignal(elecid, signaltype, onoff);
-        //                break;
-        //            case SIGNALTYPE.LFP:
-        //                xippmexdotnet.xippmex("signal", elecid, "lfp", new MWLogicalArray(onoff));
-        //                SetElectrodeSignal(elecid, signaltype, onoff);
-        //                break;
-        //            case SIGNALTYPE.Raw:
-        //                break;
-        //            default:
-        //                xippmexdotnet.xippmex("signal", elecid, "spk", new MWLogicalArray(onoff));
-        //                xippmexdotnet.xippmex("signal", elecid, "lfp", new MWLogicalArray(onoff));
-        //                SetElectrodeSignal(elecid, SIGNALTYPE.Spike, onoff);
-        //                SetElectrodeSignal(elecid, SIGNALTYPE.LFP, onoff);
-        //                break;
-        //        }
-        //    }
-        //}
-
-        string SignalTypeToRipple(SIGNALTYPE signaltype)
+        string SignalTypeToRipple(SignalType signaltype)
         {
             switch (signaltype)
             {
-                case SIGNALTYPE.OneKSpS:
-                    return "1ksps";
-                case SIGNALTYPE.ThirtyKSpS:
-                    return "30ksps";
-                case SIGNALTYPE.Spike:
-                    return "spk";
-                case SIGNALTYPE.LFP:
-                    return "lfp";
-                case SIGNALTYPE.Raw:
+                case SignalType.Raw:
                     return "raw";
-                case SIGNALTYPE.HiRes:
+                case SignalType.ThirtyKSpS:
+                    return "30ksps";
+                case SignalType.TwoKSpS:
                     return "hi-res";
-                default:
+                case SignalType.OneKSpS:
+                    return "1ksps";
+                case SignalType.LFP:
+                    return "lfp";
+                case SignalType.Event:
                     return "stim";
+                default:
+                    return "spk";
             }
         }
 
-        SIGNALTYPE RippleToSignalType(string signaltype)
+        SignalType RippleToSignalType(string ripplesignaltype)
         {
-            switch (signaltype)
+            switch (ripplesignaltype)
             {
-                case "1ksps":
-                    signaltype = "OneKSpS";
+                case "raw":
+                    ripplesignaltype = "Raw";
                     break;
                 case "30ksps":
-                    signaltype = "ThirtyKSpS";
-                    break;
-                case "spk":
-                    signaltype = "Spike";
-                    break;
-                case "lfp":
-                    signaltype = "LFP";
-                    break;
-                case "raw":
-                    signaltype = "Raw";
+                    ripplesignaltype = "ThirtyKSpS";
                     break;
                 case "hi-res":
-                    signaltype = "HiRes";
+                    ripplesignaltype = "TwoKSpS";
+                    break;
+                case "1ksps":
+                    ripplesignaltype = "OneKSpS";
+                    break;
+                case "lfp":
+                    ripplesignaltype = "LFP";
                     break;
                 case "stim":
-                    signaltype = "Stim";
+                    ripplesignaltype = "Event";
+                    break;
+                case "spk":
+                    ripplesignaltype = "Spike";
                     break;
             }
-            return (SIGNALTYPE)Enum.Parse(typeof(SIGNALTYPE), signaltype);
+            return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
         }
 
-        public SIGNALTYPE[] GetSignalType(int electrodid,bool checkon=true)
+        public SignalType[] GetSignalTypes(int signalid,bool ison=true)
         {
-            SIGNALTYPE[] v = null;
-            if (IsReady && ElectrodeIDs.Contains(electrodid))
+            SignalType[] v = null;
+            if (IsReady && SignalIDs.Contains(signalid))
             {
-                var ts = xippmexdotnet.xippmex(1, "signal", electrodid)[0] as MWCellArray;
-                List<SIGNALTYPE> vv = new List<SIGNALTYPE>();
+                var ts = xippmexdotnet.xippmex(1, "signal", signalid)[0] as MWCellArray;
+                List<SignalType> vv = new List<SignalType>();
                 for (var i = 0; i < ts.NumberOfElements; i++)
                 {
                     vv.Add(RippleToSignalType(((MWCharArray)ts[new[] { 1, i + 1 }]).ToString()));
                 }
                 v = vv.ToArray();
             }
-            if(v!=null&&checkon)
+            if(v!=null&&ison)
             {
-                v = v.Where(i => IsSignalChannelOn(electrodid, i)).ToArray();
+                v = v.Where(i => IsSignalOn(signalid, i)).ToArray();
             }
             return v;
         }
 
-        public bool IsSignalChannelOn(int electrodid, SIGNALTYPE signaltype)
+        public bool IsSignalOn(int signalid, SignalType signaltype)
         {
-            if (IsReady && ElectrodeIDs.Contains(electrodid))
+            if (IsReady && SignalIDs.Contains(signalid))
             {
-                var t = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", electrodid, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
+                var t = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", signalid, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
                 return t == 1 ? true : false;
             }
             return false;
         }
 
-        //void SetElectrodeSignal(int elecid, SIGNALTYPE signaltype, bool onoff)
-        //{
-        //    var st = elecsignal[elecid];
-        //    if (st == null)
-        //    {
-        //        if (onoff)
-        //        {
-        //            st = new List<SIGNALTYPE>();
-        //            st.Add(signaltype);
-        //            AddAnalyzer(elecid, signaltype, AnalysisFactory.Get(signaltype));
-        //        }
-        //    }
-        //    else
-        //    {
-        //        if (onoff)
-        //        {
-        //            if (!st.Contains(signaltype))
-        //            {
-        //                st.Add(signaltype);
-        //                AddAnalyzer(elecid, signaltype, AnalysisFactory.Get(signaltype));
-        //            }
-        //        }
-        //        else
-        //        {
-        //            if (st.Contains(signaltype))
-        //            {
-        //                st.Remove(signaltype);
-        //                RemoveAnalyzer(elecid, signaltype, -1);
-        //            }
-        //        }
-        //    }
-        //}
-
         public void AddAnalyzer(IAnalyzer analyzer)
         {
-            int aid;
+            int id;
             if (idanalyzer.Count == 0)
             {
-                aid = 0;
+                id = 0;
             }
             else
             {
-                aid = idanalyzer.Keys.Max() + 1;
+                id = idanalyzer.Keys.Max() + 1;
             }
-            analyzer.ID = aid;
-            idanalyzer[aid] = analyzer;
+            analyzer.ID = id;
+            idanalyzer[id] = analyzer;
         }
 
-        public void RemoveAnalyzer(int aid)
+        public void RemoveAnalyzer(int analyzerid)
         {
-            if (idanalyzer.ContainsKey(aid))
+            if (idanalyzer.ContainsKey(analyzerid))
             {
-                idanalyzer.Remove(aid);
+                idanalyzer.Remove(analyzerid);
             }
         }
 
-        #region Thread Safe
-        public bool IsSignalOnline
+        public bool IsOnline
         {
             get
             {
@@ -336,11 +275,11 @@ namespace VLabAnalysis
             }
         }
 
-        public int[] ElectrodeIDs
+        public int[] SignalIDs
         {
             get
             {
-                if (IsSignalOnline)
+                if (IsOnline)
                 {
                     lock (lockobj)
                     {
@@ -366,7 +305,7 @@ namespace VLabAnalysis
         {
             get
             {
-                return ElectrodeIDs != null;
+                return SignalIDs != null;
             }
         }
 
@@ -381,9 +320,8 @@ namespace VLabAnalysis
             get { lock (lockobj) { return gotothreadevent; } }
             set { lock (lockobj) { gotothreadevent = value; } }
         }
-        #endregion
 
-        public void StartCollectData(bool iscleanstart = true)
+        public void StartCollectData(bool isclean = true)
         {
             lock (datalock)
             {
@@ -391,7 +329,7 @@ namespace VLabAnalysis
                 {
                     if (datathread == null)
                     {
-                        datathread = new Thread(ThreadCollectData);
+                        datathread = new Thread(CollectDataThreadFunction);
                         InitDataBuffer();
                         datathreadevent.Set();
                         IsCollectingData = true;
@@ -402,7 +340,7 @@ namespace VLabAnalysis
                     {
                         if (!IsCollectingData)
                         {
-                            if (iscleanstart)
+                            if (isclean)
                             {
                                 InitDataBuffer();
                             }
@@ -414,7 +352,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void StopCollectData(bool isonemorecollect = true)
+        public void StopCollectData(bool iscollectall = true)
         {
             lock (datalock)
             {
@@ -429,7 +367,7 @@ namespace VLabAnalysis
                     {
                         if (!GotoThreadEvent)
                         {
-                            if (isonemorecollect)
+                            if (iscollectall)
                             {
                                 // make sure to get all data before the time this function is issued.
                                 CollectData();
@@ -442,8 +380,8 @@ namespace VLabAnalysis
             }
         }
 
-        #region ThreadFunction
-        void ThreadCollectData()
+        #region Collect Data
+        void CollectDataThreadFunction()
         {
             // here we use local and readonly variables, threadsafe methods. 
             string fcs = "", scs = "";
@@ -546,26 +484,41 @@ namespace VLabAnalysis
             CollectLFP();
         }
 
+        void CollectDigIn()
+        {
+            var d = xippmexdotnet.xippmex(3, "digin");
+            var d1 = (d[1] as MWNumericArray);
+            if (!d1.IsEmpty)
+            {
+                var et = (double[])d1.ToVector(MWArrayComponent.Real);
+                for (var i = 0; i < et.Length; i++)
+                {
+                    digintime.Add((et[i] / tickfreq) * timeunitpersec);
+                }
+            }
+        }
+
         void CollectSpike()
         {
-            var es = ElectrodeIDs;
-            // get all works only when electrode ids are in (1,n) row vector of doubles
-            var s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, es.Length, es, null, true, false));
-            var s1 = (s[1] as MWCellArray);
-            var s3 = (s[3] as MWCellArray);
-            for (var i = 0; i < es.Length; i++)
+            var sid = SignalIDs;
+            // xippmex works only when electrode ids are in (1,n) row vector of doubles
+            var s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, sid.Length, sid, null, true, false));
+            var s1 = s[1] as MWCellArray;
+            var s3 = s[3] as MWCellArray;
+            for (var i = 0; i < sid.Length; i++)
             {
                 // MWCellArray indexing is 1-based
                 var idx = new int[] { i + 1, 1 };
-                var st = (s1[idx] as MWNumericArray);
+                var st = s1[idx] as MWNumericArray;
                 if (!st.IsEmpty)
                 {
                     var ss = (double[])st.ToVector(MWArrayComponent.Real);
                     var us = (double[])(s3[idx] as MWNumericArray).ToVector(MWArrayComponent.Real);
                     for (var j = 0; j < ss.Length; j++)
                     {
-                        spike[es[i] - 1].Add((ss[j] / tickfreq) * timeunitpersec);
-                        uid[es[i] - 1].Add((int)us[j]);
+                        var sidx = sid[i] - 1;
+                        spike[sidx].Add((ss[j] / tickfreq) * timeunitpersec);
+                        uid[sidx].Add((int)us[j]);
                     }
                 }
             }
@@ -587,37 +540,23 @@ namespace VLabAnalysis
             //lfpstarttime.Add((p[1] as MWNumericArray).ToScalarDouble() / tickfreq);
             //lfp.Add(fp);
         }
-
-        void CollectDigIn()
-        {
-            var d = xippmexdotnet.xippmex(3, "digin");
-            var d1 = (d[1] as MWNumericArray);
-            if (!d1.IsEmpty)
-            {
-                var et = (double[])d1.ToVector(MWArrayComponent.Real);
-                for (var i = 0; i < et.Length; i++)
-                {
-                    digintime.Add((et[i] / tickfreq) * timeunitpersec);
-                }
-            }
-        }
         #endregion
 
         public void GetData(out List<double>[] ospike, out List<int>[] ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
-            out List<double> odigintime, out Dictionary<string, List<int>> odigin)
+            out List<double> eventtime, out Dictionary<string, List<int>> odigin)
         {
             lock (datalock)
             {
                 if (IsCollectingData)
                 {
                     StopCollectData();
-                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odigintime, out odigin);
+                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out eventtime, out odigin);
                     StartCollectData(false);
                 }
                 else
                 {
-                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odigintime, out odigin);
+                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out eventtime, out odigin);
                 }
             }
         }
@@ -637,7 +576,7 @@ namespace VLabAnalysis
 
         void InitDataBuffer()
         {
-            var en = ElectrodeIDs.Length;
+            var en = SignalIDs.Length;
             spike = new List<double>[en];
             uid = new List<int>[en];
             for (var i = 0; i < en; i++)
@@ -653,9 +592,9 @@ namespace VLabAnalysis
             digin = new Dictionary<string, List<int>>();
         }
 
-        public SIGNALSYSTEM System { get { return SIGNALSYSTEM.Ripple; } }
+        public SignalSource Source { get { return SignalSource.Ripple; } }
 
-        public Dictionary<int, IAnalyzer> Analyzer
+        public Dictionary<int, IAnalyzer> Analyzers
         {
             get
             {
@@ -663,7 +602,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void AnalyzerReset()
+        public void Reset()
         {
             foreach (var a in idanalyzer.Values)
             {

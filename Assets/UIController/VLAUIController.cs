@@ -141,7 +141,7 @@ namespace VLabAnalysis
             if (alsmanager != null)
             {
                 var ss = controlpanel.signalsystemdropdown.captionText.text;
-                var sr = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SIGNALSYSTEM>());
+                var sr = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SignalSource>());
                 signalpanel.UpdateSignal(sr);
             }
         }

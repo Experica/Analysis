@@ -35,17 +35,17 @@ namespace VLabAnalysis
         {
             if(analyzer.options.Count==0)
             {
-                var ia = AnalysisFactory.FindAll(ANALYSISINTERFACE.IAnalyzer);
+                var ia = AnalysisFactory.FindAll(AnalysisInterface.IAnalyzer);
                 analyzer.AddOptions(ia.Select(i => i.Name).ToList());
             }
             if (visualizer.options.Count == 0)
             {
-                var iv = AnalysisFactory.FindAll( ANALYSISINTERFACE.IVisualizer);
+                var iv = AnalysisFactory.FindAll( AnalysisInterface.IVisualizer);
                 visualizer.AddOptions(iv.Select(i => i.Name).ToList());
             }
             if (controller.options.Count == 0)
             {
-                var ic = AnalysisFactory.FindAll( ANALYSISINTERFACE.IController);
+                var ic = AnalysisFactory.FindAll( AnalysisInterface.IController);
                 controller.AddOptions(ic.Select(i => i.Name).ToList());
             }
             analyzer.value = analyzer.options.Select(i=>i.text).ToList().IndexOf(a);

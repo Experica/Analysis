@@ -34,7 +34,7 @@ namespace VLabAnalysis
         void Start()
         {
             var os = new List<string> { "All" };
-            os.AddRange(typeof(SIGNALSYSTEM).GetValue());
+            os.AddRange(typeof(SignalSource).GetValue());
             signalsystemdropdown.AddOptions(os);
         }
 

@@ -13,13 +13,11 @@
     <TargetFrameworkIdentifier>.NETFramework</TargetFrameworkIdentifier>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <TargetFrameworkProfile>Unity Full v3.5</TargetFrameworkProfile>
-    <CompilerResponseFile>
-    </CompilerResponseFile>
+    <CompilerResponseFile></CompilerResponseFile>
     <UnityProjectType>Game:1</UnityProjectType>
     <UnityBuildTarget>StandaloneWindows64:19</UnityBuildTarget>
-    <UnityVersion>5.4.0p2</UnityVersion>
-    <RootNamespace>
-    </RootNamespace>
+    <UnityVersion>5.4.0p4</UnityVersion>
+    <RootNamespace></RootNamespace>
     <LangVersion Condition=" '$(VisualStudioVersion)' != '10.0' ">4</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -63,9 +61,6 @@
     <Reference Include="UnityEditor">
       <HintPath>Library\UnityAssemblies\UnityEditor.dll</HintPath>
     </Reference>
-    <Reference Include="MsgPack">
-      <HintPath>Assets\Plugins\MsgPack.dll</HintPath>
-    </Reference>
     <Reference Include="MWArray">
       <HintPath>Assets\Plugins\MWArray.dll</HintPath>
     </Reference>
@@ -84,31 +79,27 @@
     <Reference Include="MathNet.Numerics">
       <HintPath>Assets\Plugins\MathNet.Numerics.3.11.1\net35\MathNet.Numerics.dll</HintPath>
     </Reference>
-    <Reference Include="System.Threading">
-      <HintPath>Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\System.Threading.dll</HintPath>
-    </Reference>
-    <Reference Include="ZedGraph">
-      <HintPath>Assets\Plugins\ZedGraph\ZedGraph.dll</HintPath>
-    </Reference>
-    <Reference Include="OxyPlot.WindowsForms">
-      <HintPath>Assets\Plugins\OxyPlot\OxyPlot.WindowsForms.dll</HintPath>
+    <Reference Include="MsgPack">
+      <HintPath>Assets\Plugins\MsgPack\MsgPack.dll</HintPath>
     </Reference>
     <Reference Include="OxyPlot">
       <HintPath>Assets\Plugins\OxyPlot\OxyPlot.dll</HintPath>
     </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="VLabAnalysis.CSharp.Plugins.csproj">
-      <Project>{70A80C80-EC39-5F09-0355-D29450326FEF}</Project>
-      <Name>VLabAnalysis.CSharp.Plugins</Name>
-    </ProjectReference>
+    <Reference Include="OxyPlot.WindowsForms">
+      <HintPath>Assets\Plugins\OxyPlot\OxyPlot.WindowsForms.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Threading">
+      <HintPath>Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\System.Threading.dll</HintPath>
+    </Reference>
+    <Reference Include="YamlDotNet">
+      <HintPath>Assets\Plugins\YamlDotNet\YamlDotNet.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Analysis.cs" />
     <Compile Include="Assets\Analyzer.cs" />
     <Compile Include="Assets\Controller.cs" />
     <Compile Include="Assets\Experiment.cs" />
-    <Compile Include="Assets\MsgPackSerializer.cs" />
     <Compile Include="Assets\Resources\UI\AnalysisGroup.cs" />
     <Compile Include="Assets\Resources\UI\Drag.cs" />
     <Compile Include="Assets\Resources\UI\ElectrodePanel.cs" />
@@ -126,24 +117,22 @@
     <Compile Include="Assets\VLAnalysisManager.cs" />
     <Compile Include="Assets\VLExtention.cs" />
     <Compile Include="Assets\VLIO.cs" />
+    <Compile Include="Assets\VLMsgPack.cs" />
     <Compile Include="Assets\VLNetwork.cs" />
     <Compile Include="Assets\VLTimer.cs" />
-    <Compile Include="Assets\Visualizer.cs">
-      <SubType>Form</SubType>
-    </Compile>
+    <Compile Include="Assets\Visualizer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Plugins\Fasterflect\Fasterflect.XML" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\license.txt" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\net35\MathNet.Numerics.xml" />
     <None Include="Assets\Plugins\MathNet.Numerics.3.11.1\readme.txt" />
+    <None Include="Assets\Plugins\MsgPack\MsgPack.XML" />
     <None Include="Assets\Plugins\OxyPlot\OxyPlot.WindowsForms.XML" />
     <None Include="Assets\Plugins\OxyPlot\OxyPlot.xml" />
     <None Include="Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\System.Threading.xml" />
     <None Include="Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\redist.txt" />
-    <None Include="Assets\Plugins\YamlDotNet\Readme.txt" />
-    <None Include="Assets\Plugins\YamlDotNet\YamlDotNet.license.txt" />
-    <None Include="Assets\Plugins\ZedGraph\ZedGraph.XML" />
+    <None Include="Assets\Plugins\YamlDotNet\YamlDotNet.xml" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\SyntaxTree\UnityVS\2015\UnityVS.CSharp.targets" />
 </Project>

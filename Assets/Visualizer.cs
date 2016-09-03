@@ -25,7 +25,6 @@ using System.Windows.Forms;
 using System.Linq;
 using System;
 using System.IO;
-using ZedGraph;
 using MathNet.Numerics.Statistics;
 using VLab;
 using MsgPack;
@@ -42,112 +41,6 @@ namespace VLabAnalysis
         void Visualize(IResult result);
         void Reset();
         void Save(string path, int width, int height, float dpi);
-    }
-
-    public class LineVisualizer : Form, IVisualizer
-    {
-        ZedGraphControl control = new ZedGraphControl();
-        bool isinit;
-
-        public LineVisualizer(int width = 400, int height = 300)
-        {
-            control.IsAntiAlias = true;
-            control.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-            control.Dock = DockStyle.Fill;
-            Reset();
-
-            Controls.Add(control);
-
-            Width = width;
-            Height = height;
-        }
-
-        ~LineVisualizer()
-        {
-            Close();
-        }
-
-        public void Reset()
-        {
-            control.GraphPane.XAxis.Title.IsVisible = false;
-            control.GraphPane.YAxis.Title.IsVisible = false;
-            control.GraphPane.Title.IsVisible = false;
-            control.GraphPane.CurveList.Clear();
-            control.AxisChange();
-            isinit = false;
-        }
-
-        void Init(IResult result)
-        {
-            string xtitle;
-            if (result.Cond.Count > 1)
-            {
-                xtitle = "Condition Index";
-            }
-            else
-            {
-                var cname = result.Cond.Keys.First();
-                List<bool> valuedim;
-                xtitle = cname.GetFactorUnit(out valuedim,result.ExperimentID);
-            }
-            control.GraphPane.XAxis.Title.Text = xtitle;
-            control.GraphPane.XAxis.Title.IsVisible = true;
-            control.GraphPane.YAxis.Title.Text = result.Type.GetResponseUnit();
-            control.GraphPane.YAxis.Title.IsVisible = true;
-            Text = "Electrod_" + result.ElectrodID;
-            control.GraphPane.Title.Text = "E" + result.ElectrodID + "_" + result.ExperimentID;
-            control.GraphPane.Title.IsVisible = true;
-
-            isinit = true;
-        }
-
-        public void Visualize(IResult result)
-        {
-            if (!isinit) Init(result);
-
-            double[] x;
-            if (result.Cond.Count > 1)
-            {
-                x = result.CondResponse.Keys.Select(i => (double)i).ToArray();
-            }
-            else
-            {
-                var lx = result.CondResponse.Keys.Select(i => result.Cond.Values.First()[i])
-                    .GetFactorLevel(result.Cond.Keys.First(), result.ExperimentID)[0];
-                lx.Sort();
-                if (lx.Count > 2)
-                {
-                    control.GraphPane.XAxis.Scale.MajorStep = lx[2] - lx[0];
-                }
-                x = lx.ToArray();
-            }
-            var condmean = result.CondResponse.Values.Select(i => i.Mean()).ToArray();
-            var condsem = result.CondResponse.Values.Select(i => i.SEM()).ToArray();
-            var semhi = condmean.Select((r, index) => r + condsem[index]).ToArray();
-            var semlo = condmean.Select((r, index) => r - condsem[index]).ToArray();
-
-            control.GraphPane.CurveList.Clear();
-            control.GraphPane.AddCurve("", x, condmean, Color.DarkBlue, SymbolType.Circle);
-            control.GraphPane.AddErrorBar("", x, semhi, semlo, Color.Black);
-            control.AxisChange();
-
-            if (!Visible)
-            {
-                Show();
-            }
-            else
-            {
-                control.Refresh();
-            }
-        }
-
-        public void Save(string path, int width, int height, float dpi)
-        {
-            if (isinit)
-            {
-                control.MasterPane.GetImage(width, height, dpi, true).Save(path + ".png", System.Drawing.Imaging.ImageFormat.Png);
-            }
-        }
     }
 
     public class D2Visualizer : Form, IVisualizer

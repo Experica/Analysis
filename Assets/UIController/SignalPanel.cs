@@ -37,7 +37,7 @@ namespace VLabAnalysis
             {
                 ClearSignalView();
                 AddSignalView();
-                title.text = "Signal (" + uicontroller.alsmanager.als.Signal.System + ")";
+                title.text = "Signal (" + uicontroller.alsmanager.als.Signal.Source + ")";
             }
             else
             {
@@ -56,7 +56,7 @@ namespace VLabAnalysis
 
         void AddSignalView()
         {
-            foreach (var e in uicontroller.alsmanager.als.Signal.ElectrodeIDs)
+            foreach (var e in uicontroller.alsmanager.als.Signal.SignalIDs)
             {
                 AddElectrodePanel(e);
             }
@@ -83,7 +83,7 @@ namespace VLabAnalysis
             ep.title.text = electrodeid.ToString();
             if ((bool)uicontroller.appmanager.config[VLACFG.AddSpikeAnalysisWhenSignalOnLine])
             {
-                ep.AddAnalysis(SIGNALTYPE.Spike);
+                ep.AddAnalysis(SignalType.Spike);
             }
             go.transform.SetParent(content.transform, false);
         }
