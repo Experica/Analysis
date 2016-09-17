@@ -32,39 +32,44 @@ using OxyPlot;
 using OxyPlot.WindowsForms;
 using OxyPlot.Series;
 using OxyPlot.Axes;
-using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.Interpolation;
 
 namespace VLabAnalysis
 {
     public interface IVisualizer
     {
-        void Visualize(IResult result);
+        void Visualize(IVisualizeResult result);
         void Reset();
-        void Save(string path, int width, int height, float dpi);
+        void Save(string path, int width, int height, int dpi);
     }
 
     public class D2Visualizer : Form, IVisualizer
     {
-        PlotView control = new PlotView();
+        PlotView plot = new PlotView();
         PlotModel pm = new PlotModel();
-        bool isawake,isstart;
-        Dictionary<string,List<bool>> condvaluedim = new Dictionary<string, List<bool>>();
-        Dictionary<string, string> condunit = new Dictionary<string, string>();
+        Dictionary<int, OxyColor> unitcolor = VLAExtention.GetUnitColors();
 
-        public D2Visualizer(int width = 400, int height = 300)
+        bool isawake, isstart;
+
+        public D2Visualizer(int width = 400, int height = 350)
         {
-            control.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-            control.Dock = DockStyle.Fill;
-            Reset();
-
-            var ca = new LinearColorAxis();
-            ca.Palette = OxyPalettes.Jet(256);
-            pm.Axes.Add(ca);
-            control.Model = pm;
-            Controls.Add(control);
-
+            plot.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
+            plot.Dock = DockStyle.Fill;
             Width = width;
             Height = height;
+
+            //var ca = new LinearColorAxis()
+            //{
+            //    Palette = OxyPalettes.BlueWhiteRed(256),
+            //    //Position = AxisPosition.Right,
+            //    PositionTier = 1
+            //};
+            //pm.Axes.Add(ca);
+            pm.LegendPosition = LegendPosition.RightTop;
+            pm.LegendPlacement = LegendPlacement.Inside;
+            
+            plot.Model = pm;
+            Controls.Add(plot);
         }
 
         ~D2Visualizer()
@@ -74,72 +79,44 @@ namespace VLabAnalysis
 
         public void Reset()
         {
-            control.Visible = false;
+            plot.Visible = false;
             isawake = false;
             isstart = false;
-            condvaluedim.Clear();
-            condunit.Clear();
         }
 
-        void Awake(IResult result)
+        public void Visualize(IVisualizeResult result)
         {
-            foreach(var f in result.Cond.Keys)
+            if (!isawake)
             {
-                List<bool> valuedim;
-                condunit[f] = f.GetFactorUnit(out valuedim, result.ExperimentID);
-                condvaluedim[f] = valuedim;
-            }
-            
-            Text = "Electrode_" + result.ElectrodID;
-            pm.Title = "E" + result.ElectrodID + "_" + result.ExperimentID;
-            control.Visible = true;
-            isawake = true;
-        }
-
-        public void Visualize(IResult result)
-        {
-            if (!isawake) Awake(result);
-
-            var fn = result.Cond.Count;
-            if (fn==1)
-            {
-                var fl = result.Cond.ElementAt(0);
-                var valuedim = condvaluedim[fl.Key];
-                var valuedimidx= Enumerable.Range(0, valuedim.Count).Where(i => valuedim[i] == true).ToList();
-                var vdn = valuedimidx.Count;
-                if(vdn==1)
+                if (result.ExperimentID.Contains("RF"))
                 {
-                    var x= result.CondResponse.Keys.Select(i => fl.Value[i]).GetFactorLevel<double>(valuedim)[valuedimidx[0]];
-                    var y = result.CondResponse.Values.Select(i => i.Mean()).ToArray();
-                    var yse = result.CondResponse.Values.Select(i => i.SEM()).ToArray();
-
-                    D1Visualize(x,y,yse,condunit[fl.Key],result.Type.GetResponseUnit());
-                }
-                else if(vdn==2)
-                {
-                    var x = result.CondResponse.Keys.Select(i => fl.Value[i]).GetFactorLevel<double>(valuedim)[valuedimidx[0]];
-                    var y = result.CondResponse.Keys.Select(i => fl.Value[i]).GetFactorLevel<double>(valuedim)[valuedimidx[1]];
-                    var z = result.CondResponse.Values.Select(i => i.Mean()).ToArray();
-                    var zse = result.CondResponse.Values.Select(i => i.SEM()).ToArray();
-
-                    var ux = x.Distinct().ToList(); var uy = y.Distinct().ToList(); ux.Sort(); uy.Sort();
-                    var xn = ux.Count(); var yn = uy.Count();
-                    var heatdata = new double[xn, yn];
-                    for (var i = 0; i < x.Length; i++)
+                    if (result.ExperimentID.Contains('X') || result.ExperimentID.Contains('Y'))
                     {
-                        heatdata[ux.IndexOf(x[i]), uy.IndexOf(y[i])] = z[i];
+                        pm.PlotType = PlotType.XY;
                     }
-
-                    D2Visualize(heatdata,ux,uy,condunit[fl.Key],condunit[fl.Key]);
+                    else
+                    {
+                        pm.PlotType = PlotType.Cartesian;
+                    }
                 }
                 else
                 {
-
+                    pm.PlotType = PlotType.XY;
                 }
+                Text = "Signal_" + result.SignalID;
+                pm.Title = "S" + result.SignalID + "_" + result.ExperimentID;
+                plot.Visible = true;
+                isawake = true;
             }
-            else if(fn==2)
-            {
 
+            var xdimn = result.X.Count;
+            if (xdimn == 1)
+            {
+                D1Visualize(result.X[0], result.Y, result.YSE, result.XUnit[0], result.YUnit);
+            }
+            else if (xdimn == 2)
+            {
+                D2Visualize(result.X[0], result.X[1], result.Y, result.YSE, result.XUnit[0], result.XUnit[1], result.YUnit);
             }
             else
             {
@@ -150,114 +127,146 @@ namespace VLabAnalysis
             {
                 Show();
             }
-            else
-            {
-                control.Refresh();
-            }
         }
 
-        void D1Start(string xtitle,string ytitle)
+        void D1Visualize(double[] x, Dictionary<int, double[,]> y, Dictionary<int, double[,]> yse, string xtitle, string ytitle)
         {
-            if (pm.DefaultXAxis != null)
-            {
-                pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                pm.DefaultXAxis.Title = xtitle;
-                pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                pm.DefaultYAxis.Title = ytitle;
-
-                control.Visible = true;
-                isstart = true;
-            }
-        }
-
-        void D1Visualize(double[] x,double[] y, double[] yse, string xtitle,string ytitle)
-        {
-            var n = x.Length;
-            var line = new LineSeries();
-            line.StrokeThickness = 1.5;
-            line.Color = OxyColor.FromArgb(255, 20, 100, 200);
-            var error = new ScatterErrorSeries();
-            error.ErrorBarStopWidth = 0;
-            error.ErrorBarStrokeThickness = 2;
-            error.ErrorBarColor = OxyColor.FromArgb(255, 20, 100, 150);
-
-            var si = Enumerable.Range(0, n).ToArray();
-            Array.Sort(x, si);
-            double[] ylo = new double[n], yhi = new double[n];
-            for (var i = 0; i < n; i++)
-            {
-                error.Points.Add(new ScatterErrorPoint(x[i], y[si[i]], 0, yse[si[i]]));
-                line.Points.Add(new OxyPlot.DataPoint(x[i], y[si[i]]));
-                ylo[i] = y[si[i]] - yse[si[i]];
-                yhi[i] = y[si[i]] + yse[si[i]];
-            }
-            
             pm.Series.Clear();
-            pm.Series.Add(line);
-            pm.Series.Add(error);
-            pm.InvalidatePlot(true);
+            var ylo = new List<double>(); var yhi = new List<double>();
+            var us = y.Keys.ToList();us. Sort();
+            foreach (var u in us)
+            {
+                var line = new LineSeries();
+                line.StrokeThickness = 2;
+                line.Color = OxyColor.FromAColor(255, unitcolor[u]);
+                line.Title = "U" + u;
+                var error = new ScatterErrorSeries();
+                error.ErrorBarStopWidth = 2;
+                error.ErrorBarStrokeThickness = 1.5;
+                error.ErrorBarColor = OxyColor.FromAColor(180, unitcolor[u]);
+                error.MarkerSize = 0;
+
+                for (var i = 0; i < x.Length; i++)
+                {
+                    error.Points.Add(new ScatterErrorPoint(x[i], y[u][0, i], 0, yse[u][0, i]));
+                    line.Points.Add(new DataPoint(x[i], y[u][0, i]));
+                    ylo.Add(y[u][0, i] - yse[u][0, i]);
+                    yhi.Add(y[u][0, i] + yse[u][0, i]);
+                }
+
+                pm.Series.Add(line);
+                pm.Series.Add(error);
+            }
 
             if (pm.DefaultYAxis != null)
             {
-                var x0 = x.First();var x1 = x.Last();
-                pm.DefaultXAxis.Maximum = x1 + 0.1 * (x1 - x0);
-                pm.DefaultXAxis.Minimum = x0 - 0.1 * (x1 - x0);
+                var x0 = x.First(); var x1 = x.Last();
+                pm.DefaultXAxis.Maximum = x1+0.01*(x1-x0);
+                pm.DefaultXAxis.Minimum = x0-0.01*(x1-x0);
                 pm.DefaultYAxis.Maximum = yhi.Max();
-                pm.DefaultYAxis.Minimum = ylo.Min();
+                pm.DefaultYAxis.Minimum =Math.Min(0, ylo.Min());
+                pm.DefaultXAxis.Reset();
+                pm.DefaultYAxis.Reset();
             }
 
-            if (!isstart) D1Start(xtitle,ytitle);
-        }
-
-        void D2Start(string xtitle, string ytitle)
-        {
-            if (pm.DefaultXAxis != null)
+            if (!isstart)
             {
-                pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                pm.DefaultXAxis.Title = xtitle;
-                pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                pm.DefaultYAxis.Title = ytitle;
-
-                control.Visible = true;
-                isstart = true;
+                if (pm.DefaultXAxis != null)
+                {
+                    pm.DefaultXAxis.MaximumPadding = 0.005;
+                    pm.DefaultXAxis.MinimumPadding = 0.005;
+                    pm.DefaultYAxis.MaximumPadding = 0.005;
+                    pm.DefaultYAxis.MinimumPadding = 0.005;
+                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultXAxis.Title = xtitle;
+                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultYAxis.Title = ytitle;
+                    isstart = true;
+                }
             }
+
+            pm.InvalidatePlot(true);
         }
 
-        void D2Visualize(double[,] heatdata,List<double> x, List<double> y,string xtitle,string ytitle)
+        void D2Visualize(double[] x1, double[] x2, Dictionary<int, double[,]> y, Dictionary<int, double[,]> yse, string x1title, string x2title, string ytitle)
         {
-            var heat = new HeatMapSeries();
-            heat.Data = heatdata;
-            heat.X0 = x.Min();
-            heat.X1 = x.Max();
-            heat.Y0 = y.Min();
-            heat.Y1 = y.Max();
-
             pm.Series.Clear();
-            pm.Series.Add(heat);
-            pm.InvalidatePlot(true);
+            var x1min = x1.Min(); var x1max = x1.Max(); var x2min = x2.Min(); var x2max = x2.Max();
+            var us = y.Keys.ToList(); us.Sort();
+            foreach (var u in us)
+            {
+                var d = y[u];
+                var heat = new HeatMapSeries();
+                heat.Data = y[u];
+                heat.Interpolate = true;
+                heat.X0 = x1min;
+                heat.X1 = x1max;
+                heat.Y0 = x2min;
+                heat.Y1 = x2max;
 
+                var ymin = y[u].Min2D();var ymax = y[u].Max2D();var yrange = Math.Max(1, ymax - ymin);
+                var contour = new ContourSeries()
+                {
+                    Data = y[u],
+                    ContourColors = ArrayBuilder.CreateVector(0.4, 0.8, 0.2).Select(i => OxyColor.FromAColor(Convert.ToByte(i * 255), unitcolor[u])).ToArray(),
+                    LineStyle = LineStyle.Solid,
+                    ContourLevels = ArrayBuilder.CreateVector(ymin + 0.6 * yrange, ymin + 0.8 * yrange, 0.1 * yrange),
+                    FontSize = 8,
+                    LabelStep = 3,
+                    TextColor = unitcolor[u],
+                    Title = "U" + u,
+                    LabelFormatString = "F0",
+                    LabelBackground = OxyColors.Undefined,
+                    StrokeThickness = 2,
+                    ColumnCoordinates =  x1,
+                    RowCoordinates = x2,
+                };
+
+                
+                //pm.Series.Add(heat);
+                pm.Series.Add(contour);
+            }
+
+            
+
+            if (!isstart)
+            {
+                if (pm.DefaultXAxis != null)
+                {
+                    pm.DefaultXAxis.MaximumPadding = 0.005;
+                    pm.DefaultXAxis.MinimumPadding = 0.005;
+                    pm.DefaultYAxis.MaximumPadding = 0.005;
+                    pm.DefaultYAxis.MinimumPadding = 0.005;
+                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultXAxis.Title = x1title;
+                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultYAxis.Title = x2title;
+                    //pm.PlotAreaBackground = OxyColor.FromRgb(230, 230, 230);
+                    isstart = true;
+                }
+            }
             if (pm.DefaultYAxis != null)
             {
-                pm.DefaultXAxis.Maximum = heat.X1;
-                pm.DefaultXAxis.Minimum = heat.X0;
-                pm.DefaultYAxis.Maximum = heat.Y1;
-                pm.DefaultYAxis.Minimum = heat.Y0;
+                pm.DefaultXAxis.Maximum = x1max;
+                pm.DefaultXAxis.Minimum = x1min;
+                pm.DefaultYAxis.Maximum = x2max;
+                pm.DefaultYAxis.Minimum = x2min;
+                pm.DefaultXAxis.Reset();
+                pm.DefaultYAxis.Reset();
             }
-
-            if (!isstart) D2Start(xtitle, ytitle);
+            pm.InvalidatePlot(true);
         }
 
-        public void Save(string path, int width, int height, float dpi)
+        public void Save(string path, int width, int height, int dpi)
         {
             if (isawake)
             {
                 using (var stream = File.Create(path + ".png"))
                 {
-
                     var pngexporter = new PngExporter();
                     pngexporter.Width = width;
                     pngexporter.Height = height;
-                    pngexporter.Resolution = (int)dpi;
+                    pngexporter.Resolution = dpi;
                     pngexporter.Export(pm, stream);
                 }
                 using (var stream = File.Create(path + ".svg"))
@@ -268,7 +277,7 @@ namespace VLabAnalysis
                     svgexporter.IsDocument = true;
                     svgexporter.Export(pm, stream);
                 }
-             }
+            }
         }
     }
 

@@ -105,6 +105,7 @@ namespace VLabAnalysis
             object v;
             switch(name)
             {
+                case CONDTESTPARAM.CondRepeat:
                 case CONDTESTPARAM.CondIndex:
                     v = VLMsgPack.ListIntSerializer.Unpack(new MemoryStream(value));
                     break;
@@ -167,14 +168,14 @@ namespace VLabAnalysis
                     var dataname = Path.GetFileNameWithoutExtension(datapath);
                     int width = (int)uicontroller.appmanager.config[VLACFG.VisualizationWidth];
                     int height = (int)uicontroller.appmanager.config[VLACFG.VisualizationHeight];
-                    float dpi = (float)uicontroller.appmanager.config[VLACFG.VisualizationDPI];
+                    int dpi = (int)uicontroller.appmanager.config[VLACFG.VisualizationDPI];
                     foreach (var a in als.Signal.Analyzers.Values)
                     {
                             if (a.Visualizer != null)
                             {
                             var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name
-                                + "_E" + a.SignalChannel.SignalID;
-                            var filedir = Path.Combine(datadir, "E" + a.SignalChannel.SignalID);
+                                + "_S" + a.Signal.SignalID;
+                            var filedir = Path.Combine(datadir, "S" + a.Signal.SignalID);
                             if(!Directory.Exists(filedir))
                             {
                                 Directory.CreateDirectory(filedir);
@@ -186,22 +187,33 @@ namespace VLabAnalysis
                 }
                 else
                 {
-                    for (var i = 0; i < als.Signal.Analyzers.Count; i++)
+                    //for (var i = 0; i < als.Signal.Analyzers.Count; i++)
+                    //{
+                    //    var a = als.Signal.Analyzers.ElementAt(i).Value;
+                    //    IVisualizeResult result;
+                    //    if (a.VisualizeResultQueue.TryDequeue(out result))
+                    //    {
+                    //        if (a.Visualizer != null)
+                    //        {
+                    //            a.Visualizer.Visualize(result);
+                    //        }
+                    //    }
+                    //}
+                    foreach (var i in als.Signal.Analyzers.Keys.ToArray())
                     {
-                        var a = als.Signal.Analyzers.ElementAt(i).Value;
-                        IResult result;
-                        if (a.ResultQueue.TryDequeue(out result))
+                        IAnalyzer a;
+                        if (als.Signal.Analyzers.TryGetValue(i, out a))
                         {
-                            if (a.Visualizer != null)
+                            IVisualizeResult vr;
+                            if (a.VisualizeResultQueue.TryDequeue(out vr))
                             {
-                                a.Visualizer.Visualize(result);
+                                if (a.Visualizer != null)
+                                {
+                                    a.Visualizer.Visualize(vr);
+                                }
                             }
                         }
                     }
-                    //foreach (var a in als.Signal.Analyzers.Values)
-                    //{
-
-                    //}
                 }
             }
         }

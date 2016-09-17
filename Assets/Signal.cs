@@ -69,12 +69,12 @@ namespace VLabAnalysis
     /// Implementation should be thread safe because of
     /// multi-thread and parallel analysis.
     /// </summary>
-    public interface ISignal:IDisposable
+    public interface ISignal : IDisposable
     {
         bool IsOnline { get; }
         SignalSource Source { get; }
         int[] SignalIDs { get; }
-        SignalType[] GetSignalTypes(int signalid,bool ison);
+        SignalType[] GetSignalTypes(int signalid, bool ison);
         bool IsSignalOn(int signalid, SignalType signaltype);
         void AddAnalyzer(IAnalyzer analyzer);
         void RemoveAnalyzer(int analyzerid);
@@ -84,7 +84,7 @@ namespace VLabAnalysis
         void GetData(out List<double>[] spike, out List<int>[] uid,
             out List<double[,]> lfp, out List<double> lfpstarttime,
             out List<double> eventtime, out Dictionary<string, List<int>> digin);
-        Dictionary<int, IAnalyzer> Analyzers { get; }
+        ConcurrentDictionary<int, IAnalyzer> Analyzers { get; }
         void Reset();
     }
 
@@ -92,26 +92,27 @@ namespace VLabAnalysis
     {
         bool disposed = false;
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
+
         readonly int digitalIPI, analogIPI, tickfreq, maxelectrodid, timeunitpersec, sleepresolution;
         object lockobj = new object();
         object datalock = new object();
         object eventlock = new object();
-
         Thread datathread;
         ManualResetEvent datathreadevent = new ManualResetEvent(true);
-        Dictionary<int, IAnalyzer> idanalyzer = new Dictionary<int, IAnalyzer>();
+        ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
 
         // those fields should be accessed only through corresponding property to provide thread safety
         bool iscollectingdata;
         bool gotothreadevent;
         bool isonline;
         int[] eids;
-        // those fields should be manimulated only by thread safe methods
+
+        // Linear Data Buffers
         List<double>[] spike;
         List<int>[] uid;
         List<double[,]> lfp;
         List<double> lfpstarttime;
-        List<double> digintime;
+        List<double> digitalintime;
         Dictionary<string, List<int>> digin;
 
         public RippleSignal(int tickfreq = 30000, int maxelec = 5120, int timeunitpersec = 1000,
@@ -200,7 +201,7 @@ namespace VLabAnalysis
             return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
         }
 
-        public SignalType[] GetSignalTypes(int signalid,bool ison=true)
+        public SignalType[] GetSignalTypes(int signalid, bool ison = true)
         {
             SignalType[] v = null;
             if (IsReady && SignalIDs.Contains(signalid))
@@ -213,7 +214,7 @@ namespace VLabAnalysis
                 }
                 v = vv.ToArray();
             }
-            if(v!=null&&ison)
+            if (v != null && ison)
             {
                 v = v.Where(i => IsSignalOn(signalid, i)).ToArray();
             }
@@ -249,7 +250,8 @@ namespace VLabAnalysis
         {
             if (idanalyzer.ContainsKey(analyzerid))
             {
-                idanalyzer.Remove(analyzerid);
+                IAnalyzer a;
+                idanalyzer.TryRemove(analyzerid,out a);
             }
         }
 
@@ -412,7 +414,7 @@ namespace VLabAnalysis
             }
             while (true)
             {
-                ThreadEvent:
+            ThreadEvent:
                 lock (eventlock)
                 {
                     GotoThreadEvent = false;
@@ -435,7 +437,7 @@ namespace VLabAnalysis
                     switch (fcs)
                     {
                         case "digital":
-                            CollectDigIn();
+                            CollectDigitalIn();
                             CollectSpike();
                             break;
                         case "analog":
@@ -463,7 +465,7 @@ namespace VLabAnalysis
                     switch (scs)
                     {
                         case "digital":
-                            CollectDigIn();
+                            CollectDigitalIn();
                             CollectSpike();
                             break;
                         case "analog":
@@ -479,12 +481,12 @@ namespace VLabAnalysis
 
         void CollectData()
         {
-            CollectDigIn();
+            CollectDigitalIn();
             CollectSpike();
             CollectLFP();
         }
 
-        void CollectDigIn()
+        void CollectDigitalIn()
         {
             var d = xippmexdotnet.xippmex(3, "digin");
             var d1 = (d[1] as MWNumericArray);
@@ -493,7 +495,7 @@ namespace VLabAnalysis
                 var et = (double[])d1.ToVector(MWArrayComponent.Real);
                 for (var i = 0; i < et.Length; i++)
                 {
-                    digintime.Add((et[i] / tickfreq) * timeunitpersec);
+                    digitalintime.Add((et[i] / tickfreq) * timeunitpersec);
                 }
             }
         }
@@ -569,7 +571,7 @@ namespace VLabAnalysis
             auid = uid;
             alfp = lfp;
             alfpstarttime = lfpstarttime;
-            adigintime = digintime;
+            adigintime = digitalintime;
             adigin = digin;
             InitDataBuffer();
         }
@@ -588,13 +590,13 @@ namespace VLabAnalysis
             }
             lfp = new List<double[,]>();
             lfpstarttime = new List<double>();
-            digintime = new List<double>();
+            digitalintime = new List<double>();
             digin = new Dictionary<string, List<int>>();
         }
 
         public SignalSource Source { get { return SignalSource.Ripple; } }
 
-        public Dictionary<int, IAnalyzer> Analyzers
+        public ConcurrentDictionary<int, IAnalyzer> Analyzers
         {
             get
             {

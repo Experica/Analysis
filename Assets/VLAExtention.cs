@@ -32,6 +32,7 @@ using MathWorks.MATLAB.NET.Utility;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using OxyPlot;
 using MathNet.Numerics.Statistics;
 
 namespace VLabAnalysis
@@ -69,18 +70,34 @@ namespace VLabAnalysis
             else
             {
                 st.RemoveRange(0, si);
+                if (uid != null)
+                {
+                    uid.RemoveRange(0, si);
+                }
                 var ei = st.FindIndex(i => i >= end);
-                if(ei>=0)
+                if (ei >= 0)
                 {
                     var l = st.Count;
                     st.RemoveRange(ei, l - ei);
                     if (uid != null)
                     {
-                        uid.RemoveRange(0, si);
                         uid.RemoveRange(ei, l - ei);
                     }
                 }
             }
+        }
+
+        public static List<double> GetUnitSpike(this List<double> st, List<int> uids, int uid)
+        {
+            var v = new List<double>();
+            for(var i=0;i<uids.Count;i++)
+            {
+                if(uids[i]==uid)
+                {
+                    v.Add(st[i]);
+                }
+            }
+            return v;
         }
 
         public static double FindStateTime(this List<Dictionary<string, double>> stateevents, string state)
@@ -238,6 +255,17 @@ namespace VLabAnalysis
                 default:
                     return "Response";
             }
+        }
+
+        public static Dictionary<int,OxyColor> GetUnitColors(int ncolor=5)
+        {
+            var nmax = 5;var cs = new Dictionary<int, OxyColor>();var n = Math.Min(nmax, ncolor);
+            for (var i=1;i<=n;i++)
+            {
+               cs[i]= OxyColor.FromHsv((double)(i-1) / n, 0.8, 1);
+            }
+            cs[0] =OxyColors.Black;
+            return cs;
         }
 
     }

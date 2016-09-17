@@ -106,12 +106,12 @@ namespace VLabAnalysis
         public List<int>[] uid;
         public List<double[,]> lfp;
         public List<double> lfpstarttime;
-        public List<double> digintime;
+        public List<double> digitalintime;
         public Dictionary<string, List<int>> digin;
-        public List<int> AccumCondIndex,CondIndex;
+        public List<int> AccumCondIndex,CondIndex, AccumCondRepeat, CondRepeat;
         public List<List<Dictionary<string, double>>> AccumCondState,CondState;
 
-        double firstdigitaleventtime = -1;
+        double vlabzerotime = -1;
         Experiment ex;
         int ncond;
 
@@ -137,10 +137,10 @@ namespace VLabAnalysis
             get { lock (objlock) { return ncond; } }
         }
 
-        public double FirstDigitalEventTime
+        public double VLabZeroTime
         {
-            get { lock (objlock) { return firstdigitaleventtime; } }
-            set { lock (objlock) { firstdigitaleventtime = value; } }
+            get { lock (objlock) { return vlabzerotime; } }
+            set { lock (objlock) { vlabzerotime = value; } }
         }
         #endregion
 
@@ -164,13 +164,13 @@ namespace VLabAnalysis
                 uid = null;
                 lfp = null;
                 lfpstarttime = null;
-                digintime = null;
+                digitalintime = null;
                 digin = null;
                 CondIndex = null;
                 AccumCondIndex = null;
                 CondState = null;
                 AccumCondState = null;
-                FirstDigitalEventTime = -1;
+                VLabZeroTime = -1;
                 GC.Collect();
             }
         }
@@ -179,19 +179,22 @@ namespace VLabAnalysis
         {
             lock (datalock)
             {
-                if (FirstDigitalEventTime >= 0)
+                if (VLabZeroTime >= 0)
                 {
-                    var endtime = FirstDigitalEventTime + time;
+                    var endtime = VLabZeroTime + time;
                     if (spike != null)
                     {
                         for (var i = 0; i < spike.Length; i++)
                         {
-                            VLAExtention.Sub(spike[i], uid[i], endtime,double.PositiveInfinity);
+                            if (spike[i].Count > 0)
+                            {
+                                VLAExtention.Sub(spike[i], uid[i], endtime, double.PositiveInfinity);
+                            }
                         }
                     }
-                    if(digintime!=null)
+                    if (digitalintime != null)
                     {
-                        VLAExtention.Sub(digintime,null, endtime, double.PositiveInfinity);
+                        VLAExtention.Sub(digitalintime, null, endtime, double.PositiveInfinity);
                     }
                 }
             }
@@ -200,7 +203,7 @@ namespace VLabAnalysis
         public void Add(List<double>[] aspike, List<int>[] auid,
             List<double[,]> alfp, List<double> alfpstarttime,
             List<double> adigintime, Dictionary<string, List<int>> adigin,
-            List<int> acondindex, List<List<Dictionary<string, double>>> acondstate)
+            List<int> acondindex, List<int> acondrepeat, List<List<Dictionary<string, double>>> acondstate)
         {
             lock (datalock)
             {
@@ -233,23 +236,23 @@ namespace VLabAnalysis
                         lfpstarttime.AddRange(alfpstarttime);
                     }
                 }
-                if (digintime == null)
+                if (digitalintime == null)
                 {
                     // we define the falling edge time of the first TTL pulse as 
                     // the first digital event time which mark the start of the experiment
                     // timer in VLab, so we can align signal time and VLab time. 
                     if(adigintime!=null&&adigintime.Count>1)
                     {
-                        digintime = adigintime;
+                        digitalintime = adigintime;
                         digin = adigin;
-                        FirstDigitalEventTime = adigintime[1];
+                        VLabZeroTime = adigintime[1];
                     }
                 }
                 else
                 {
                     if (adigintime != null)
                     {
-                        digintime.AddRange(adigintime);
+                        digitalintime.AddRange(adigintime);
                         foreach (var f in digin.Keys)
                         {
                             digin[f].AddRange(adigin[f]);
@@ -269,7 +272,20 @@ namespace VLabAnalysis
                         CondIndex = acondindex;
                     }
                 }
-                if(CondState==null)
+                if (CondRepeat == null)
+                {
+                    CondRepeat = acondrepeat;
+                    AccumCondRepeat = new List<int>();
+                }
+                else
+                {
+                    if (acondrepeat != null)
+                    {
+                        AccumCondRepeat.AddRange(CondRepeat);
+                        CondRepeat = acondrepeat;
+                    }
+                }
+                if (CondState==null)
                 {
                     CondState = acondstate;
                     AccumCondState = new List<List<Dictionary<string, double>>>();
@@ -539,7 +555,7 @@ namespace VLabAnalysis
             List<double> lfpstarttime;
             List<double> digintime;
             Dictionary<string, List<int>> digin;
-            int[] aq;object CondIndex, CondState;
+            int[] aq;object CondIndex,CondRepeat, CondState;
             bool isanalysisqueue;
 
             while (true)
@@ -556,9 +572,9 @@ namespace VLabAnalysis
                     IsAnalysisDone = true;
                     continue;
                 }
-                if (isanalysisqueue && condtest.ContainsKey( CONDTESTPARAM.CondIndex)
-                    && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex) && condtest.ContainsKey( CONDTESTPARAM.CONDSTATE)
-                    && condtest[ CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState))
+                if (isanalysisqueue && condtest.ContainsKey( CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex) 
+                    && condtest.ContainsKey( CONDTESTPARAM.CONDSTATE) && condtest[ CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState)
+                    && condtest.ContainsKey(CONDTESTPARAM.CondRepeat) && condtest[CONDTESTPARAM.CondRepeat].TryDequeue(out CondRepeat))
                 {
                     if (GotoThreadEvent)
                     {
@@ -568,12 +584,12 @@ namespace VLabAnalysis
                     {
                         Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out digintime, out digin);
                         DataSet.Add(spike, uid, lfp, lfpstarttime, digintime, digin,
-                        (List<int>)CondIndex, (List<List<Dictionary<string, double>>>)CondState);
+                        (List<int>)CondIndex,(List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
                     }
                     else
                     {
                         DataSet.Add(null, null, null, null, null, null,
-                            (List<int>)CondIndex, (List<List<Dictionary<string, double>>>)CondState);
+                            (List<int>)CondIndex, (List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
                     }
 
                     if(GotoThreadEvent)

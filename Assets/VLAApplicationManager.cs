@@ -131,11 +131,11 @@ namespace VLabAnalysis
             }
             if (!config.ContainsKey(VLACFG.VisualizationDPI))
             {
-                config[VLACFG.VisualizationDPI] = 120f;
+                config[VLACFG.VisualizationDPI] = 120;
             }
             else
             {
-                config[VLACFG.VisualizationDPI] = config[VLACFG.VisualizationDPI].Convert<float>();
+                config[VLACFG.VisualizationDPI] = config[VLACFG.VisualizationDPI].Convert<int>();
             }
         }
 
