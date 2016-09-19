@@ -31,7 +31,7 @@ using MathNet.Numerics.Statistics;
 
 namespace VLabAnalysis
 {
-    public interface IAnalyzer:IDisposable
+    public interface IAnalyzer : IDisposable
     {
         int ID { get; set; }
         Signal Signal { get; set; }
@@ -166,6 +166,7 @@ namespace VLabAnalysis
             {
                 var latency = dataset.Ex.Latency;
                 var timerdriftspeed = dataset.Ex.TimerDriftSpeed;
+                var delay = dataset.Ex.Delay;
                 var st = dataset.spike[Signal.Channel - 1];
                 var uid = dataset.uid[Signal.Channel - 1];
                 var uuid = uid.Distinct().ToArray();
@@ -174,8 +175,8 @@ namespace VLabAnalysis
                     var ci = dataset.CondIndex[i];
                     var t1 = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString());
                     var t2 = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString());
-                    t1 = t1 + t1 * timerdriftspeed + latency + dataset.VLabZeroTime;
-                    t2 = t2 + t2 * timerdriftspeed + latency + dataset.VLabZeroTime;
+                    t1 = t1 + t1 * timerdriftspeed + latency + dataset.VLabZeroTime + delay;
+                    t2 = t2 + t2 * timerdriftspeed + latency + dataset.VLabZeroTime + delay;
                     if (!result.CondResponse.ContainsKey(ci))
                     {
                         result.CondResponse.Add(ci, new Dictionary<int, List<double>>());
