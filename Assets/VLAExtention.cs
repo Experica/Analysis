@@ -126,49 +126,45 @@ namespace VLabAnalysis
             return x.StandardDeviation() / Math.Sqrt(x.Count);
         }
 
-        public static string GetFactorUnit(this string factorname,out List<bool> valuedim,string exid="")
+        public static List<string> GetFactorUnit(this string factorname,out List<bool> valuedim,string exid="")
         {
             valuedim = new List<bool> { true };
             switch (factorname)
             {
                 case "Diameter":
                 case "Ori":
-                    return factorname+" (Deg)";
+                    return new List<string> { factorname + " (Deg)" };
                 case "SpatialFreq":
-                    return factorname+" (Cycle/Deg)";
+                    return new List<string> { factorname + " (Cycle/Deg)" };
                 case "TemporalFreq":
-                    return factorname+ " (Cycle/Sec)";
+                    return new List<string> { factorname + " (Cycle/Sec)" };
                 case "PositionOffset":
                     if (exid.StartsWith("RF"))
                     {
                         if (exid.Contains('X'))
                         {
                             valuedim = new List<bool> { true, false, false };
-                            return factorname + "_X (Deg)";
                         }
                         else if (exid.Contains('Y'))
                         {
                             valuedim = new List<bool> { false, true, false };
-                            return factorname + "_Y (Deg)";
                         }
                         else if (exid.Contains('Z'))
                         {
                             valuedim = new List<bool> { false, false, true };
-                            return factorname + "_Z (Deg)";
                         }
                         else
                         {
                             valuedim = new List<bool> { true, true, false };
-                            return factorname + " (Deg)";
                         }
                     }
                     else
                     {
                         valuedim = new List<bool> { true, true, true };
-                        return factorname + " (Deg)";
                     }
+                    return new List<string> { factorname + "_X (Deg)", factorname + "_Y (Deg)", factorname + "_Z (Deg)" };
                 default:
-                    return factorname;
+                    return new List<string> { factorname };
             }
         }
 

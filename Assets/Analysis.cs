@@ -108,8 +108,8 @@ namespace VLabAnalysis
         public List<double> lfpstarttime;
         public List<double> digitalintime;
         public Dictionary<string, List<int>> digin;
-        public List<int> AccumCondIndex,CondIndex, AccumCondRepeat, CondRepeat;
-        public List<List<Dictionary<string, double>>> AccumCondState,CondState;
+        public List<int> AccumCondIndex, CondIndex, AccumCondRepeat, CondRepeat;
+        public List<List<Dictionary<string, double>>> AccumCondState, CondState;
 
         double vlabzerotime = -1;
         Experiment ex;
@@ -144,11 +144,11 @@ namespace VLabAnalysis
         }
         #endregion
 
-        int GetCount(Dictionary<string,List<object>> cond)
+        int GetCount(Dictionary<string, List<object>> cond)
         {
-            if(cond!=null)
+            if (cond != null)
             {
-                foreach(var c in cond.Values)
+                foreach (var c in cond.Values)
                 {
                     return c.Count;
                 }
@@ -241,7 +241,7 @@ namespace VLabAnalysis
                     // we define the falling edge time of the first TTL pulse as 
                     // the first digital event time which mark the start of the experiment
                     // timer in VLab, so we can align signal time and VLab time. 
-                    if(adigintime!=null&&adigintime.Count>1)
+                    if (adigintime != null && adigintime.Count > 1)
                     {
                         digitalintime = adigintime;
                         digin = adigin;
@@ -285,7 +285,7 @@ namespace VLabAnalysis
                         CondRepeat = acondrepeat;
                     }
                 }
-                if (CondState==null)
+                if (CondState == null)
                 {
                     CondState = acondstate;
                     AccumCondState = new List<List<Dictionary<string, double>>>();
@@ -305,42 +305,42 @@ namespace VLabAnalysis
         {
             //lock (datalock)
             //{
-                switch (signaltype)
-                {
-                    case SignalType.Spike:
-                        if (spike == null)
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            var st = spike[electrodid];
-                            if (st == null || st.Count == 0)
-                            {
-                                return false;
-                            }
-                            return true;
-                        }
-                    case SignalType.LFP:
-                        if (lfp == null)
-                        {
-                            return false;
-                        }
-                        else
-                        {
-                            return false;
-                        }
-                    default:
+            switch (signaltype)
+            {
+                case SignalType.Spike:
+                    if (spike == null)
+                    {
                         return false;
-                }
+                    }
+                    else
+                    {
+                        var st = spike[electrodid];
+                        if (st == null || st.Count == 0)
+                        {
+                            return false;
+                        }
+                        return true;
+                    }
+                case SignalType.LFP:
+                    if (lfp == null)
+                    {
+                        return false;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                default:
+                    return false;
+            }
             //}
         }
     }
 
-    public interface IAnalysis
+    public interface IAnalysis : IDisposable
     {
         bool SearchSignal();
-        bool SearchSignal(SignalSource sigsys);
+        bool SearchSignal(SignalSource source);
         ISignal Signal { get; }
         void Reset();
         int ClearDataPerAnalysis { get; set; }
@@ -349,10 +349,13 @@ namespace VLabAnalysis
         void CondTestEnqueue(CONDTESTPARAM name, object value);
         void ExperimentEndEnqueue();
         bool IsAnalysisDone { get; set; }
+        void StartAnalysis();
+        void StopAnalysis();
     }
 
-    public class DotNetAnalysis : IAnalysis, IDisposable
+    public class DotNetAnalysis : IAnalysis
     {
+        bool disposed;
         ISignal signal;
         ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
         int cleardataperanalysis;
@@ -389,10 +392,16 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
+            if (disposed) return;
             if (disposing)
             {
-                //signal.Dispose();
             }
+            StopAnalysis();
+            if (signal != null)
+            {
+                signal.Dispose();
+            }
+            disposed = true;
         }
 
         public bool SearchSignal()
@@ -456,7 +465,7 @@ namespace VLabAnalysis
                 }
                 else
                 {
-                    if(Signal!=null)
+                    if (Signal != null)
                     {
                         Signal.Reset();
                     }
@@ -492,6 +501,14 @@ namespace VLabAnalysis
             set { lock (lockobj) { isanalysisdone = value; } }
         }
         #endregion
+
+        public void StartAnalysis()
+        {
+        }
+
+        public void StopAnalysis()
+        {
+        }
 
         public void CondTestEnqueue(CONDTESTPARAM name, object value)
         {
@@ -533,7 +550,7 @@ namespace VLabAnalysis
 
         public void ExperimentEndEnqueue()
         {
-            lock(datalock)
+            lock (datalock)
             {
                 if (analysisthread != null)
                 {
@@ -555,25 +572,25 @@ namespace VLabAnalysis
             List<double> lfpstarttime;
             List<double> digintime;
             Dictionary<string, List<int>> digin;
-            int[] aq;object CondIndex,CondRepeat, CondState;
+            int[] aq; object CondIndex, CondRepeat, CondState;
             bool isanalysisqueue;
 
             while (true)
             {
-                ThreadEvent:
+            ThreadEvent:
                 lock (eventlock)
                 {
                     GotoThreadEvent = false;
                     analysisthreadevent.WaitOne();
                 }
                 isanalysisqueue = analysisqueue.TryDequeue(out aq);
-                if(isanalysisqueue&&aq[0]<0)
+                if (isanalysisqueue && aq[0] < 0)
                 {
                     IsAnalysisDone = true;
                     continue;
                 }
-                if (isanalysisqueue && condtest.ContainsKey( CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex) 
-                    && condtest.ContainsKey( CONDTESTPARAM.CONDSTATE) && condtest[ CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState)
+                if (isanalysisqueue && condtest.ContainsKey(CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex)
+                    && condtest.ContainsKey(CONDTESTPARAM.CONDSTATE) && condtest[CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState)
                     && condtest.ContainsKey(CONDTESTPARAM.CondRepeat) && condtest[CONDTESTPARAM.CondRepeat].TryDequeue(out CondRepeat))
                 {
                     if (GotoThreadEvent)
@@ -584,7 +601,7 @@ namespace VLabAnalysis
                     {
                         Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out digintime, out digin);
                         DataSet.Add(spike, uid, lfp, lfpstarttime, digintime, digin,
-                        (List<int>)CondIndex,(List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
+                        (List<int>)CondIndex, (List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
                     }
                     else
                     {
@@ -592,20 +609,20 @@ namespace VLabAnalysis
                             (List<int>)CondIndex, (List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
                     }
 
-                    if(GotoThreadEvent)
+                    if (GotoThreadEvent)
                     {
                         goto ThreadEvent;
                     }
                     foreach (var a in Signal.Analyzers.Values)
                     {
                         a.Analyze(DataSet);
-                        if(a.Controller!=null)
+                        if (a.Controller != null)
                         {
                             a.Controller.Control(a.Result);
                         }
                     }
                     //Parallel.ForEach(Signal.Analyzers,(i)=>i.Analysis(DataSet));
-                    if(GotoThreadEvent)
+                    if (GotoThreadEvent)
                     {
                         goto ThreadEvent;
                     }
@@ -638,8 +655,6 @@ namespace VLabAnalysis
                 }
             }
         }
-
-        
         #endregion
 
         public ISignal Signal
@@ -655,7 +670,7 @@ namespace VLabAnalysis
             }
         }
 
-        
+
     }
 
 }

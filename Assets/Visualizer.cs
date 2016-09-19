@@ -19,7 +19,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using System.Drawing;
+using UnityEngine;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Linq;
@@ -36,52 +36,80 @@ using MathNet.Numerics.Interpolation;
 
 namespace VLabAnalysis
 {
-    public interface IVisualizer
+    public interface IVisualizer : IDisposable
     {
         void Visualize(IVisualizeResult result);
         void Reset();
         void Save(string path, int width, int height, int dpi);
+        void ShowInFront();
+        Vector2 Position { get; set; }
     }
 
     public class D2Visualizer : Form, IVisualizer
     {
-        PlotView plot = new PlotView();
+        bool disposed;
+        PlotView plotcontrol = new PlotView();
         PlotModel pm = new PlotModel();
-        Dictionary<int, OxyColor> unitcolor = VLAExtention.GetUnitColors();
-
+        Dictionary<int, OxyColor> colors = VLAExtention.GetUnitColors();
         bool isawake, isstart;
 
-        public D2Visualizer(int width = 400, int height = 350)
+
+        public D2Visualizer(int width = 400, int height = 380)
         {
-            plot.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom;
-            plot.Dock = DockStyle.Fill;
+            plotcontrol.Dock = DockStyle.Fill;
             Width = width;
             Height = height;
 
-            //var ca = new LinearColorAxis()
-            //{
-            //    Palette = OxyPalettes.BlueWhiteRed(256),
-            //    //Position = AxisPosition.Right,
-            //    PositionTier = 1
-            //};
-            //pm.Axes.Add(ca);
-            pm.LegendPosition = LegendPosition.RightTop;
+            pm.LegendPosition = LegendPosition.TopRight;
             pm.LegendPlacement = LegendPlacement.Inside;
-            
-            plot.Model = pm;
-            Controls.Add(plot);
+            plotcontrol.Model = pm;
+            Controls.Add(plotcontrol);
         }
 
         ~D2Visualizer()
         {
-            Close();
+            Dispose(false);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposed) return;
+            if (disposing)
+            {
+            }
+            base.Dispose(disposing);
+            disposed = true;
         }
 
         public void Reset()
         {
-            plot.Visible = false;
+            plotcontrol.Visible = false;
             isawake = false;
             isstart = false;
+        }
+
+        public void ShowInFront()
+        {
+            WindowState = FormWindowState.Minimized;
+            Show();
+            WindowState = FormWindowState.Normal;
+        }
+
+        public Vector2 Position
+        {
+            get
+            {
+                return new Vector2(Location.X, Location.Y);
+            }
+
+            set
+            {
+                if (StartPosition != FormStartPosition.Manual)
+                {
+                    StartPosition = FormStartPosition.Manual;
+                }
+                Location = new System.Drawing.Point(Convert.ToInt32(value.x), Convert.ToInt32(value.y));
+            }
         }
 
         public void Visualize(IVisualizeResult result)
@@ -103,9 +131,9 @@ namespace VLabAnalysis
                 {
                     pm.PlotType = PlotType.XY;
                 }
-                Text = "Signal_" + result.SignalID;
-                pm.Title = "S" + result.SignalID + "_" + result.ExperimentID;
-                plot.Visible = true;
+                Text = "Channel_" + result.SignalID;
+                pm.Title = "Ch" + result.SignalID + "_" + result.ExperimentID;
+                plotcontrol.Visible = true;
                 isawake = true;
             }
 
@@ -133,19 +161,24 @@ namespace VLabAnalysis
         {
             pm.Series.Clear();
             var ylo = new List<double>(); var yhi = new List<double>();
-            var us = y.Keys.ToList();us. Sort();
+            var us = y.Keys.ToList(); us.Sort();
             foreach (var u in us)
             {
-                var line = new LineSeries();
-                line.StrokeThickness = 2;
-                line.Color = OxyColor.FromAColor(255, unitcolor[u]);
-                line.Title = "U" + u;
-                var error = new ScatterErrorSeries();
-                error.ErrorBarStopWidth = 2;
-                error.ErrorBarStrokeThickness = 1.5;
-                error.ErrorBarColor = OxyColor.FromAColor(180, unitcolor[u]);
-                error.MarkerSize = 0;
-
+                var line = new LineSeries()
+                {
+                    Title = "U" + u,
+                    StrokeThickness = 2,
+                    Color = colors[u],
+                    TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
+                };
+                var error = new ScatterErrorSeries()
+                {
+                    ErrorBarStopWidth = 2,
+                    ErrorBarStrokeThickness = 1.5,
+                    ErrorBarColor = OxyColor.FromAColor(180, colors[u]),
+                    MarkerSize = 0,
+                    TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
+                };
                 for (var i = 0; i < x.Length; i++)
                 {
                     error.Points.Add(new ScatterErrorPoint(x[i], y[u][0, i], 0, yse[u][0, i]));
@@ -153,7 +186,6 @@ namespace VLabAnalysis
                     ylo.Add(y[u][0, i] - yse[u][0, i]);
                     yhi.Add(y[u][0, i] + yse[u][0, i]);
                 }
-
                 pm.Series.Add(line);
                 pm.Series.Add(error);
             }
@@ -161,14 +193,13 @@ namespace VLabAnalysis
             if (pm.DefaultYAxis != null)
             {
                 var x0 = x.First(); var x1 = x.Last();
-                pm.DefaultXAxis.Maximum = x1+0.01*(x1-x0);
-                pm.DefaultXAxis.Minimum = x0-0.01*(x1-x0);
+                pm.DefaultXAxis.Maximum = x1 + 0.01 * (x1 - x0);
+                pm.DefaultXAxis.Minimum = x0 - 0.01 * (x1 - x0);
                 pm.DefaultYAxis.Maximum = yhi.Max();
-                pm.DefaultYAxis.Minimum =Math.Min(0, ylo.Min());
+                pm.DefaultYAxis.Minimum = Math.Min(0, ylo.Min());
                 pm.DefaultXAxis.Reset();
                 pm.DefaultYAxis.Reset();
             }
-
             if (!isstart)
             {
                 if (pm.DefaultXAxis != null)
@@ -177,14 +208,13 @@ namespace VLabAnalysis
                     pm.DefaultXAxis.MinimumPadding = 0.005;
                     pm.DefaultYAxis.MaximumPadding = 0.005;
                     pm.DefaultYAxis.MinimumPadding = 0.005;
-                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
                     pm.DefaultXAxis.Title = xtitle;
-                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
+                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
                     pm.DefaultYAxis.Title = ytitle;
                     isstart = true;
                 }
             }
-
             pm.InvalidatePlot(true);
         }
 
@@ -195,56 +225,27 @@ namespace VLabAnalysis
             var us = y.Keys.ToList(); us.Sort();
             foreach (var u in us)
             {
-                var d = y[u];
-                var heat = new HeatMapSeries();
-                heat.Data = y[u];
-                heat.Interpolate = true;
-                heat.X0 = x1min;
-                heat.X1 = x1max;
-                heat.Y0 = x2min;
-                heat.Y1 = x2max;
-
-                var ymin = y[u].Min2D();var ymax = y[u].Max2D();var yrange = Math.Max(1, ymax - ymin);
+                var ymin = y[u].Min2D(); var ymax = y[u].Max2D(); var yrange = Math.Max(1, ymax - ymin);
                 var contour = new ContourSeries()
                 {
-                    Data = y[u],
-                    ContourColors = ArrayBuilder.CreateVector(0.4, 0.8, 0.2).Select(i => OxyColor.FromAColor(Convert.ToByte(i * 255), unitcolor[u])).ToArray(),
-                    LineStyle = LineStyle.Solid,
-                    ContourLevels = ArrayBuilder.CreateVector(ymin + 0.6 * yrange, ymin + 0.8 * yrange, 0.1 * yrange),
-                    FontSize = 8,
-                    LabelStep = 3,
-                    TextColor = unitcolor[u],
                     Title = "U" + u,
+                    Data = y[u],
+                    ColumnCoordinates = x1,
+                    RowCoordinates = x2,
+                    LineStyle = LineStyle.Solid,
+                    StrokeThickness = 2,
+                    ContourLevels = new double[] { ymin + 0.6 * yrange, ymin + 0.7 * yrange, ymin + 0.8 * yrange },
+                    ContourColors = new OxyColor[] { OxyColor.FromAColor(102, colors[u]), OxyColor.FromAColor(153, colors[u]), OxyColor.FromAColor(204, colors[u]) },
+                    LabelStep = 3,
+                    TextColor = colors[u],
+                    FontSize = 9,
                     LabelFormatString = "F0",
                     LabelBackground = OxyColors.Undefined,
-                    StrokeThickness = 2,
-                    ColumnCoordinates =  x1,
-                    RowCoordinates = x2,
+                    TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}\nZ: {6:0.0}"
                 };
-
-                
-                //pm.Series.Add(heat);
                 pm.Series.Add(contour);
             }
 
-            
-
-            if (!isstart)
-            {
-                if (pm.DefaultXAxis != null)
-                {
-                    pm.DefaultXAxis.MaximumPadding = 0.005;
-                    pm.DefaultXAxis.MinimumPadding = 0.005;
-                    pm.DefaultYAxis.MaximumPadding = 0.005;
-                    pm.DefaultYAxis.MinimumPadding = 0.005;
-                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                    pm.DefaultXAxis.Title = x1title;
-                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Inside;
-                    pm.DefaultYAxis.Title = x2title;
-                    //pm.PlotAreaBackground = OxyColor.FromRgb(230, 230, 230);
-                    isstart = true;
-                }
-            }
             if (pm.DefaultYAxis != null)
             {
                 pm.DefaultXAxis.Maximum = x1max;
@@ -253,6 +254,21 @@ namespace VLabAnalysis
                 pm.DefaultYAxis.Minimum = x2min;
                 pm.DefaultXAxis.Reset();
                 pm.DefaultYAxis.Reset();
+            }
+            if (!isstart)
+            {
+                if (pm.DefaultXAxis != null)
+                {
+                    pm.DefaultXAxis.MaximumPadding = 0;
+                    pm.DefaultXAxis.MinimumPadding = 0;
+                    pm.DefaultYAxis.MaximumPadding = 0;
+                    pm.DefaultYAxis.MinimumPadding = 0;
+                    pm.DefaultXAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
+                    pm.DefaultXAxis.Title = x1title;
+                    pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
+                    pm.DefaultYAxis.Title = x2title;
+                    isstart = true;
+                }
             }
             pm.InvalidatePlot(true);
         }

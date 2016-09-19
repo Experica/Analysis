@@ -31,7 +31,7 @@ using MathNet.Numerics.Statistics;
 
 namespace VLabAnalysis
 {
-    public interface IAnalyzer
+    public interface IAnalyzer:IDisposable
     {
         int ID { get; set; }
         Signal Signal { get; set; }
@@ -45,6 +45,7 @@ namespace VLabAnalysis
 
     public class MFRAnalyzer : IAnalyzer
     {
+        bool disposed;
         int id;
         Signal signal;
         IVisualizer visualizer;
@@ -52,10 +53,10 @@ namespace VLabAnalysis
         ConcurrentQueue<IVisualizeResult> visualizeresultqueue = new ConcurrentQueue<IVisualizeResult>();
         IResult result;
         Dictionary<string, List<bool>> factorvaluedim = new Dictionary<string, List<bool>>();
-        Dictionary<string, string> factorunit = new Dictionary<string, string>();
+        Dictionary<string, List<string>> factorunit = new Dictionary<string, List<string>>();
 
 
-        public MFRAnalyzer(Signal s) : this(s, new D2Visualizer(), new OptimalController()) { }
+        public MFRAnalyzer(Signal s) : this(s, new D2Visualizer(), new OPTController()) { }
 
         public MFRAnalyzer(Signal s, IVisualizer v, IController c)
         {
@@ -63,6 +64,37 @@ namespace VLabAnalysis
             visualizer = v;
             controller = c;
         }
+
+        ~MFRAnalyzer()
+        {
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                }
+                if (visualizer != null)
+                {
+                    visualizer.Dispose();
+                }
+                if (controller != null)
+                {
+                    controller.Dispose();
+                }
+                disposed = true;
+            }
+        }
+
 
         public Signal Signal
         {
@@ -107,13 +139,13 @@ namespace VLabAnalysis
             }
             factorvaluedim.Clear();
             factorunit.Clear();
-            if (visualizer != null)
-            {
-                visualizer.Reset();
-            }
             if (controller != null)
             {
                 controller.Reset();
+            }
+            if (visualizer != null)
+            {
+                visualizer.Reset();
             }
         }
 
@@ -121,7 +153,7 @@ namespace VLabAnalysis
         {
             if (result == null)
             {
-                result = new MFRResult(Signal.SignalID, dataset.Ex.ID);
+                result = new MFRResult(Signal.Channel, dataset.Ex.ID);
                 result.Cond = dataset.Ex.Cond;
                 foreach (var f in result.Cond.Keys)
                 {
@@ -134,8 +166,8 @@ namespace VLabAnalysis
             {
                 var latency = dataset.Ex.Latency;
                 var timerdriftspeed = dataset.Ex.TimerDriftSpeed;
-                var st = dataset.spike[Signal.SignalID - 1];
-                var uid = dataset.uid[Signal.SignalID - 1];
+                var st = dataset.spike[Signal.Channel - 1];
+                var uid = dataset.uid[Signal.Channel - 1];
                 var uuid = uid.Distinct().ToArray();
                 for (var i = 0; i < dataset.CondIndex.Count; i++)
                 {
@@ -146,18 +178,15 @@ namespace VLabAnalysis
                     t2 = t2 + t2 * timerdriftspeed + latency + dataset.VLabZeroTime;
                     if (!result.CondResponse.ContainsKey(ci))
                     {
-                        result.CondResponse[ci] = new Dictionary<int, List<double>>();
+                        result.CondResponse.Add(ci, new Dictionary<int, List<double>>());
                     }
                     foreach (var u in uuid)
                     {
-                        if (result.CondResponse[ci].ContainsKey(u))
+                        if (!result.CondResponse[ci].ContainsKey(u))
                         {
-                            result.CondResponse[ci][u].Add(st.GetUnitSpike(uid, u).MFR(t1, t2));
+                            result.CondResponse[ci].Add(u, new List<double>());
                         }
-                        else
-                        {
-                            result.CondResponse[ci][u] = new List<double> { st.GetUnitSpike(uid, u).MFR(t1, t2) };
-                        }
+                        result.CondResponse[ci][u].Add(st.GetUnitSpike(uid, u).MFR(t1, t2));
                     }
                     result.CondRepeat[ci] = dataset.CondRepeat[i];
                 }
@@ -170,27 +199,24 @@ namespace VLabAnalysis
                     var vdn = valuedimidx.Count;
                     var x = result.CondResponse.Keys.Select(i => fl.Value[i]).GetFactorLevel<double>(valuedim);
                     var y = new Dictionary<int, List<double>>(); var yse = new Dictionary<int, List<double>>();
-                    foreach(var c in result.CondResponse.Keys)
+                    foreach (var c in result.CondResponse.Keys)
                     {
                         var v = result.CondResponse[c];
-                        var cr = result.CondRepeat[c];
+                        var r = result.CondRepeat[c];
                         foreach (var u in v.Keys)
                         {
-                            var uv = v[u];var uvn = uv.Count;
-                            if(uvn<cr)
+                            var uv = v[u]; var uvn = uv.Count;
+                            if (uvn < r)
                             {
-                                uv.AddRange(new double[cr - uvn]);
+                                uv.AddRange(new double[r - uvn]);
                             }
-                            if (y.ContainsKey(u))
+                            if (!y.ContainsKey(u))
                             {
-                                y[u].Add(uv.Mean());
-                                yse[u].Add(uv.SEM());
+                                y.Add(u, new List<double>());
+                                yse.Add(u, new List<double>());
                             }
-                            else
-                            {
-                                y[u] = new List<double> { uv.Mean() };
-                                yse[u] = new List<double> { uv.SEM() };
-                            }
+                            y[u].Add(uv.Mean());
+                            yse[u].Add(uv.SEM());
                         }
                     }
                     if (vdn == 1)
@@ -207,7 +233,7 @@ namespace VLabAnalysis
                             }
                         }
                         result.X = new List<double[]> { x1 }; result.Y = sy; result.YSE = syse;
-                        result.XUnit = new List<string> { factorunit[fl.Key] };
+                        result.XUnit = new List<string> { factorunit[fl.Key][valuedimidx[0]] };
                         result.YUnit = result.Type.GetResponseUnit();
                     }
                     else if (vdn == 2)
@@ -225,7 +251,7 @@ namespace VLabAnalysis
                             }
                         }
                         result.X = new List<double[]> { ux1.ToArray(), ux2.ToArray() }; result.Y = sy; result.YSE = syse;
-                        result.XUnit = new List<string> { factorunit[fl.Key], factorunit[fl.Key] };
+                        result.XUnit = new List<string> { factorunit[fl.Key][valuedimidx[0]], factorunit[fl.Key][valuedimidx[1]] };
                         result.YUnit = result.Type.GetResponseUnit();
                     }
                     else
@@ -241,20 +267,20 @@ namespace VLabAnalysis
                 {
 
                 }
-
                 visualizeresultqueue.Enqueue(result.GetVisualizeResult(VisualizeResultType.D2VisualizeResult));
             }
         }
 
         bool Prepare(DataSet dataset)
         {
-            if (signal.SignalType == SignalType.Spike)
+            if (signal.Type == SignalType.Spike)
             {
                 return true;
-                return dataset.IsData(signal.SignalID, signal.SignalType);
+                return dataset.IsData(signal.Channel, signal.Type);
             }
             return false;
         }
+
     }
 
     public interface IResult
@@ -264,7 +290,7 @@ namespace VLabAnalysis
         int SignalID { get; }
         string ExperimentID { get; }
         Dictionary<int, Dictionary<int, List<double>>> CondResponse { get; }
-        Dictionary<int,int> CondRepeat { get; }
+        Dictionary<int, int> CondRepeat { get; }
         Dictionary<string, List<object>> Cond { get; set; }
         List<double[]> X { get; set; }
         Dictionary<int, double[,]> Y { get; set; }
@@ -290,7 +316,7 @@ namespace VLabAnalysis
         Dictionary<int, double[,]> y = new Dictionary<int, double[,]>();
         Dictionary<int, double[,]> yse = new Dictionary<int, double[,]>();
         List<string> xunit = new List<string>();
-        string yunit = "";
+        string yunit = "Response (spike/s)";
 
 
         public MFRResult(int signalid = 1, string experimentid = "")
@@ -301,32 +327,33 @@ namespace VLabAnalysis
 
         public IResult Clone()
         {
-            var copy = (MFRResult)MemberwiseClone();
-            var copymfr = new Dictionary<int, Dictionary<int, List<double>>>();
-            foreach (var i in mfr.Keys)
+            var clone = (MFRResult)MemberwiseClone();
+            var cmfr = new Dictionary<int, Dictionary<int, List<double>>>(); var ccondrepeat = new Dictionary<int, int>();
+            foreach (var c in mfr.Keys)
             {
                 var v = new Dictionary<int, List<double>>();
-                foreach (var u in mfr[i].Keys)
+                foreach (var u in mfr[c].Keys)
                 {
-                    v[u] = mfr[i][u].ToList();
+                    v[u] = mfr[c][u].ToList();
                 }
-                copymfr[i] = v;
+                cmfr[c] = v;
+                ccondrepeat[c] = condrepeat[c];
             }
-            copy.mfr = copymfr;
-            var copyx = new List<double[]>(); var copyxunit = new List<string>();
-            var copyy = new Dictionary<int, double[,]>(); var copyyse = new Dictionary<int, double[,]>();
+            clone.mfr = cmfr; clone.condrepeat = ccondrepeat;
+            var cx = new List<double[]>(); var cxunit = new List<string>();
+            var cy = new Dictionary<int, double[,]>(); var cyse = new Dictionary<int, double[,]>();
             for (var i = 0; i < x.Count; i++)
             {
-                copyx.Add(x[i].ToArray());
-                copyxunit.Add(string.Copy(xunit[i]));
+                cx.Add(x[i].ToArray());
+                cxunit.Add(string.Copy(xunit[i]));
             }
             foreach (var u in y.Keys)
             {
-                copyy.Add(u, (double[,])y[u].Clone());
-                copyyse.Add(u, (double[,])yse[u].Clone());
+                cy.Add(u, (double[,])y[u].Clone());
+                cyse.Add(u, (double[,])yse[u].Clone());
             }
-            copy.x = copyx; copy.xunit = copyxunit; copy.yunit = string.Copy(yunit); copy.y = copyy; copy.yse = copyyse;
-            return copy;
+            clone.x = cx; clone.xunit = cxunit; clone.yunit = string.Copy(yunit); clone.y = cy; clone.yse = cyse;
+            return clone;
         }
 
         public IVisualizeResult GetVisualizeResult(VisualizeResultType type)

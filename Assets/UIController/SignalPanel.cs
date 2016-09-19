@@ -56,7 +56,7 @@ namespace VLabAnalysis
 
         void AddSignalView()
         {
-            foreach (var e in uicontroller.alsmanager.als.Signal.SignalIDs)
+            foreach (var e in uicontroller.alsmanager.als.Signal.Channels)
             {
                 AddElectrodePanel(e);
             }

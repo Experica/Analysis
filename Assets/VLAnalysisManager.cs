@@ -39,14 +39,14 @@ namespace VLabAnalysis
 
         void Start()
         {
-            var asn = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.AnalysisSystem];
-            var cdpa = (int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis];
-            als = asn.GetAnalysisSystem(cdpa);
+            var das = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.AnalysisSystem];
+            als = das.GetAnalysisSystem((int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis]);
         }
 
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
+            if (als == null) return;
             als.Reset();
             if (als.Signal != null)
             {
@@ -57,6 +57,7 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyStopExperiment()
         {
+            if (als == null) return;
             if (als.Signal != null)
             {
                 als.Signal.StopCollectData(true);
@@ -67,6 +68,7 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyPauseExperiment()
         {
+            if (als == null) return;
             if (als.Signal != null)
             {
                 als.Signal.StopCollectData(true);
@@ -76,6 +78,7 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyResumeExperiment()
         {
+            if (als == null) return;
             if (als.Signal != null)
             {
                 als.Signal.StartCollectData(false);
@@ -85,12 +88,13 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyExperiment(byte[] value)
         {
+            if (als == null) return;
             var ex = VLMsgPack.ExSerializer.Unpack(new MemoryStream(value));
-            if(ex.Cond!=null&&ex.Cond.Count>0)
+            if (ex.Cond != null && ex.Cond.Count > 0)
             {
-                foreach(var fl in ex.Cond.Values)
+                foreach (var fl in ex.Cond.Values)
                 {
-                    for(var i=0;i<fl.Count;i++)
+                    for (var i = 0; i < fl.Count; i++)
                     {
                         fl[i] = fl[i].MsgPackObjectToObject();
                     }
@@ -102,8 +106,9 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyCondTest(CONDTESTPARAM name, byte[] value)
         {
+            if (als == null) return;
             object v;
-            switch(name)
+            switch (name)
             {
                 case CONDTESTPARAM.CondRepeat:
                 case CONDTESTPARAM.CondIndex:
@@ -122,17 +127,19 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyCondTestEnd(double time)
         {
+            if (als == null) return;
             als.CondTestEndEnqueue(time);
         }
 
         [Command]
         public void CmdNotifyUpdate()
         {
-
+            if (als == null) return;
         }
 
         public void OnClientDisconnect()
         {
+            if (als == null) return;
             if (als.Signal != null)
             {
                 als.Signal.StopCollectData(true);
@@ -141,14 +148,15 @@ namespace VLabAnalysis
 
         void Update()
         {
-            if(als.Signal!=null&&als.Signal.Analyzers!=null)
+            if (als == null) return;
+            if (als.Signal != null && als.Signal.Analyzers != null)
             {
                 foreach (var a in als.Signal.Analyzers.Values)
                 {
-                    if(a.Controller!=null)
+                    if (a.Controller != null)
                     {
-                        ICommand command;
-                        if (a.Controller.CommandQueue.TryDequeue(out command))
+                        IControlResult command;
+                        if (a.Controller.ControlResultQueue.TryDequeue(out command))
                         {
                             CmdNotifyUpdate();
                         }
@@ -159,6 +167,8 @@ namespace VLabAnalysis
 
         void LateUpdate()
         {
+            if (als == null) return;
+            var isfront = Input.GetButton("ShowInFront"); var isalign = Input.GetButton("Align");
             if (als.Signal != null && als.Signal.Analyzers != null)
             {
                 if (als.IsAnalysisDone)
@@ -166,48 +176,54 @@ namespace VLabAnalysis
                     var datapath = als.DataSet.Ex.DataPath;
                     var datadir = Path.GetDirectoryName(datapath);
                     var dataname = Path.GetFileNameWithoutExtension(datapath);
-                    int width = (int)uicontroller.appmanager.config[VLACFG.VisualizationWidth];
-                    int height = (int)uicontroller.appmanager.config[VLACFG.VisualizationHeight];
-                    int dpi = (int)uicontroller.appmanager.config[VLACFG.VisualizationDPI];
-                    foreach (var a in als.Signal.Analyzers.Values)
+                    int width = (int)uicontroller.appmanager.config[VLACFG.PlotExportWidth];
+                    int height = (int)uicontroller.appmanager.config[VLACFG.PlotExportHeight];
+                    int dpi = (int)uicontroller.appmanager.config[VLACFG.PlotExportDPI];
+                    foreach (var i in als.Signal.Analyzers.Keys.ToList())
                     {
+                        IAnalyzer a;
+                        if (als.Signal.Analyzers.TryGetValue(i, out a))
+                        {
                             if (a.Visualizer != null)
                             {
-                            var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name
-                                + "_S" + a.Signal.SignalID;
-                            var filedir = Path.Combine(datadir, "S" + a.Signal.SignalID);
-                            if(!Directory.Exists(filedir))
-                            {
-                                Directory.CreateDirectory(filedir);
+                                var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name + "_Ch" + a.Signal.Channel;
+                                var filedir = Path.Combine(datadir, "Ch" + a.Signal.Channel);
+                                if (!Directory.Exists(filedir))
+                                {
+                                    Directory.CreateDirectory(filedir);
+                                }
+                                a.Visualizer.Save(Path.Combine(filedir, filename), width, height, dpi);
                             }
-                            a.Visualizer.Save(Path.Combine(filedir,filename) ,width,height,dpi);
-                            }
+                        }
                     }
                     als.IsAnalysisDone = false;
                 }
                 else
                 {
-                    //for (var i = 0; i < als.Signal.Analyzers.Count; i++)
-                    //{
-                    //    var a = als.Signal.Analyzers.ElementAt(i).Value;
-                    //    IVisualizeResult result;
-                    //    if (a.VisualizeResultQueue.TryDequeue(out result))
-                    //    {
-                    //        if (a.Visualizer != null)
-                    //        {
-                    //            a.Visualizer.Visualize(result);
-                    //        }
-                    //    }
-                    //}
-                    foreach (var i in als.Signal.Analyzers.Keys.ToArray())
+                    var cn = 4f;
+                    if (isalign)
+                    {
+                        cn = Mathf.Floor(Screen.currentResolution.width / (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth]);
+                    }
+                    foreach (var i in als.Signal.Analyzers.Keys.ToList())
                     {
                         IAnalyzer a;
                         if (als.Signal.Analyzers.TryGetValue(i, out a))
                         {
-                            IVisualizeResult vr;
-                            if (a.VisualizeResultQueue.TryDequeue(out vr))
+                            if (a.Visualizer != null)
                             {
-                                if (a.Visualizer != null)
+                                if (isfront)
+                                {
+                                    if (isalign)
+                                    {
+                                        var ci = (a.Signal.Channel - 1) % cn; var ri = Mathf.Floor((a.Signal.Channel - 1) / cn);
+                                        a.Visualizer.Position = new Vector2(ci * (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth],
+                                            ri * (int)uicontroller.appmanager.config[VLACFG.VisualizerHeight]);
+                                    }
+                                    a.Visualizer.ShowInFront();
+                                }
+                                IVisualizeResult vr;
+                                if (a.VisualizeResultQueue.TryDequeue(out vr))
                                 {
                                     a.Visualizer.Visualize(vr);
                                 }

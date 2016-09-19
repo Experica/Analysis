@@ -35,9 +35,11 @@ namespace VLabAnalysis
         AnalysisSystem,
         AddSpikeAnalysisWhenSignalOnLine,
         SaveVisualizationWhenExperimentStop,
-        VisualizationWidth,
-        VisualizationHeight,
-        VisualizationDPI
+        VisualizerWidth,
+        VisualizerHeight,
+        PlotExportWidth,
+        PlotExportHeight,
+        PlotExportDPI
     }
 
     public class VLAApplicationManager : MonoBehaviour
@@ -113,29 +115,45 @@ namespace VLabAnalysis
             {
                 config[VLACFG.SaveVisualizationWhenExperimentStop] = config[VLACFG.SaveVisualizationWhenExperimentStop].Convert<bool>();
             }
-            if (!config.ContainsKey(VLACFG.VisualizationWidth))
+            if (!config.ContainsKey(VLACFG.VisualizerWidth))
             {
-                config[VLACFG.VisualizationWidth] = 1280;
+                config[VLACFG.VisualizerWidth] = 400;
             }
             else
             {
-                config[VLACFG.VisualizationWidth] = config[VLACFG.VisualizationWidth].Convert<int>();
+                config[VLACFG.VisualizerWidth] = config[VLACFG.VisualizerWidth].Convert<int>();
             }
-            if (!config.ContainsKey(VLACFG.VisualizationHeight))
+            if (!config.ContainsKey(VLACFG.VisualizerHeight))
             {
-                config[VLACFG.VisualizationHeight] = 854;
-            }
-            else
-            {
-                config[VLACFG.VisualizationHeight] = config[VLACFG.VisualizationHeight].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.VisualizationDPI))
-            {
-                config[VLACFG.VisualizationDPI] = 120;
+                config[VLACFG.VisualizerHeight] = 380;
             }
             else
             {
-                config[VLACFG.VisualizationDPI] = config[VLACFG.VisualizationDPI].Convert<int>();
+                config[VLACFG.VisualizerHeight] = config[VLACFG.VisualizerHeight].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.PlotExportWidth))
+            {
+                config[VLACFG.PlotExportWidth] = 1280;
+            }
+            else
+            {
+                config[VLACFG.PlotExportWidth] = config[VLACFG.PlotExportWidth].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.PlotExportHeight))
+            {
+                config[VLACFG.PlotExportHeight] = 854;
+            }
+            else
+            {
+                config[VLACFG.PlotExportHeight] = config[VLACFG.PlotExportHeight].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.PlotExportDPI))
+            {
+                config[VLACFG.PlotExportDPI] = 120;
+            }
+            else
+            {
+                config[VLACFG.PlotExportDPI] = config[VLACFG.PlotExportDPI].Convert<int>();
             }
         }
 
@@ -144,6 +162,10 @@ namespace VLabAnalysis
             if (uicontroller.netmanager.IsClientConnected())
             {
                 uicontroller.netmanager.StopClient();
+            }
+            if (uicontroller.alsmanager != null && uicontroller.alsmanager.als != null)
+            {
+                uicontroller.alsmanager.als.Dispose();
             }
             Yaml.WriteYaml(configpath, config);
         }

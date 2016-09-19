@@ -27,37 +27,63 @@ using System;
 
 namespace VLabAnalysis
 {
-    public interface IController
+    public interface IController : IDisposable
     {
         void Control(IResult result);
         void Reset();
-        ConcurrentQueue<ICommand> CommandQueue { get; }
+        ConcurrentQueue<IControlResult> ControlResultQueue { get; }
     }
 
-    public class OptimalController : IController
+    public class OPTController : IController
     {
-        ConcurrentQueue<ICommand> commandqueue= new ConcurrentQueue<ICommand>();
+        bool disposed;
+        ConcurrentQueue<IControlResult> controlresultqueue = new ConcurrentQueue<IControlResult>();
 
-        public ConcurrentQueue<ICommand> CommandQueue
+        ~OPTController()
         {
-            get { return commandqueue; }
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                }
+
+                disposed = true;
+            }
+        }
+
+        public ConcurrentQueue<IControlResult> ControlResultQueue
+        {
+            get { return controlresultqueue; }
         }
 
         public void Control(IResult result)
         {
         }
 
+
         public void Reset()
         {
         }
+
     }
 
-    public interface ICommand
+    public interface IControlResult
     {
 
     }
 
-    public class UpdateCommand:ICommand
+    public class UpdateCommand : IControlResult
     {
 
     }

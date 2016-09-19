@@ -55,27 +55,26 @@ namespace VLabAnalysis
 
     public struct Signal
     {
-        public int SignalID { get; set; }
-        public SignalType SignalType { get; set; }
+        public int Channel { get; set; }
+        public SignalType Type { get; set; }
 
-        public Signal(int id, SignalType type)
+        public Signal(int channel, SignalType type)
         {
-            SignalID = id;
-            SignalType = type;
+            Channel = channel;
+            Type = type;
         }
     }
 
     /// <summary>
-    /// Implementation should be thread safe because of
-    /// multi-thread and parallel analysis.
+    /// Implementation should be thread safe
     /// </summary>
     public interface ISignal : IDisposable
     {
         bool IsOnline { get; }
         SignalSource Source { get; }
-        int[] SignalIDs { get; }
-        SignalType[] GetSignalTypes(int signalid, bool ison);
-        bool IsSignalOn(int signalid, SignalType signaltype);
+        int[] Channels { get; }
+        SignalType[] GetSignalTypes(int channel, bool ison);
+        bool IsSignalOn(int channel, SignalType signaltype);
         void AddAnalyzer(IAnalyzer analyzer);
         void RemoveAnalyzer(int analyzerid);
         void StartCollectData(bool isclean);
@@ -140,14 +139,16 @@ namespace VLabAnalysis
         protected virtual void Dispose(bool disposing)
         {
             if (disposed) return;
-
             if (disposing)
             {
             }
             StopCollectData(false);
             xippmexdotnet.xippmex("close");
             xippmexdotnet.Dispose();
-
+            foreach(var a in idanalyzer.Values)
+            {
+                a.Dispose();
+            }
             disposed = true;
         }
 
@@ -201,12 +202,12 @@ namespace VLabAnalysis
             return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
         }
 
-        public SignalType[] GetSignalTypes(int signalid, bool ison = true)
+        public SignalType[] GetSignalTypes(int channel, bool ison = true)
         {
             SignalType[] v = null;
-            if (IsReady && SignalIDs.Contains(signalid))
+            if (IsReady && Channels.Contains(channel))
             {
-                var ts = xippmexdotnet.xippmex(1, "signal", signalid)[0] as MWCellArray;
+                var ts = xippmexdotnet.xippmex(1, "signal", channel)[0] as MWCellArray;
                 List<SignalType> vv = new List<SignalType>();
                 for (var i = 0; i < ts.NumberOfElements; i++)
                 {
@@ -216,16 +217,16 @@ namespace VLabAnalysis
             }
             if (v != null && ison)
             {
-                v = v.Where(i => IsSignalOn(signalid, i)).ToArray();
+                v = v.Where(i => IsSignalOn(channel, i)).ToArray();
             }
             return v;
         }
 
-        public bool IsSignalOn(int signalid, SignalType signaltype)
+        public bool IsSignalOn(int channel, SignalType signaltype)
         {
-            if (IsReady && SignalIDs.Contains(signalid))
+            if (IsReady && Channels.Contains(channel))
             {
-                var t = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", signalid, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
+                var t = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", channel, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
                 return t == 1 ? true : false;
             }
             return false;
@@ -277,7 +278,7 @@ namespace VLabAnalysis
             }
         }
 
-        public int[] SignalIDs
+        public int[] Channels
         {
             get
             {
@@ -307,7 +308,7 @@ namespace VLabAnalysis
         {
             get
             {
-                return SignalIDs != null;
+                return Channels != null;
             }
         }
 
@@ -502,7 +503,7 @@ namespace VLabAnalysis
 
         void CollectSpike()
         {
-            var sid = SignalIDs;
+            var sid = Channels;
             // xippmex works only when electrode ids are in (1,n) row vector of doubles
             var s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, sid.Length, sid, null, true, false));
             var s1 = s[1] as MWCellArray;
@@ -578,7 +579,7 @@ namespace VLabAnalysis
 
         void InitDataBuffer()
         {
-            var en = SignalIDs.Length;
+            var en = Channels.Length;
             spike = new List<double>[en];
             uid = new List<int>[en];
             for (var i = 0; i < en; i++)
