@@ -1,6 +1,6 @@
 AutoConnect: false
 AutoConnectTimeOut: 10
-ServerAddress: LocalHost
+ServerAddress: lyonlab-visual
 ClearDataPerAnalysis: 1
 AnalysisSystem: DotNet
 AddSpikeAnalysisWhenSignalOnLine: true

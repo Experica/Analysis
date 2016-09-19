@@ -36,28 +36,10 @@ Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\Syste
 Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Threading.dll into Unity Child Domain
 Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\YamlDotNet.dll (this message is harmless)
 Loading C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\YamlDotNet.dll into Unity Child Domain
-- Completed reload, in  0.063 seconds
+- Completed reload, in  0.061 seconds
 Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Core.dll (this message is harmless)
 Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.dll (this message is harmless)
 desktop: 1920x1080 60Hz; virtual: 3840x1330 at 0,-250
 <RI> Initializing input.
 XInput1_3.dll not found. Trying XInput9_1_0.dll instead...
 <RI> Input initialized.
-<RI> Initialized touch support.
-UnloadTime: 1.016075 ms
-Setting up 1 worker threads for Enlighten.
-GfxDevice: creating device client; threaded=1
-  Thread -> id: 1a30 -> priority: 1 
-GfxDevice: creating device client; threaded=1
-Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Configuration.dll (this message is harmless)
-Platform assembly: C:\Users\LyonLab\VLabAnalysis\VLabAnalysis_Data\Managed\System.Xml.dll (this message is harmless)
-Log: cannot connect after 10 attempt address {::1:8800}
-Log: cannot connect after 10 attempt address {::1:8800}
-Unloading 6 Unused Serialized files (Serialized files now loaded: 0)
-UnloadTime: 0.448656 ms
-
-Unloading 5 unused Assets to reduce memory usage. Loaded Objects now: 652.
-Total: 1.209613 ms (FindLiveObjects: 0.053149 ms CreateObjectMapping: 0.034822 ms MarkObjects: 1.108079 ms  DeleteObjects: 0.012462 ms)
-
-Log: cannot connect after 10 attempt address {::1:8800}
-Log: cannot connect after 10 attempt address {::1:8800}

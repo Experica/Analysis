@@ -200,24 +200,30 @@ namespace VLabAnalysis
                     var vdn = valuedimidx.Count;
                     var x = result.CondResponse.Keys.Select(i => fl.Value[i]).GetFactorLevel<double>(valuedim);
                     var y = new Dictionary<int, List<double>>(); var yse = new Dictionary<int, List<double>>();
+                    var alluuid = result.CondResponse.Values.SelectMany(i => i.Keys).Distinct().ToList();
                     foreach (var c in result.CondResponse.Keys)
                     {
                         var v = result.CondResponse[c];
                         var r = result.CondRepeat[c];
-                        foreach (var u in v.Keys)
+                        foreach (var u in alluuid)
                         {
-                            var uv = v[u]; var uvn = uv.Count;
-                            if (uvn < r)
-                            {
-                                uv.AddRange(new double[r - uvn]);
-                            }
                             if (!y.ContainsKey(u))
                             {
                                 y.Add(u, new List<double>());
                                 yse.Add(u, new List<double>());
                             }
-                            y[u].Add(uv.Mean());
-                            yse[u].Add(uv.SEM());
+                            var m = 0.0; var se = 0.0;
+                            if (v.ContainsKey(u))
+                            {
+                                var uv = v[u]; var uvn = uv.Count;
+                                if (uvn < r)
+                                {
+                                    uv.AddRange(new double[r - uvn]);
+                                }
+                                m = uv.Mean(); se = uv.SEM();
+                            }
+                            y[u].Add(m);
+                            yse[u].Add(se);
                         }
                     }
                     if (vdn == 1)
