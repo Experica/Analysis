@@ -137,15 +137,6 @@ namespace VLabAnalysis
             if (als == null) return;
         }
 
-        public void OnClientDisconnect()
-        {
-            if (als == null) return;
-            if (als.Signal != null)
-            {
-                als.Signal.StopCollectData(true);
-            }
-        }
-
         void Update()
         {
             if (als == null) return;

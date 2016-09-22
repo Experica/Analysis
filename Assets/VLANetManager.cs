@@ -62,23 +62,20 @@ namespace VLabAnalysis
         /// <param name="netMsg"></param>
         void OnClientScene(NetworkMessage netMsg)
         {
-            if (IsClientConnected() && !NetworkServer.active)
-            {
-                OnClientSceneChanged(client.connection);
-            }
+            OnClientSceneChanged(client.connection);
         }
 
         GameObject AnalysisManagerSpawnHandler(Vector3 position, NetworkHash128 assetId)
         {
             GameObject go;
-            if(uicontroller.alsmanager==null)
+            if (uicontroller.alsmanager == null)
             {
                 go = Instantiate(vlabanalysismanagerprefab);
                 var als = go.GetComponent<VLAnalysisManager>();
                 als.uicontroller = uicontroller;
                 uicontroller.alsmanager = als;
                 go.name = "VLAnalysisManager";
-                go.transform.SetParent(transform);
+                go.transform.SetParent(transform, false);
             }
             else
             {

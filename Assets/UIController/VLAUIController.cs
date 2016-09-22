@@ -119,15 +119,16 @@ namespace VLabAnalysis
 
         public void OnAnalysisManagerSpwaned()
         {
-            autoconntext.text = "Ready";
+            autoconntext.text = "Analysis Manager Online";
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
         }
 
         public void OnClientDisconnect()
         {
-            if (alsmanager != null)
+            if (alsmanager != null&&alsmanager.als!=null)
             {
-                alsmanager.OnClientDisconnect();
+                alsmanager.als.Dispose();
+                signalpanel.UpdateSignal(false);
             }
             isconnect = false;
             ResetAutoConnect();

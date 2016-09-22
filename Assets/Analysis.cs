@@ -416,21 +416,26 @@ namespace VLabAnalysis
             return false;
         }
 
-        public bool SearchSignal(SignalSource sigsys)
+        public bool SearchSignal(SignalSource source)
         {
-            switch (sigsys)
+            bool ison = false; ISignal s = null;
+            switch (source)
             {
                 case SignalSource.Ripple:
-                    var ripple = new RippleSignal();
-                    if (ripple.IsOnline)
-                    {
-                        signal = ripple;
-                        return true;
-                    }
-                    return false;
-                default:
-                    return false;
+                    s = new RippleSignal();
+                    ison = s.IsOnline;
+                    break;
             }
+            if (ison)
+            {
+                StopAnalysis();
+                if (signal != null)
+                {
+                    signal.Dispose();
+                }
+                signal = s;
+            }
+            return ison;
         }
 
         /// <summary>
