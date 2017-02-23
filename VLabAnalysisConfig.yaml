@@ -10,3 +10,5 @@ VisualizerHeight: 380
 PlotExportWidth: 1280
 PlotExportHeight: 854
 PlotExportDPI: 120
+RetainAnalysisPerClear: 1
+AnalysisSleepResolution: 2

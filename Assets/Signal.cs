@@ -51,6 +51,7 @@ namespace VLabAnalysis
         LFP,
         Event,
         Spike,
+        Stim
     }
 
     public struct Signal
@@ -72,19 +73,17 @@ namespace VLabAnalysis
     {
         bool IsOnline { get; }
         SignalSource Source { get; }
-        int[] Channels { get; }
-        SignalType[] GetSignalTypes(int channel, bool ison);
-        bool IsSignalOn(int channel, SignalType signaltype);
-        void AddAnalyzer(IAnalyzer analyzer);
-        void RemoveAnalyzer(int analyzerid);
-        void StartCollectData(bool isclean);
-        void StopCollectData(bool iscollectall);
         bool IsReady { get; }
+        int[] Channels { get; }
+        SignalType[] GetSignalTypes(int channel, bool isonlyreturnonsignaltype);
+        bool IsSignalOn(int channel, SignalType signaltype);
+        double Time { get; }
+        void StartCollectData(bool isclean);
+        void StopCollectData(bool iscollectallbeforestop);
+        void RestartCollectData(bool iscleanall);
         void GetData(out List<double>[] spike, out List<int>[] uid,
             out List<double[,]> lfp, out List<double> lfpstarttime,
-            out List<double> eventtime, out Dictionary<string, List<int>> digin);
-        ConcurrentDictionary<int, IAnalyzer> Analyzers { get; }
-        void Reset();
+            out List<double>[] dintime, out List<bool>[] dinvalue);
     }
 
     public class RippleSignal : ISignal
@@ -92,13 +91,13 @@ namespace VLabAnalysis
         bool disposed = false;
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
 
-        readonly int digitalIPI, analogIPI, tickfreq, maxelectrodid, timeunitpersec, sleepresolution;
-        object lockobj = new object();
+        readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec,
+            sleepresolution, maxdigitalinchannel;
+        object objlock = new object();
         object datalock = new object();
         object eventlock = new object();
         Thread datathread;
         ManualResetEvent datathreadevent = new ManualResetEvent(true);
-        ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
 
         // those fields should be accessed only through corresponding property to provide thread safety
         bool iscollectingdata;
@@ -111,18 +110,19 @@ namespace VLabAnalysis
         List<int>[] uid;
         List<double[,]> lfp;
         List<double> lfpstarttime;
-        List<double> digitalintime;
-        Dictionary<string, List<int>> digin;
+        List<double>[] dintime;
+        List<bool>[] dinvalue;
 
-        public RippleSignal(int tickfreq = 30000, int maxelec = 5120, int timeunitpersec = 1000,
-            int digitalIPI = 800, int analogIPI = 4800, int sleepresolution = 1)
+        public RippleSignal(int tickfreq = 30000, int maxelectrodeid = 5120, int timeunitpersec = 1000,
+            int digitalIPI = 800, int analogIPI = 4800, int sleepresolution = 1, int maxdigitalinchannel = 6)
         {
             this.tickfreq = tickfreq;
-            this.maxelectrodid = maxelec;
+            this.maxelectrodeid = maxelectrodeid;
             this.timeunitpersec = timeunitpersec;
             this.digitalIPI = digitalIPI;
             this.analogIPI = analogIPI;
             this.sleepresolution = Math.Max(1, sleepresolution);
+            this.maxdigitalinchannel = maxdigitalinchannel;
         }
 
         ~RippleSignal()
@@ -145,10 +145,6 @@ namespace VLabAnalysis
             StopCollectData(false);
             xippmexdotnet.xippmex("close");
             xippmexdotnet.Dispose();
-            foreach(var a in idanalyzer.Values)
-            {
-                a.Dispose();
-            }
             disposed = true;
         }
 
@@ -166,7 +162,7 @@ namespace VLabAnalysis
                     return "1ksps";
                 case SignalType.LFP:
                     return "lfp";
-                case SignalType.Event:
+                case SignalType.Stim:
                     return "stim";
                 default:
                     return "spk";
@@ -193,29 +189,28 @@ namespace VLabAnalysis
                     ripplesignaltype = "LFP";
                     break;
                 case "stim":
-                    ripplesignaltype = "Event";
+                    ripplesignaltype = "Stim";
                     break;
-                case "spk":
+                default:
                     ripplesignaltype = "Spike";
                     break;
             }
             return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
         }
 
-        public SignalType[] GetSignalTypes(int channel, bool ison = true)
+        public SignalType[] GetSignalTypes(int channel, bool isonlyreturnonsignaltype = true)
         {
             SignalType[] v = null;
             if (IsReady && Channels.Contains(channel))
             {
                 var ts = xippmexdotnet.xippmex(1, "signal", channel)[0] as MWCellArray;
-                List<SignalType> vv = new List<SignalType>();
+                v = new SignalType[ts.NumberOfElements];
                 for (var i = 0; i < ts.NumberOfElements; i++)
                 {
-                    vv.Add(RippleToSignalType(((MWCharArray)ts[new[] { 1, i + 1 }]).ToString()));
+                    v[i] = RippleToSignalType(((MWCharArray)ts[new[] { 1, i + 1 }]).ToString());
                 }
-                v = vv.ToArray();
             }
-            if (v != null && ison)
+            if (v != null && isonlyreturnonsignaltype)
             {
                 v = v.Where(i => IsSignalOn(channel, i)).ToArray();
             }
@@ -232,35 +227,11 @@ namespace VLabAnalysis
             return false;
         }
 
-        public void AddAnalyzer(IAnalyzer analyzer)
-        {
-            int id;
-            if (idanalyzer.Count == 0)
-            {
-                id = 0;
-            }
-            else
-            {
-                id = idanalyzer.Keys.Max() + 1;
-            }
-            analyzer.ID = id;
-            idanalyzer[id] = analyzer;
-        }
-
-        public void RemoveAnalyzer(int analyzerid)
-        {
-            if (idanalyzer.ContainsKey(analyzerid))
-            {
-                IAnalyzer a;
-                idanalyzer.TryRemove(analyzerid,out a);
-            }
-        }
-
         public bool IsOnline
         {
             get
             {
-                lock (lockobj)
+                lock (objlock)
                 {
                     if (!isonline)
                     {
@@ -284,14 +255,14 @@ namespace VLabAnalysis
             {
                 if (IsOnline)
                 {
-                    lock (lockobj)
+                    lock (objlock)
                     {
                         if (eids == null)
                         {
                             try
                             {
                                 var t = (double[])((MWNumericArray)xippmexdotnet.xippmex(1, "elec", "all")[0]).ToVector(MWArrayComponent.Real);
-                                eids = t.Select(i => (int)i).Where(i => i <= maxelectrodid).ToArray();
+                                eids = t.Select(i => (int)i).Where(i => i <= maxelectrodeid).ToArray();
                             }
                             catch (Exception ex)
                             {
@@ -320,8 +291,8 @@ namespace VLabAnalysis
 
         bool GotoThreadEvent
         {
-            get { lock (lockobj) { return gotothreadevent; } }
-            set { lock (lockobj) { gotothreadevent = value; } }
+            get { lock (objlock) { return gotothreadevent; } }
+            set { lock (objlock) { gotothreadevent = value; } }
         }
 
         public void StartCollectData(bool isclean = true)
@@ -355,7 +326,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void StopCollectData(bool iscollectall = true)
+        public void StopCollectData(bool iscollectallbeforestop = true)
         {
             lock (datalock)
             {
@@ -370,7 +341,7 @@ namespace VLabAnalysis
                     {
                         if (!GotoThreadEvent)
                         {
-                            if (iscollectall)
+                            if (iscollectallbeforestop)
                             {
                                 // make sure to get all data before the time this function is issued.
                                 CollectData();
@@ -489,14 +460,23 @@ namespace VLabAnalysis
 
         void CollectDigitalIn()
         {
-            var d = xippmexdotnet.xippmex(3, "digin");
-            var d1 = (d[1] as MWNumericArray);
-            if (!d1.IsEmpty)
+            var d = xippmexdotnet.digin(2);
+            var d0 = d[0] as MWCellArray;
+            var d1 = d[1] as MWCellArray;
+            for (var i = 0; i < maxdigitalinchannel; i++)
             {
-                var et = (double[])d1.ToVector(MWArrayComponent.Real);
-                for (var i = 0; i < et.Length; i++)
+                var idx = new[] { i + 1, 1 };
+                var dt = d0[idx] as MWNumericArray;
+                var dv = d1[idx] as MWNumericArray;
+                if (!dt.IsEmpty)
                 {
-                    digitalintime.Add((et[i] / tickfreq) * timeunitpersec);
+                    var t = (double[])dt.ToVector(MWArrayComponent.Real);
+                    var v = (double[])dv.ToVector(MWArrayComponent.Real);
+                    for (var j = 0; j < t.Length; j++)
+                    {
+                        dintime[i].Add((t[j] / tickfreq) * timeunitpersec);
+                        dinvalue[i].Add(v[j] == 1 ? true : false);
+                    }
                 }
             }
         }
@@ -529,51 +509,38 @@ namespace VLabAnalysis
 
         void CollectLFP()
         {
-            //var es = Electrodes;
-            //MWArray[] p = new MWArray[2];
-            //try
-            //{
-            //    p = xippmexdotnet.xippmex(1, "cont", new MWNumericArray(1,es.Length, es, null, true, false), 5000, "lfp");
-            //}
-            //catch (Exception ex)
-            //{
-            //    Debug.Log(ex.Message);
-            //}
-            //var fp = (p[0] as MWNumericArray).ToArray(MWArrayComponent.Real);
-            //lfpstarttime.Add((p[1] as MWNumericArray).ToScalarDouble() / tickfreq);
-            //lfp.Add(fp);
         }
         #endregion
 
         public void GetData(out List<double>[] ospike, out List<int>[] ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
-            out List<double> eventtime, out Dictionary<string, List<int>> odigin)
+            out List<double>[] odintime, out List<bool>[] odinvalue)
         {
             lock (datalock)
             {
                 if (IsCollectingData)
                 {
-                    StopCollectData();
-                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out eventtime, out odigin);
+                    StopCollectData(true);
+                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                     StartCollectData(false);
                 }
                 else
                 {
-                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out eventtime, out odigin);
+                    GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                 }
             }
         }
 
-        void GetDataBuffer(out List<double>[] aspike, out List<int>[] auid,
-            out List<double[,]> alfp, out List<double> alfpstarttime,
-            out List<double> adigintime, out Dictionary<string, List<int>> adigin)
+        void GetDataBuffer(out List<double>[] ospike, out List<int>[] ouid,
+            out List<double[,]> olfp, out List<double> olfpstarttime,
+            out List<double>[] odintime, out List<bool>[] odinvalue)
         {
-            aspike = spike;
-            auid = uid;
-            alfp = lfp;
-            alfpstarttime = lfpstarttime;
-            adigintime = digitalintime;
-            adigin = digin;
+            ospike = spike;
+            ouid = uid;
+            olfp = lfp;
+            olfpstarttime = lfpstarttime;
+            odintime = dintime;
+            odinvalue = dinvalue;
             InitDataBuffer();
         }
 
@@ -584,32 +551,45 @@ namespace VLabAnalysis
             uid = new List<int>[en];
             for (var i = 0; i < en; i++)
             {
-                var s = new List<double>();
-                var u = new List<int>();
-                spike[i] = s;
-                uid[i] = u;
+                spike[i] = new List<double>(); ;
+                uid[i] = new List<int>();
             }
             lfp = new List<double[,]>();
             lfpstarttime = new List<double>();
-            digitalintime = new List<double>();
-            digin = new Dictionary<string, List<int>>();
+            dintime = new List<double>[maxdigitalinchannel];
+            dinvalue = new List<bool>[maxdigitalinchannel];
+            for (var i = 0; i < maxdigitalinchannel; i++)
+            {
+                dintime[i] = new List<double>();
+                dinvalue[i] = new List<bool>();
+            }
         }
 
         public SignalSource Source { get { return SignalSource.Ripple; } }
 
-        public ConcurrentDictionary<int, IAnalyzer> Analyzers
+        public double Time
         {
             get
             {
-                return idanalyzer;
+                lock (objlock)
+                {
+                    return ((MWNumericArray)xippmexdotnet.xippmex(1, "time")[0]).ToScalarDouble() / tickfreq * timeunitpersec;
+                }
             }
         }
 
-        public void Reset()
+        public void RestartCollectData(bool iscleanall = true)
         {
-            foreach (var a in idanalyzer.Values)
+            lock (objlock)
             {
-                a.Reset();
+                StopCollectData(false);
+                if (iscleanall)
+                {
+                    // Clear Xippmex buffer
+                    xippmexdotnet.xippmex("close");
+                    xippmexdotnet.xippmex(1);
+                }
+                StartCollectData(true);
             }
         }
     }

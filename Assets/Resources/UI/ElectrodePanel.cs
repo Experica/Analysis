@@ -51,8 +51,8 @@ namespace VLabAnalysis
         {
             if( uicontroller.alsmanager.als.Signal.IsSignalOn(electrodeid,signaltype))
             {
-                var a = electrodeid.Get(signaltype);
-                uicontroller.alsmanager.als.Signal.AddAnalyzer(a);
+                var a = electrodeid.GetAnalyzer(signaltype);
+                uicontroller.alsmanager.als.AddAnalyzer(a);
                 AddAnalysisGroup(a.ID, a.GetType().Name,a.Visualizer.GetType().Name,a.Controller.GetType().Name);
             }
         }

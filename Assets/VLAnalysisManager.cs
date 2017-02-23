@@ -40,7 +40,10 @@ namespace VLabAnalysis
         void Start()
         {
             var das = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.AnalysisSystem];
-            als = das.GetAnalysisSystem((int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis]);
+            var cdpa = (int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis];
+            var rapc = (int)uicontroller.appmanager.config[VLACFG.RetainAnalysisPerClear];
+            var asr = (int)uicontroller.appmanager.config[VLACFG.AnalysisSleepResolution];
+            als = das.GetAnalysisSystem(cdpa, rapc, asr);
         }
 
         [ClientRpc]
@@ -48,10 +51,6 @@ namespace VLabAnalysis
         {
             if (als == null) return;
             als.Reset();
-            if (als.Signal != null)
-            {
-                als.Signal.StartCollectData(true);
-            }
         }
 
         [ClientRpc]
@@ -61,8 +60,8 @@ namespace VLabAnalysis
             if (als.Signal != null)
             {
                 als.Signal.StopCollectData(true);
-                als.ExperimentEndEnqueue();
             }
+            als.ExperimentEndEnqueue();
         }
 
         [ClientRpc]
@@ -71,6 +70,8 @@ namespace VLabAnalysis
             if (als == null) return;
             if (als.Signal != null)
             {
+                var t = new VLTimer();
+                t.Countdown(als.DataSet.Latency);
                 als.Signal.StopCollectData(true);
             }
         }
@@ -89,6 +90,7 @@ namespace VLabAnalysis
         public void RpcNotifyExperiment(byte[] value)
         {
             if (als == null) return;
+            // Set Experiment Data and VLabTimeZero
             var ex = VLMsgPack.ExSerializer.Unpack(new MemoryStream(value));
             if (ex.Cond != null && ex.Cond.Count > 0)
             {
@@ -101,6 +103,17 @@ namespace VLabAnalysis
                 }
             }
             als.DataSet.Ex = ex;
+            if (als.Signal != null)
+            {
+                List<double>[] spike;
+                List<int>[] uid;
+                List<double[,]> lfp;
+                List<double> lfpstarttime;
+                List<double>[] dintime;
+                List<bool>[] dinvalue;
+                als.Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue);
+                als.DataSet.Add(spike, uid, lfp, lfpstarttime, dintime, dinvalue, null, null, null);
+            }
         }
 
         [ClientRpc]
@@ -131,38 +144,38 @@ namespace VLabAnalysis
             als.CondTestEndEnqueue(time);
         }
 
-        [Command]
-        public void CmdNotifyUpdate()
-        {
-            if (als == null) return;
-        }
+        //[Command]
+        //public void CmdNotifyUpdate()
+        //{
+        //    if (als == null) return;
+        //}
 
-        void Update()
-        {
-            if (als == null) return;
-            if (als.Signal != null && als.Signal.Analyzers != null)
-            {
-                foreach (var a in als.Signal.Analyzers.Values)
-                {
-                    if (a.Controller != null)
-                    {
-                        IControlResult command;
-                        if (a.Controller.ControlResultQueue.TryDequeue(out command))
-                        {
-                            CmdNotifyUpdate();
-                        }
-                    }
-                }
-            }
-        }
+        //void Update()
+        //{
+        //    if (als == null) return;
+        //    if (als.Signal != null && als.Analyzers != null)
+        //    {
+        //        foreach (var a in als.Analyzers.Values)
+        //        {
+        //            if (a.Controller != null)
+        //            {
+        //                IControlResult command;
+        //                if (a.Controller.ControlResultQueue.TryDequeue(out command))
+        //                {
+        //                    CmdNotifyUpdate();
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
 
         void LateUpdate()
         {
             if (als == null) return;
             var isfront = Input.GetButton("ShowInFront"); var isalign = Input.GetButton("Align");
-            if (als.Signal != null && als.Signal.Analyzers != null)
+            if (als.Signal != null && als.Analyzers != null)
             {
-                if (als.IsAnalysisDone)
+                if (als.IsExperimentAnalysisDone)
                 {
                     var datapath = als.DataSet.Ex.DataPath;
                     var datadir = Path.GetDirectoryName(datapath);
@@ -170,10 +183,10 @@ namespace VLabAnalysis
                     int width = (int)uicontroller.appmanager.config[VLACFG.PlotExportWidth];
                     int height = (int)uicontroller.appmanager.config[VLACFG.PlotExportHeight];
                     int dpi = (int)uicontroller.appmanager.config[VLACFG.PlotExportDPI];
-                    foreach (var i in als.Signal.Analyzers.Keys.ToList())
+                    foreach (var i in als.Analyzers.Keys.ToList())
                     {
                         IAnalyzer a;
-                        if (als.Signal.Analyzers.TryGetValue(i, out a))
+                        if (als.Analyzers.TryGetValue(i, out a))
                         {
                             if (a.Visualizer != null)
                             {
@@ -187,7 +200,7 @@ namespace VLabAnalysis
                             }
                         }
                     }
-                    als.IsAnalysisDone = false;
+                    als.IsExperimentAnalysisDone = false;
                 }
                 else
                 {
@@ -196,10 +209,10 @@ namespace VLabAnalysis
                     {
                         cn = Mathf.Floor(Screen.currentResolution.width / (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth]);
                     }
-                    foreach (var i in als.Signal.Analyzers.Keys.ToList())
+                    foreach (var i in als.Analyzers.Keys.ToList())
                     {
                         IAnalyzer a;
-                        if (als.Signal.Analyzers.TryGetValue(i, out a))
+                        if (als.Analyzers.TryGetValue(i, out a))
                         {
                             if (a.Visualizer != null)
                             {

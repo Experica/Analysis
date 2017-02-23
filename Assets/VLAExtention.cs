@@ -39,6 +39,22 @@ namespace VLabAnalysis
 {
     public static class VLAExtention
     {
+        public static IEnumerable<T> DiffFun<T>(this IEnumerable<T> s,Func<T,T,T> f)
+        {
+            var c = s.Count();
+            if (c < 2)
+            {
+                yield return s.ElementAt(1);
+            }
+            else
+            {
+                for (var i = 0; i < s.Count() - 1; i++)
+                {
+                    yield return f(s.ElementAt(i), s.ElementAt(i + 1));
+                }
+            }
+        }
+
         public static int Count(this List<double> st, double start, double end)
         {
             if (start >= end) return 0;

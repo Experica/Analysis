@@ -32,6 +32,8 @@ namespace VLabAnalysis
         AutoConnectTimeOut,
         ServerAddress,
         ClearDataPerAnalysis,
+        RetainAnalysisPerClear,
+        AnalysisSleepResolution,
         AnalysisSystem,
         AddSpikeAnalysisWhenSignalOnLine,
         SaveVisualizationWhenExperimentStop,
@@ -90,6 +92,22 @@ namespace VLabAnalysis
             else
             {
                 config[VLACFG.ClearDataPerAnalysis] = config[VLACFG.ClearDataPerAnalysis].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.RetainAnalysisPerClear))
+            {
+                config[VLACFG.RetainAnalysisPerClear] = 1;
+            }
+            else
+            {
+                config[VLACFG.RetainAnalysisPerClear] = config[VLACFG.RetainAnalysisPerClear].Convert<int>();
+            }
+            if (!config.ContainsKey(VLACFG.AnalysisSleepResolution))
+            {
+                config[VLACFG.AnalysisSleepResolution] = 2;
+            }
+            else
+            {
+                config[VLACFG.AnalysisSleepResolution] = config[VLACFG.AnalysisSleepResolution].Convert<int>();
             }
             if (!config.ContainsKey(VLACFG.AnalysisSystem))
             {

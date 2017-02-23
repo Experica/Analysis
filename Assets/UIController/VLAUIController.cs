@@ -120,6 +120,8 @@ namespace VLabAnalysis
         public void OnAnalysisManagerSpwaned()
         {
             autoconntext.text = "Analysis Manager Online";
+            QualitySettings.vSyncCount = 0;
+            QualitySettings.maxQueuedFrames = 0;
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
         }
 
@@ -142,7 +144,13 @@ namespace VLabAnalysis
             if (alsmanager != null)
             {
                 var ss = controlpanel.signalsystemdropdown.captionText.text;
-                var sr = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SignalSource>());
+                var s = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SignalSource>());
+                var sr = false;
+                if (s!=null)
+                {
+                    alsmanager.als.Signal = s;
+                    sr = true;
+                }
                 signalpanel.UpdateSignal(sr);
             }
         }

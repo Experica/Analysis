@@ -45,13 +45,14 @@ namespace VLabAnalysis
 
     public class MFRAnalyzer : IAnalyzer
     {
-        bool disposed;
+        bool disposed = false;
         int id;
         Signal signal;
         IVisualizer visualizer;
         IController controller;
         ConcurrentQueue<IVisualizeResult> visualizeresultqueue = new ConcurrentQueue<IVisualizeResult>();
         IResult result;
+
         Dictionary<string, List<bool>> factorvaluedim = new Dictionary<string, List<bool>>();
         Dictionary<string, List<string>> factorunit = new Dictionary<string, List<string>>();
 
@@ -155,14 +156,14 @@ namespace VLabAnalysis
             {
                 result = new MFRResult(Signal.Channel, dataset.Ex.ID);
                 result.Cond = dataset.Ex.Cond;
-                foreach (var f in result.Cond.Keys)
+                foreach (var f in result.Cond.Keys.ToList())
                 {
                     List<bool> valuedim;
                     factorunit[f] = f.GetFactorUnit(out valuedim, result.ExperimentID);
                     factorvaluedim[f] = valuedim;
                 }
             }
-            if (Prepare(dataset))
+            if (dataset.IsData(Signal.Channel - 1, Signal.Type))
             {
                 var latency = dataset.Ex.Latency;
                 var timerdriftspeed = dataset.Ex.TimerDriftSpeed;
@@ -170,13 +171,67 @@ namespace VLabAnalysis
                 var st = dataset.spike[Signal.Channel - 1];
                 var uid = dataset.uid[Signal.Channel - 1];
                 var uuid = uid.Distinct().ToArray();
-                for (var i = 0; i < dataset.CondIndex.Count; i++)
+                var preici = dataset.Ex.PreICI;
+                var sufici = dataset.Ex.SufICI;
+                var conddur = dataset.Ex.CondDur;
+                var ncondtest = dataset.CondIndex.Count;
+                // Get condition test On/Off time 
+                var ton = new List<double>(); var toff = new List<double>();
+                for (var i = 0; i < ncondtest; i++)
+                {
+                    double ts, te;
+                    if (dataset.IsDInMark)
+                    {
+                        if (!dataset.IsDInMarkError)
+                        {
+                            if (!dataset.TryGetMarkTime(dataset.AccumCondIndex.Count + i, out ts, out te))
+                            {
+                                var tss = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString()) * (1 + timerdriftspeed) +
+                                    dataset.VLabTimeZero + latency;
+                                var tes = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString()) * (1 + timerdriftspeed) +
+                                    dataset.VLabTimeZero + latency;
+                                if (!dataset.TrySearchMarkTime(tss, tes, out ts, out te))
+                                {
+                                    ts = tss + delay;
+                                    te = tes + delay;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            var tss = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString()) * (1 + timerdriftspeed) +
+                            dataset.VLabTimeZero + latency;
+                            var tes = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString()) * (1 + timerdriftspeed) +
+                                dataset.VLabTimeZero + latency;
+                            if (!dataset.TrySearchMarkTime(tss, tes, out ts, out te))
+                            {
+                                ts = tss + delay;
+                                te = tes + delay;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ts = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString()) * (1 + timerdriftspeed) +
+                            dataset.VLabTimeZero + latency + delay;
+                        te = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString()) * (1 + timerdriftspeed) +
+                            dataset.VLabTimeZero + latency + delay;
+                    }
+                    ton.Add(ts); toff.Add(te);
+                }
+                // None-ICI Mark Mode
+                if (preici == 0 && sufici == 0 && ncondtest > 0)
+                {
+                    for (var i = 0; i < ncondtest - 1; i++)
+                    {
+                        toff[i] = ton[i + 1];
+                    }
+                    toff[ncondtest - 1] = ton[ncondtest - 1] + conddur;
+                }
+                // Mean firing rate for each condition test
+                for (var i = 0; i < ncondtest; i++)
                 {
                     var ci = dataset.CondIndex[i];
-                    var t1 = dataset.CondState[i].FindStateTime(CONDSTATE.COND.ToString());
-                    var t2 = dataset.CondState[i].FindStateTime(CONDSTATE.SUFICI.ToString());
-                    t1 = t1 + t1 * timerdriftspeed + latency + dataset.VLabZeroTime + delay;
-                    t2 = t2 + t2 * timerdriftspeed + latency + dataset.VLabZeroTime + delay;
                     if (!result.CondResponse.ContainsKey(ci))
                     {
                         result.CondResponse.Add(ci, new Dictionary<int, List<double>>());
@@ -187,10 +242,11 @@ namespace VLabAnalysis
                         {
                             result.CondResponse[ci].Add(u, new List<double>());
                         }
-                        result.CondResponse[ci][u].Add(st.GetUnitSpike(uid, u).MFR(t1, t2));
+                        result.CondResponse[ci][u].Add(st.GetUnitSpike(uid, u).MFR(ton[i], toff[i]));
                     }
                     result.CondRepeat[ci] = dataset.CondRepeat[i];
                 }
+                // Visualization result
                 var fn = result.Cond.Count;
                 if (fn == 1)
                 {
@@ -277,22 +333,11 @@ namespace VLabAnalysis
                 visualizeresultqueue.Enqueue(result.GetVisualizeResult(VisualizeResultType.D2VisualizeResult));
             }
         }
-
-        bool Prepare(DataSet dataset)
-        {
-            if (signal.Type == SignalType.Spike)
-            {
-                return true;
-                return dataset.IsData(signal.Channel, signal.Type);
-            }
-            return false;
-        }
-
     }
 
     public interface IResult
     {
-        IResult Clone();
+        IResult DeepCopy();
         IVisualizeResult GetVisualizeResult(VisualizeResultType type);
         int SignalID { get; }
         string ExperimentID { get; }
@@ -332,9 +377,10 @@ namespace VLabAnalysis
             this.experimentid = experimentid;
         }
 
-        public IResult Clone()
+        public IResult DeepCopy()
         {
             var clone = (MFRResult)MemberwiseClone();
+            clone.experimentid = string.Copy(experimentid);
             var cmfr = new Dictionary<int, Dictionary<int, List<double>>>(); var ccondrepeat = new Dictionary<int, int>();
             foreach (var c in mfr.Keys)
             {
@@ -425,7 +471,7 @@ namespace VLabAnalysis
         List<double[]> X { get; }
         Dictionary<int, double[,]> Y { get; }
         Dictionary<int, double[,]> YSE { get; }
-        List<string> XUnit { get; }
+        List<string> XUnit { get; set; }
         string YUnit { get; set; }
         VisualizeResultType Type { get; }
     }
@@ -461,7 +507,7 @@ namespace VLabAnalysis
         { get { return VisualizeResultType.D2VisualizeResult; } }
 
         public List<string> XUnit
-        { get { return xunit; } }
+        { get { return xunit; } set { xunit = value; } }
 
         public string YUnit
         { get { return yunit; } set { yunit = value; } }

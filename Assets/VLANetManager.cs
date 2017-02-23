@@ -71,9 +71,9 @@ namespace VLabAnalysis
             if (uicontroller.alsmanager == null)
             {
                 go = Instantiate(vlabanalysismanagerprefab);
-                var als = go.GetComponent<VLAnalysisManager>();
-                als.uicontroller = uicontroller;
-                uicontroller.alsmanager = als;
+                var am = go.GetComponent<VLAnalysisManager>();
+                am.uicontroller = uicontroller;
+                uicontroller.alsmanager = am;
                 go.name = "VLAnalysisManager";
                 go.transform.SetParent(transform, false);
             }

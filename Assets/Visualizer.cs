@@ -25,13 +25,13 @@ using System.Windows.Forms;
 using System.Linq;
 using System;
 using System.IO;
-using MathNet.Numerics.Statistics;
 using VLab;
 using MsgPack;
 using OxyPlot;
 using OxyPlot.WindowsForms;
 using OxyPlot.Series;
 using OxyPlot.Axes;
+using MathNet.Numerics.Statistics;
 using MathNet.Numerics.Interpolation;
 
 namespace VLabAnalysis
@@ -160,7 +160,7 @@ namespace VLabAnalysis
         void D1Visualize(double[] x, Dictionary<int, double[,]> y, Dictionary<int, double[,]> yse, string xtitle, string ytitle)
         {
             pm.Series.Clear();
-            var ylo = new List<double>(); var yhi = new List<double>();
+            var ylo = 0.0; var yhi = 0.0;
             var us = y.Keys.ToList(); us.Sort();
             foreach (var u in us)
             {
@@ -183,8 +183,8 @@ namespace VLabAnalysis
                 {
                     error.Points.Add(new ScatterErrorPoint(x[i], y[u][0, i], 0, yse[u][0, i]));
                     line.Points.Add(new DataPoint(x[i], y[u][0, i]));
-                    ylo.Add(y[u][0, i] - yse[u][0, i]);
-                    yhi.Add(y[u][0, i] + yse[u][0, i]);
+                    yhi = Math.Max(yhi, y[u][0, i] + yse[u][0, i]);
+                    ylo = Math.Min(ylo, y[u][0, i] - yse[u][0, i]);
                 }
                 pm.Series.Add(line);
                 pm.Series.Add(error);
@@ -195,8 +195,8 @@ namespace VLabAnalysis
                 var x0 = x.First(); var x1 = x.Last();
                 pm.DefaultXAxis.Maximum = x1 + 0.01 * (x1 - x0);
                 pm.DefaultXAxis.Minimum = x0 - 0.01 * (x1 - x0);
-                pm.DefaultYAxis.Maximum = yhi.Max();
-                pm.DefaultYAxis.Minimum = Math.Min(0, ylo.Min());
+                pm.DefaultYAxis.Maximum = yhi;
+                pm.DefaultYAxis.Minimum = Math.Min(0, ylo);
                 pm.DefaultXAxis.Reset();
                 pm.DefaultYAxis.Reset();
             }
