@@ -1,6 +1,6 @@
 ﻿/*
 Experiment.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -57,8 +57,31 @@ namespace VLab
         }
     }
 
-    
+    public class MethodAccess
+    {
+        MethodInvoker m;
+        public MethodInvoker Call { get { return m; } }
 
+        string n;
+        public string Name { get { return n; } }
+
+        public MethodAccess(string n, MethodInvoker m)
+        {
+            this.n = n;
+            this.m = m;
+        }
+
+        public MethodAccess(Type reflectedtype, string methodname)
+        {
+            n = methodname;
+            var minfo = reflectedtype.GetMethod(methodname);
+            m = reflectedtype.DelegateForCallMethod(methodname, minfo.GetParameters().Select(i => i.ParameterType).ToArray());
+        }
+    }
+
+    /// <summary>
+    /// Holds all information that define an experiment
+    /// </summary>
     public class Experiment
     {
         public string ID { get; set; }
@@ -87,7 +110,10 @@ namespace VLab
         public string DataDir { get; set; }
         public string DataPath { get; set; }
         public SampleMethod CondSampling { get; set; }
+        public SampleMethod BlockSampling { get; set; }
         public int CondRepeat { get; set; }
+        public int BlockRepeat { get; set; }
+        public List<string> BlockParam { get; set; }
         public InputMethod Input { get; set; }
 
         public double PreICI { get; set; }
@@ -111,6 +137,7 @@ namespace VLab
         public double TimerDriftSpeed { get; set; }
         public double Delay { get; set; }
         public Dictionary<CONDTESTPARAM, List<object>> CondTest { get; set; }
+        public CONDTESTSHOWLEVEL CondTestShowLevel { get; set; }
 
         [MessagePackIgnore]
         public static readonly Dictionary<string, PropertyAccess> Properties;
@@ -194,47 +221,65 @@ namespace VLab
             return p.Getter(ex);
         }
 
-        public virtual string GetDataPath(string ext = ".yaml")
+        public virtual string GetDataPath(string ext = ".yaml", string searchext = ".yaml")
         {
-            var filename = Subject_ID + "_" + RecordSession + "_" + RecordSite + "_" + ID + "_";
-            if (string.IsNullOrEmpty(DataDir))
+            if (string.IsNullOrEmpty(DataPath))
             {
-                DataDir = Directory.GetCurrentDirectory();
+                var filename = Subject_ID + "_" + RecordSession + "_" + RecordSite + "_" + ID + "_";
+                if (string.IsNullOrEmpty(DataDir))
+                {
+                    DataDir = Directory.GetCurrentDirectory();
+                }
+                else
+                {
+                    if (!Directory.Exists(DataDir))
+                    {
+                        Directory.CreateDirectory(DataDir);
+                    }
+                }
+                var subjectdir = Path.Combine(DataDir, Subject_ID);
+                if (!Directory.Exists(subjectdir))
+                {
+                    Directory.CreateDirectory(subjectdir);
+                }
+                var sessionsitedir = Path.Combine(subjectdir, RecordSession + "_" + RecordSite);
+                if (!Directory.Exists(sessionsitedir))
+                {
+                    Directory.CreateDirectory(sessionsitedir);
+                }
+                var fs = Directory.GetFiles(sessionsitedir, filename + "*" + searchext, SearchOption.TopDirectoryOnly);
+                if (fs.Length == 0)
+                {
+                    filename = filename + "1" + ext;
+                }
+                else
+                {
+                    var ns = new List<int>();
+                    foreach (var f in fs)
+                    {
+                        var s = f.LastIndexOf('_') + 1;
+                        var e = f.LastIndexOf('.') - 1;
+                        ns.Add(int.Parse(f.Substring(s, e - s + 1)));
+                    }
+                    filename = filename + (ns.Max() + 1).ToString() + ext;
+                }
+                DataPath = Path.Combine(sessionsitedir, filename);
             }
             else
             {
-                if (!Directory.Exists(DataDir))
+                var ddir = Path.GetDirectoryName(DataPath);
+                if (!Directory.Exists(ddir))
                 {
-                    Directory.CreateDirectory(DataDir);
+                    Directory.CreateDirectory(ddir);
                 }
+                var fname = Path.GetFileNameWithoutExtension(DataPath) + ext;
+                DataPath = Path.Combine(ddir, fname);
             }
-            var subjectdir = Path.Combine(DataDir, Subject_ID);
-            if (!Directory.Exists(subjectdir))
-            {
-                Directory.CreateDirectory(subjectdir);
-            }
-            var fs = Directory.GetFiles(subjectdir, filename + "*" + ext, SearchOption.AllDirectories);
-            if (fs.Length == 0)
-            {
-                filename = filename + "1" + ext;
-            }
-            else
-            {
-                var ns = new List<int>();
-                foreach (var f in fs)
-                {
-                    var s = f.LastIndexOf('_') + 1;
-                    var e = f.LastIndexOf('.') - 1;
-                    ns.Add(int.Parse(f.Substring(s, e - s + 1)));
-                }
-                filename = filename + (ns.Max() + 1).ToString() + ext;
-            }
-            DataPath = Path.Combine(subjectdir, filename);
             return DataPath;
         }
     }
 
-   
+
     public enum Gender
     {
         Male,
@@ -316,6 +361,13 @@ namespace VLab
         NONE = 0,
         PREICI = CONDSTATE.PREICI,
         PREITI = TRIALSTATE.PREITI,
+    }
+
+    public enum CONDTESTSHOWLEVEL
+    {
+        NONE,
+        SHORT,
+        FULL
     }
 
 }

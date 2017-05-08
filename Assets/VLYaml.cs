@@ -1,4 +1,25 @@
-﻿using UnityEngine;
+﻿/*
+VLYaml.cs is part of the VLAB project.
+Copyright (c) 2017 Li Alex Zhang and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a 
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the 
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included 
+in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
+OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+using UnityEngine;
 using System.Collections.Generic;
 using System;
 using System.IO;
@@ -15,9 +36,11 @@ namespace VLab
 {
     public class VLabYamlConverter : IYamlTypeConverter
     {
+        public bool istag = true;
+
         public bool Accepts(Type type)
         {
-            if (type == typeof(Vector3) || type == typeof(Color) || type == typeof(Param))
+            if (type == typeof(Param) || type == typeof(Vector3) || type == typeof(Color))
             {
                 return true;
             }
@@ -48,7 +71,14 @@ namespace VLab
             if (type == typeof(Param))
             {
                 var v = (Param)value;
-                e = new Scalar(null, "tag:yaml.org,2002:" + v.Type.ToString(), v.Value.Convert<string>(), ScalarStyle.Plain, false, false);
+                if (istag)
+                {
+                    e = new Scalar(null, "tag:yaml.org,2002:" + v.Type.ToString(), v.Value.Convert<string>(), ScalarStyle.Plain, false, false);
+                }
+                else
+                {
+                    e = new Scalar(v.Value.Convert<string>());
+                }
             }
             else
             {
@@ -60,24 +90,28 @@ namespace VLab
 
     public static class Yaml
     {
-        static Serializer serializer = new Serializer(SerializationOptions.DisableAliases);
-        static Deserializer deserializer = new Deserializer();
+        static Serializer serializer = new Serializer(SerializationOptions.DisableAliases | SerializationOptions.EmitDefaults);
+        static Deserializer deserializer = new Deserializer(ignoreUnmatched: true);
+        static VLabYamlConverter vlabyamlconverter = new VLabYamlConverter();
 
         static Yaml()
         {
-            serializer.RegisterTypeConverter(new VLabYamlConverter());
-            deserializer.RegisterTypeConverter(new VLabYamlConverter());
+            serializer.RegisterTypeConverter(vlabyamlconverter);
+            deserializer.RegisterTypeConverter(vlabyamlconverter);
         }
 
-        public static void WriteYaml<T>(string path, T data)
+        public static void WriteYaml<T>(string path, T data, bool isvlabtag = true)
         {
-            File.WriteAllText(path, Serialize(data));
+            File.WriteAllText(path, Serialize(data, isvlabtag));
         }
 
-        public static string Serialize<T>(T data)
+        public static string Serialize<T>(T data, bool isvlabtag = true)
         {
             var s = new StringBuilder();
+            var old = vlabyamlconverter.istag;
+            vlabyamlconverter.istag = isvlabtag;
             serializer.Serialize(new StringWriter(s), data);
+            vlabyamlconverter.istag = old;
             return s.ToString();
         }
 
