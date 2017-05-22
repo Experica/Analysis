@@ -36,6 +36,7 @@ namespace VLabAnalysis
         public VLANetManager netmanager;
         public VLAApplicationManager appmanager;
         public VLAnalysisManager alsmanager;
+        public VLControlManager ctrlmanager;
         public ControlPanel controlpanel;
         public SignalPanel signalpanel;
 
@@ -119,10 +120,29 @@ namespace VLabAnalysis
 
         public void OnAnalysisManagerSpwaned()
         {
-            autoconntext.text = "Analysis Manager Online";
+            if (ctrlmanager != null)
+            {
+                autoconntext.text = "Ready";
+            }
+            else
+            {
+                autoconntext.text = "AnalysisManager Online";
+            }
             QualitySettings.vSyncCount = 0;
             QualitySettings.maxQueuedFrames = 0;
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
+        }
+
+        public void OnControlManagerSpwaned()
+        {
+            if (alsmanager!=null)
+            {
+                autoconntext.text = "Ready";
+            }
+            else
+            {
+                autoconntext.text = "ControlManager Online";
+            }
         }
 
         public void OnClientDisconnect()
@@ -146,7 +166,7 @@ namespace VLabAnalysis
                 var ss = controlpanel.signalsystemdropdown.captionText.text;
                 var s = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SignalSource>());
                 var sr = false;
-                if (s!=null)
+                if (s != null)
                 {
                     alsmanager.als.Signal = s;
                     sr = true;

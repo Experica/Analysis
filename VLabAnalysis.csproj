@@ -129,6 +129,7 @@
     <Compile Include="Assets\VLAExtention.cs" />
     <Compile Include="Assets\VLANetManager.cs" />
     <Compile Include="Assets\VLAnalysisManager.cs" />
+    <Compile Include="Assets\VLControlManager.cs" />
     <Compile Include="Assets\VLExtention.cs" />
     <Compile Include="Assets\VLMsgPack.cs" />
     <Compile Include="Assets\VLNetwork.cs" />

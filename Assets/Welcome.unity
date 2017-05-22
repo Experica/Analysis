@@ -973,6 +973,7 @@ MonoBehaviour:
   netmanager: {fileID: 1801762641}
   appmanager: {fileID: 824873394}
   alsmanager: {fileID: 0}
+  ctrlmanager: {fileID: 0}
   controlpanel: {fileID: 94014886}
   signalpanel: {fileID: 7128334}
 --- !u!114 &861830913 stripped

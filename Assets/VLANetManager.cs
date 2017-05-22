@@ -32,14 +32,19 @@ namespace VLabAnalysis
     public class VLANetManager : NetworkManager
     {
         public VLAUIController uicontroller;
-        GameObject vlabanalysismanagerprefab;
+        GameObject vlabanalysismanagerprefab,vlabcontrolmanagerprefab;
 
         void RegisterSpawnHandler()
         {
             vlabanalysismanagerprefab = Resources.Load<GameObject>("VLAnalysisManager");
-            var assetid = vlabanalysismanagerprefab.GetComponent<NetworkIdentity>().assetId;
-            ClientScene.RegisterSpawnHandler(assetid, new SpawnDelegate(AnalysisManagerSpawnHandler),
+            var assetida = vlabanalysismanagerprefab.GetComponent<NetworkIdentity>().assetId;
+            ClientScene.RegisterSpawnHandler(assetida, new SpawnDelegate(AnalysisManagerSpawnHandler),
                 new UnSpawnDelegate(AnalysisManagerUnSpawnHandler));
+
+            vlabcontrolmanagerprefab = Resources.Load<GameObject>("VLControlManager");
+            var assetidc = vlabcontrolmanagerprefab.GetComponent<NetworkIdentity>().assetId;
+            ClientScene.RegisterSpawnHandler(assetidc, new SpawnDelegate(ControlManagerSpawnHandler),
+                new UnSpawnDelegate(ControlManagerUnSpawnHandler));
         }
 
         /// <summary>
@@ -89,6 +94,30 @@ namespace VLabAnalysis
         {
         }
 
+        GameObject ControlManagerSpawnHandler(Vector3 position, NetworkHash128 assetId)
+        {
+            GameObject go;
+            if (uicontroller.ctrlmanager == null)
+            {
+                go = Instantiate(vlabcontrolmanagerprefab);
+                var cm = go.GetComponent<VLControlManager>();
+                cm.uicontroller = uicontroller;
+                uicontroller.ctrlmanager = cm;
+                go.name = "VLControlManager";
+                go.transform.SetParent(transform, false);
+            }
+            else
+            {
+                go = uicontroller.ctrlmanager.gameObject;
+            }
+            uicontroller.OnControlManagerSpwaned();
+            return go;
+        }
+
+        void ControlManagerUnSpawnHandler(GameObject spawned)
+        {
+        }
+
         /// <summary>
         /// because the fundamental difference of VLabAnalysis and VLabEnvironment, VLab should treat them
         /// differently, so whenever a client connected to server, it seeds information about the client, so
@@ -102,6 +131,7 @@ namespace VLabAnalysis
                 UnityEngine.Debug.Log("Send PeerType Message.");
             }
             client.Send(VLMsgType.PeerType, new IntegerMessage((int)VLPeerType.VLabAnalysis));
+            ClientScene.AddPlayer(conn,0);
             uicontroller.OnClientConnect();
         }
 

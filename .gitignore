@@ -72,3 +72,4 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+VLabAnalysis_Data/output_log.txt
