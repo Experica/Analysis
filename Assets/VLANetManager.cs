@@ -32,7 +32,7 @@ namespace VLabAnalysis
     public class VLANetManager : NetworkManager
     {
         public VLAUIController uicontroller;
-        GameObject vlabanalysismanagerprefab,vlabcontrolmanagerprefab;
+        GameObject vlabanalysismanagerprefab, vlabcontrolmanagerprefab;
 
         void RegisterSpawnHandler()
         {
@@ -131,12 +131,13 @@ namespace VLabAnalysis
                 UnityEngine.Debug.Log("Send PeerType Message.");
             }
             client.Send(VLMsgType.PeerType, new IntegerMessage((int)VLPeerType.VLabAnalysis));
-            ClientScene.AddPlayer(conn,0);
+            ClientScene.AddPlayer(conn, 0);
             uicontroller.OnClientConnect();
         }
 
         public override void OnClientDisconnect(NetworkConnection conn)
         {
+            UnityEngine.Debug.Log("disconnect.");
             base.OnClientDisconnect(conn);
             uicontroller.OnClientDisconnect();
         }

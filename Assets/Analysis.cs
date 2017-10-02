@@ -108,7 +108,7 @@ namespace VLabAnalysis
         public List<double[,]> lfp;
         public List<double> lfpstarttime;
         public List<double>[] dintime;
-        public List<bool>[] dinvalue;
+        public List<int>[] dinvalue;
 
         Experiment ex;
         public List<int> AccumCondIndex, CondIndex, AccumCondRepeat, CondRepeat;
@@ -135,8 +135,8 @@ namespace VLabAnalysis
 
         public Experiment Ex
         {
-            get { lock (datalock) { return ex; } }
-            set { lock (datalock) { ex = value; } }
+            get { return ex; }
+            set { ex = value; }
         }
 
         public double VLabTimeZero
@@ -198,11 +198,11 @@ namespace VLabAnalysis
             {
                 d1 = dintime[mc][i] - t1searchpoint;
                 d2 = dintime[mc][i] - t2searchpoint;
-                if (Math.Abs(d1) <= msr && dinvalue[mc][i] == true)
+                if (Math.Abs(d1) <= msr && dinvalue[mc][i] != 0)
                 {
                     sidx1.Add(i);
                 }
-                if (Math.Abs(d2) <= msr && dinvalue[mc][i] == false)
+                if (Math.Abs(d2) <= msr && dinvalue[mc][i] == 0)
                 {
                     sidx2.Add(i);
                 }
@@ -270,7 +270,7 @@ namespace VLabAnalysis
 
         public void Add(List<double>[] ospike, List<int>[] ouid,
             List<double[,]> alfp, List<double> alfpstarttime,
-            List<double>[] odintime, List<bool>[] odinvalue,
+            List<double>[] odintime, List<int>[] odinvalue,
             List<int> ocondindex, List<int> ocondrepeat, List<List<Dictionary<string, double>>> ocondstate)
         {
             lock (datalock)
@@ -364,10 +364,10 @@ namespace VLabAnalysis
                     {
                         if (dinvalue[mc].Count < ((AccumCondIndex.Count + CondIndex.Count) * nmpc))
                         {
-                            var imi = dinvalue[mc].DiffFun((x, y) => x == y).ToList();
-                            if (imi.Any())
+                            var imi = dinvalue[mc].DiffFun((x, y) => x == y ? 1 : 0).ToList();
+                            if (imi.Any(x => x == 1))
                             {
-                                var iimi = Enumerable.Range(0, imi.Count).Where(i => imi[i] == true).ToList();
+                                var iimi = Enumerable.Range(0, imi.Count).Where(i => imi[i] != 0).ToList();
                                 for (var i = iimi.Count - 1; i >= 0; i--)
                                 {
                                     dinvalue[mc].RemoveAt(iimi[i]);
@@ -429,10 +429,10 @@ namespace VLabAnalysis
 
     public class DotNetAnalysis : IAnalysis
     {
-        bool disposed = false;
+        int disposecount = 0;
         ISignal signal;
         readonly int cleardataperanalysis, retainanalysisperclear, sleepresolution;
-        int analysisidx = 0; bool isexperimentanalysisdone = false;
+        int analysisidx = 0;
 
         DataSet dataset = new DataSet();
         ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
@@ -442,10 +442,27 @@ namespace VLabAnalysis
 
         Thread analysisthread;
         bool gotothreadevent = false;
+        bool GotoThreadEvent
+        {
+            get { lock (objlock) { return gotothreadevent; } }
+            set { lock (objlock) { gotothreadevent = value; } }
+        }
+        bool isanalyzing = false;
+        bool IsAnalyzing
+        {
+            get { lock (objlock) { return isanalyzing; } }
+            set { lock (objlock) { isanalyzing = value; } }
+        }
+        bool isexperimentanalysisdone = false;
+        public bool IsExperimentAnalysisDone
+        {
+            get { lock (objlock) { return isexperimentanalysisdone; } }
+            set { lock (objlock) { isexperimentanalysisdone = value; } }
+        }
         ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
-        object objlock = new object();
-        object datalock = new object();
-        object eventlock = new object();
+        readonly object objlock = new object();
+        readonly object datalock = new object();
+        readonly object eventlock = new object();
 
         public DotNetAnalysis(int cleardataperanalysis = 1, int retainanalysisperclear = 1, int sleepresolution = 2)
         {
@@ -467,7 +484,7 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
-            if (disposed) return;
+            if (Interlocked.Exchange(ref disposecount, 1) == 1) return;
             if (disposing)
             {
             }
@@ -484,38 +501,43 @@ namespace VLabAnalysis
             {
                 signal.Dispose();
             }
-            disposed = true;
         }
 
         public ISignal SearchSignal()
         {
-            foreach (var ss in Enum.GetValues(typeof(SignalSource)))
+            lock (objlock)
             {
-                var s = SearchSignal((SignalSource)ss);
-                if (s != null)
+                foreach (var ss in Enum.GetValues(typeof(SignalSource)))
                 {
-                    return s;
+                    var s = SearchSignal((SignalSource)ss);
+                    if (s != null)
+                    {
+                        return s;
+                    }
                 }
+                return null;
             }
-            return null;
         }
 
         public ISignal SearchSignal(SignalSource source)
         {
-            ISignal s = null;
-            switch (source)
+            lock (objlock)
             {
-                case SignalSource.Ripple:
-                    s = new RippleSignal();
-                    break;
-            }
-            if (s != null && s.IsOnline)
-            {
-                return s;
-            }
-            else
-            {
-                return null;
+                ISignal s = null;
+                switch (source)
+                {
+                    case SignalSource.Ripple:
+                        s = new RippleSignal();
+                        break;
+                }
+                if (s != null && s.IsOnline)
+                {
+                    return s;
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
 
@@ -545,12 +567,6 @@ namespace VLabAnalysis
             StartAnalysis();
         }
 
-        bool GotoThreadEvent
-        {
-            get { lock (objlock) { return gotothreadevent; } }
-            set { lock (objlock) { gotothreadevent = value; } }
-        }
-
         public void StartAnalysis()
         {
             lock (datalock)
@@ -560,10 +576,15 @@ namespace VLabAnalysis
                     analysisthread = new Thread(ProcessAnalysisQueue);
                     analysisthreadevent.Set();
                     analysisthread.Start();
+                    IsAnalyzing = true;
                 }
                 else
                 {
-                    analysisthreadevent.Set();
+                    if (!IsAnalyzing)
+                    {
+                        analysisthreadevent.Set();
+                        IsAnalyzing = true;
+                    }
                 }
             }
         }
@@ -572,7 +593,7 @@ namespace VLabAnalysis
         {
             lock (datalock)
             {
-                if (analysisthread != null)
+                if (analysisthread != null && IsAnalyzing)
                 {
                     lock (eventlock)
                     {
@@ -583,6 +604,7 @@ namespace VLabAnalysis
                     {
                         if (!GotoThreadEvent)
                         {
+                            IsAnalyzing = false;
                             return;
                         }
                     }
@@ -644,7 +666,7 @@ namespace VLabAnalysis
             List<double[,]> lfp;
             List<double> lfpstarttime;
             List<double>[] dintime;
-            List<bool>[] dinvalue;
+            List<int>[] dinvalue;
 
             double[] aqitem; object CondIndex, CondRepeat, CondState;
             bool isaqitem = false;
@@ -732,14 +754,14 @@ namespace VLabAnalysis
         #endregion
 
         public ISignal Signal
-        { get { lock (objlock) { return signal; } } set { lock (objlock) { signal = value; } } }
+        { get { return signal; } set { signal = value; } }
 
         public DataSet DataSet
         { get { return dataset; } }
 
         public void AddAnalyzer(IAnalyzer analyzer)
         {
-            lock (objlock)
+            lock (datalock)
             {
                 int id;
                 if (idanalyzer.Count == 0)
@@ -757,12 +779,12 @@ namespace VLabAnalysis
 
         public void RemoveAnalyzer(int analyzerid)
         {
-            lock (objlock)
+            lock (datalock)
             {
                 if (idanalyzer.ContainsKey(analyzerid))
                 {
                     IAnalyzer a;
-                    if (idanalyzer.TryRemove(analyzerid, out a) && a != null)
+                    if (idanalyzer.TryRemove(analyzerid, out a) && a != null && !IsAnalyzing)
                     {
                         a.Dispose();
                     }
@@ -779,11 +801,5 @@ namespace VLabAnalysis
         public int ClearDataPerAnalysis
         { get { return cleardataperanalysis; } }
 
-        public bool IsExperimentAnalysisDone
-        {
-            get { lock (objlock) { return isexperimentanalysisdone; } }
-            set { lock (objlock) { isexperimentanalysisdone = value; } }
-        }
     }
-
 }

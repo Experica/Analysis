@@ -36,6 +36,7 @@ namespace VLabAnalysis
         public VLANetManager netmanager;
         public VLAApplicationManager appmanager;
         public VLAnalysisManager alsmanager;
+        public IAnalysis als;
         public VLControlManager ctrlmanager;
         public ControlPanel controlpanel;
         public SignalPanel signalpanel;
@@ -128,6 +129,16 @@ namespace VLabAnalysis
             {
                 autoconntext.text = "AnalysisManager Online";
             }
+            if (als == null)
+            {
+                var das = (AnalysisSystem)appmanager.config[VLACFG.AnalysisSystem];
+                var cdpa = (int)appmanager.config[VLACFG.ClearDataPerAnalysis];
+                var rapc = (int)appmanager.config[VLACFG.RetainAnalysisPerClear];
+                var asr = (int)appmanager.config[VLACFG.AnalysisSleepResolution];
+                als = das.GetAnalysisSystem(cdpa, rapc, asr);
+            }
+            alsmanager.als = als;
+
             QualitySettings.vSyncCount = 0;
             QualitySettings.maxQueuedFrames = 0;
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
@@ -135,7 +146,7 @@ namespace VLabAnalysis
 
         public void OnControlManagerSpwaned()
         {
-            if (alsmanager!=null)
+            if (alsmanager != null)
             {
                 autoconntext.text = "Ready";
             }
@@ -147,7 +158,7 @@ namespace VLabAnalysis
 
         public void OnClientDisconnect()
         {
-            if (alsmanager != null&&alsmanager.als!=null)
+            if (alsmanager != null && alsmanager.als != null)
             {
                 alsmanager.als.Dispose();
                 signalpanel.UpdateSignal(false);

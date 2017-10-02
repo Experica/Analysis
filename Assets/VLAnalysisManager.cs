@@ -37,15 +37,6 @@ namespace VLabAnalysis
         public VLAUIController uicontroller;
         public IAnalysis als;
 
-        void Start()
-        {
-            var das = (AnalysisSystem)uicontroller.appmanager.config[VLACFG.AnalysisSystem];
-            var cdpa = (int)uicontroller.appmanager.config[VLACFG.ClearDataPerAnalysis];
-            var rapc = (int)uicontroller.appmanager.config[VLACFG.RetainAnalysisPerClear];
-            var asr = (int)uicontroller.appmanager.config[VLACFG.AnalysisSleepResolution];
-            als = das.GetAnalysisSystem(cdpa, rapc, asr);
-        }
-
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
@@ -110,7 +101,7 @@ namespace VLabAnalysis
                 List<double[,]> lfp;
                 List<double> lfpstarttime;
                 List<double>[] dintime;
-                List<bool>[] dinvalue;
+                List<int>[] dinvalue;
                 als.Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue);
                 als.DataSet.Add(spike, uid, lfp, lfpstarttime, dintime, dinvalue, null, null, null);
             }
