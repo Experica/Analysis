@@ -93,24 +93,23 @@ namespace VLabAnalysis
         readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec,
             sleepresolution, maxdigitalinchannel;
 
-        readonly object objlock = new object();
         readonly object datalock = new object();
-        readonly object eventlock = new object();
+        readonly object gotoeventlock = new object();
         Thread datathread;
         ManualResetEvent datathreadevent = new ManualResetEvent(true);
-        bool gotothreadevent=false;
+        // those fields should be accessed only through corresponding property to provide thread safety
+        bool gotothreadevent = false; readonly object gotolock = new object();
         bool GotoThreadEvent
         {
-            get { lock (eventlock) { return gotothreadevent; } }
-            set { lock (eventlock) { gotothreadevent = value; } }
+            get { lock (gotolock) { return gotothreadevent; } }
+            set { lock (gotolock) { gotothreadevent = value; } }
         }
-        bool iscollectingdata=false;
+        bool iscollectingdata = false; readonly object iscollectlock = new object();
         bool IsCollectingData
         {
-            get { lock (objlock) { return iscollectingdata; } }
-            set { lock (objlock) { iscollectingdata = value; } }
+            get { lock (iscollectlock) { return iscollectingdata; } }
+            set { lock (iscollectlock) { iscollectingdata = value; } }
         }
-        // those fields should be accessed only through corresponding property to provide thread safety
         bool isonline;
         int[] eids;
 
@@ -297,10 +296,7 @@ namespace VLabAnalysis
         {
             get
             {
-                lock (datalock)
-                {
-                    return Channels != null;
-                }
+                return Channels != null;
             }
         }
 
@@ -341,7 +337,7 @@ namespace VLabAnalysis
             {
                 if (datathread != null && IsCollectingData)
                 {
-                    lock (eventlock)
+                    lock (gotoeventlock)
                     {
                         datathreadevent.Reset();
                         GotoThreadEvent = true;
@@ -395,8 +391,8 @@ namespace VLabAnalysis
             }
             while (true)
             {
-            ThreadEvent:
-                lock (eventlock)
+                ThreadEvent:
+                lock (gotoeventlock)
                 {
                     GotoThreadEvent = false;
                     datathreadevent.WaitOne();

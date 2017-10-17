@@ -47,45 +47,19 @@ namespace VLabAnalysis
 
     public class D2Visualizer : Form, IVisualizer
     {
-        bool disposed;
-        PlotView plotcontrol = new PlotView();
-        PlotModel pm = new PlotModel();
-        Dictionary<int, OxyColor> colors = VLAExtention.GetUnitColors();
-        bool isawake, isstart;
-
+        D2VisualizeControl plotview = new D2VisualizeControl();
 
         public D2Visualizer(int width = 400, int height = 380)
         {
-            plotcontrol.Dock = DockStyle.Fill;
             Width = width;
             Height = height;
 
-            pm.LegendPosition = LegendPosition.TopRight;
-            pm.LegendPlacement = LegendPlacement.Inside;
-            plotcontrol.Model = pm;
-            Controls.Add(plotcontrol);
-        }
-
-        ~D2Visualizer()
-        {
-            Dispose(false);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposed) return;
-            if (disposing)
-            {
-            }
-            base.Dispose(disposing);
-            disposed = true;
+            Controls.Add(plotview);
         }
 
         public void Reset()
         {
-            plotcontrol.Visible = false;
-            isawake = false;
-            isstart = false;
+            plotview.Reset();
         }
 
         public void ShowInFront()
@@ -114,6 +88,39 @@ namespace VLabAnalysis
 
         public void Visualize(IVisualizeResult result)
         {
+            plotview.Visualize(result);
+        }
+
+        public void Save(string path, int width, int height, int dpi)
+        {
+            plotview.Save(path, width, height, dpi);
+        }
+    }
+
+    public class D2VisualizeControl:PlotView
+    {
+        PlotModel pm = new PlotModel();
+        Dictionary<int, OxyColor> unitcolors = VLAExtention.GetUnitColors();
+        bool isawake, isstart;
+        PngExporter pngexporter = new PngExporter();
+        OxyPlot.SvgExporter svgexporter = new OxyPlot.SvgExporter();
+
+        public D2VisualizeControl()
+        {
+            pm.LegendPosition = LegendPosition.TopRight;
+            pm.LegendPlacement = LegendPlacement.Inside;
+            Model = pm;
+        }
+
+        public void Reset()
+        {
+            Visible = false;
+            isawake = false;
+            isstart = false;
+        }
+
+        public void Visualize(IVisualizeResult result)
+        {
             if (!isawake)
             {
                 if (result.ExperimentID.Contains("RF"))
@@ -131,9 +138,9 @@ namespace VLabAnalysis
                 {
                     pm.PlotType = PlotType.XY;
                 }
-                Text = "Channel_" + result.SignalID;
+                Parent.Text = "Channel_" + result.SignalID;
                 pm.Title = "Ch" + result.SignalID + "_" + result.ExperimentID;
-                plotcontrol.Visible = true;
+                Visible = true;
                 isawake = true;
             }
 
@@ -150,11 +157,6 @@ namespace VLabAnalysis
             {
 
             }
-
-            if (!Visible)
-            {
-                Show();
-            }
         }
 
         void D1Visualize(double[] x, Dictionary<int, double[,]> y, Dictionary<int, double[,]> yse, string xtitle, string ytitle)
@@ -168,14 +170,14 @@ namespace VLabAnalysis
                 {
                     Title = "U" + u,
                     StrokeThickness = 2,
-                    Color = colors[u],
+                    Color = unitcolors[u],
                     TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
                 };
                 var error = new ScatterErrorSeries()
                 {
                     ErrorBarStopWidth = 2,
                     ErrorBarStrokeThickness = 1.5,
-                    ErrorBarColor = OxyColor.FromAColor(180, colors[u]),
+                    ErrorBarColor = OxyColor.FromAColor(180, unitcolors[u]),
                     MarkerSize = 0,
                     TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
                 };
@@ -235,9 +237,9 @@ namespace VLabAnalysis
                     LineStyle = LineStyle.Solid,
                     StrokeThickness = 2,
                     ContourLevels = new double[] { ymin + 0.6 * yrange, ymin + 0.7 * yrange, ymin + 0.8 * yrange },
-                    ContourColors = new OxyColor[] { OxyColor.FromAColor(102, colors[u]), OxyColor.FromAColor(153, colors[u]), OxyColor.FromAColor(204, colors[u]) },
+                    ContourColors = new OxyColor[] { OxyColor.FromAColor(102, unitcolors[u]), OxyColor.FromAColor(153, unitcolors[u]), OxyColor.FromAColor(204, unitcolors[u]) },
                     LabelStep = 3,
-                    TextColor = colors[u],
+                    TextColor = unitcolors[u],
                     FontSize = 9,
                     LabelFormatString = "F0",
                     LabelBackground = OxyColors.Undefined,
@@ -279,7 +281,6 @@ namespace VLabAnalysis
             {
                 using (var stream = File.Create(path + ".png"))
                 {
-                    var pngexporter = new PngExporter();
                     pngexporter.Width = width;
                     pngexporter.Height = height;
                     pngexporter.Resolution = dpi;
@@ -287,7 +288,6 @@ namespace VLabAnalysis
                 }
                 using (var stream = File.Create(path + ".svg"))
                 {
-                    var svgexporter = new OxyPlot.SvgExporter();
                     svgexporter.Width = width;
                     svgexporter.Height = height;
                     svgexporter.IsDocument = true;
@@ -295,6 +295,6 @@ namespace VLabAnalysis
                 }
             }
         }
-    }
 
+    }
 }

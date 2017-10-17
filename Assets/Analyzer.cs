@@ -25,6 +25,7 @@ using System.Collections.Generic;
 using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
 using System.Collections.Concurrent;
+using System.Threading;
 using VLab;
 using System;
 using MathNet.Numerics.Statistics;
@@ -45,7 +46,7 @@ namespace VLabAnalysis
 
     public class MFRAnalyzer : IAnalyzer
     {
-        bool disposed = false;
+        int disposecount = 0;
         int id;
         Signal signal;
         IVisualizer visualizer;
@@ -79,8 +80,7 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposed)
-            {
+            if (Interlocked.Exchange(ref disposecount, 1) == 1) return;
                 if (disposing)
                 {
                 }
@@ -92,8 +92,6 @@ namespace VLabAnalysis
                 {
                     controller.Dispose();
                 }
-                disposed = true;
-            }
         }
 
 

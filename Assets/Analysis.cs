@@ -441,28 +441,28 @@ namespace VLabAnalysis
         ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
 
         Thread analysisthread;
-        bool gotothreadevent = false;
+        bool gotothreadevent = false;readonly object gotolock = new object();
         bool GotoThreadEvent
         {
-            get { lock (objlock) { return gotothreadevent; } }
-            set { lock (objlock) { gotothreadevent = value; } }
+            get { lock (gotolock) { return gotothreadevent; } }
+            set { lock (gotolock) { gotothreadevent = value; } }
         }
-        bool isanalyzing = false;
+        bool isanalyzing = false;readonly object isanalyzelock = new object();
         bool IsAnalyzing
         {
-            get { lock (objlock) { return isanalyzing; } }
-            set { lock (objlock) { isanalyzing = value; } }
+            get { lock (isanalyzelock) { return isanalyzing; } }
+            set { lock (isanalyzelock) { isanalyzing = value; } }
         }
-        bool isexperimentanalysisdone = false;
+        bool isexperimentanalysisdone = false;readonly object isexanalyzedonelock = new object();
         public bool IsExperimentAnalysisDone
         {
-            get { lock (objlock) { return isexperimentanalysisdone; } }
-            set { lock (objlock) { isexperimentanalysisdone = value; } }
+            get { lock (isexanalyzedonelock) { return isexperimentanalysisdone; } }
+            set { lock (isexanalyzedonelock) { isexperimentanalysisdone = value; } }
         }
         ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
         readonly object objlock = new object();
         readonly object datalock = new object();
-        readonly object eventlock = new object();
+        readonly object gotoeventlock = new object();
 
         public DotNetAnalysis(int cleardataperanalysis = 1, int retainanalysisperclear = 1, int sleepresolution = 2)
         {
@@ -595,7 +595,7 @@ namespace VLabAnalysis
             {
                 if (analysisthread != null && IsAnalyzing)
                 {
-                    lock (eventlock)
+                    lock (gotoeventlock)
                     {
                         analysisthreadevent.Reset();
                         GotoThreadEvent = true;
@@ -673,7 +673,7 @@ namespace VLabAnalysis
             while (true)
             {
             ThreadEvent:
-                lock (eventlock)
+                lock (gotoeventlock)
                 {
                     GotoThreadEvent = false;
                     analysisthreadevent.WaitOne();
