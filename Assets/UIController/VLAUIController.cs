@@ -1,6 +1,6 @@
 ﻿/*
 VLAUIController.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -175,7 +175,7 @@ namespace VLabAnalysis
             if (alsmanager != null)
             {
                 var ss = controlpanel.signalsystemdropdown.captionText.text;
-                var s = ss == "All" ? alsmanager.als.SearchSignal() : alsmanager.als.SearchSignal(ss.Convert<SignalSource>());
+                var s = ss == "All" ? VLAExtention.SearchSignal() : VLAExtention.SearchSignal(ss.Convert<SignalSource>());
                 var sr = false;
                 if (s != null)
                 {

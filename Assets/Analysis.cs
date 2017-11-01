@@ -1,6 +1,6 @@
 ﻿/*
 Analysis.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -48,369 +48,15 @@ namespace VLabAnalysis
         IController
     }
 
-    public static class AnalysisFactory
+    public enum VisualizeMode
     {
-        public static IAnalysis GetAnalysisSystem(this AnalysisSystem analysissystem, int cleardataperanalysis = 1,
-            int retainanalysisperclear = 1, int sleepresolution = 2)
-        {
-            switch (analysissystem)
-            {
-                default:
-                    return new DotNetAnalysis(cleardataperanalysis, retainanalysisperclear, sleepresolution);
-            }
-        }
-
-        public static Type[] FindAll(this AnalysisInterface i)
-        {
-            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            var ts = assemblies.Where(a => a.GetName().Name == "Assembly-CSharp").SelectMany(a => a.GetTypes())
-                .Where(t => t.Namespace == "VLabAnalysis" && t.IsClass && t.GetInterface(i.ToString()) != null).ToArray();
-            return ts;
-        }
-
-        public static IAnalyzer GetAnalyzer(this int electrodeid, SignalType signaltype)
-        {
-            switch (signaltype)
-            {
-                case SignalType.Spike:
-                    return new MFRAnalyzer(new Signal(electrodeid, signaltype));
-                default:
-                    return null;
-            }
-        }
-
-        public static IAnalyzer GetAnalyzer(this Type analyzertype, int electrodeid, SignalType signaltype)
-        {
-            if (typeof(IAnalyzer).IsAssignableFrom(analyzertype))
-            {
-                return (IAnalyzer)Activator.CreateInstance(analyzertype, new Signal(electrodeid, signaltype));
-            }
-            return null;
-        }
-    }
-
-    /// <summary>
-    /// The dataset for each session of analysis should not be modified by
-    /// any subsequent procedures, so it's ideal that it could be represented
-    /// as immutable. but the standard .net way in system.collections.immutable
-    /// only support up to .net 4.0 profile which current unity runtime(2.0/3.5)
-    /// is below of. so we couldn't enforce right now the immutability of our dataset.
-    /// Moreover, we may want to accumulate dataset for several sessions of analysis which
-    /// is more efficent represented as mutable, since it avoid copying, save time and memeroy.
-    /// Therefore, we should be careful and ensure that any subsequent analysis DO NOT modify dataset,
-    /// so that parallel analysis is ensured thread safe. Even if we do, use the class methods and 
-    /// properties instead of direct accessing.
-    /// </summary>
-    public class DataSet
-    {
-        public List<double>[] spike;
-        public List<int>[] uid;
-        public List<double[,]> lfp;
-        public List<double> lfpstarttime;
-        public List<double>[] dintime;
-        public List<int>[] dinvalue;
-
-        Experiment ex;
-        public List<int> AccumCondIndex, CondIndex, AccumCondRepeat, CondRepeat;
-        public List<List<Dictionary<string, double>>> AccumCondState, CondState;
-        double vlabt0 = 0; double latency = -1;
-        bool isdinmark = false;
-        bool isdinmarkerror = false;
-
-        readonly int sc, mc, btc, etc, nmpc, msr, oll;
-        object datalock = new object();
-
-        public DataSet(int statechannel = 1, int markchannel = 2, int begintriggerchannel = 3, int endtriggerchannel = 4,
-            int nmarkpercond = 2, int marksearchradius = 20, int onlinelatency = 20)
-        {
-            sc = statechannel;
-            mc = markchannel;
-            btc = begintriggerchannel;
-            etc = endtriggerchannel;
-            nmpc = nmarkpercond;
-            msr = marksearchradius;
-            oll = onlinelatency;
-        }
-
-
-        public Experiment Ex
-        {
-            get { return ex; }
-            set { ex = value; }
-        }
-
-        public double VLabTimeZero
-        { get { lock (datalock) { return vlabt0; } } }
-
-        public double Latency
-        {
-            get
-            {
-                lock (datalock)
-                {
-                    if (latency < 0 && ex != null)
-                    {
-                        latency = ex.Latency + msr + oll;
-                    }
-                    return latency;
-                }
-            }
-        }
-
-        public bool IsDInMark
-        { get { lock (datalock) { return isdinmark; } } }
-
-        public bool IsDInMarkError
-        { get { lock (datalock) { return isdinmarkerror; } } }
-
-        public double VLabTimeToDataTime(double vlabtime)
-        {
-            lock (datalock)
-            {
-                if (ex != null)
-                {
-                    return vlabtime * (1 + ex.TimerDriftSpeed) + vlabt0;
-                }
-                return vlabtime;
-            }
-        }
-
-        public bool TryGetMarkTime(int condtestidx, out double t1, out double t2)
-        {
-            var msi = condtestidx * nmpc;
-            if (dinvalue[mc].Count >= msi + nmpc)
-            {
-                t1 = dintime[mc][msi];
-                t2 = dintime[mc][msi + 1];
-                return true;
-            }
-            else
-            {
-                t1 = 0; t2 = 0;
-                return false;
-            }
-        }
-
-        public bool TrySearchMarkTime(double t1searchpoint, double t2searchpoint, out double t1, out double t2)
-        {
-            double d1, d2; List<int> sidx1 = new List<int>(); List<int> sidx2 = new List<int>();
-            for (var i = dinvalue[mc].Count - 1; i >= 0; i--)
-            {
-                d1 = dintime[mc][i] - t1searchpoint;
-                d2 = dintime[mc][i] - t2searchpoint;
-                if (Math.Abs(d1) <= msr && dinvalue[mc][i] != 0)
-                {
-                    sidx1.Add(i);
-                }
-                if (Math.Abs(d2) <= msr && dinvalue[mc][i] == 0)
-                {
-                    sidx2.Add(i);
-                }
-                if (d1 < -msr && d2 < -msr)
-                {
-                    break;
-                }
-            }
-            if (sidx1.Count == 1 && sidx2.Count == 1)
-            {
-                t1 = dintime[mc][sidx1[0]];
-                t2 = dintime[mc][sidx2[0]];
-                return true;
-            }
-            else
-            {
-                t1 = 0; t2 = 0; return false;
-            }
-        }
-
-        public void Reset()
-        {
-            lock (datalock)
-            {
-                spike = null;
-                uid = null;
-                lfp = null;
-                lfpstarttime = null;
-                dintime = null;
-                dinvalue = null;
-
-                ex = null;
-                CondIndex = null;
-                AccumCondIndex = null;
-                CondState = null;
-                AccumCondState = null;
-                CondRepeat = null;
-                AccumCondRepeat = null;
-
-                vlabt0 = 0;
-                latency = -1;
-                isdinmark = false;
-                isdinmarkerror = false;
-
-                GC.Collect();
-            }
-        }
-
-        public void Remove(double time)
-        {
-            lock (datalock)
-            {
-                if (spike != null)
-                {
-                    for (var i = 0; i < spike.Length; i++)
-                    {
-                        if (spike[i].Count > 0)
-                        {
-                            VLAExtention.Sub(spike[i], uid[i], time, double.PositiveInfinity);
-                        }
-                    }
-                }
-            }
-        }
-
-        public void Add(List<double>[] ospike, List<int>[] ouid,
-            List<double[,]> alfp, List<double> alfpstarttime,
-            List<double>[] odintime, List<int>[] odinvalue,
-            List<int> ocondindex, List<int> ocondrepeat, List<List<Dictionary<string, double>>> ocondstate)
-        {
-            lock (datalock)
-            {
-                if (ocondindex != null)
-                {
-                    if (CondIndex == null)
-                    {
-                        CondIndex = ocondindex;
-                        AccumCondIndex = new List<int>();
-                    }
-                    else
-                    {
-                        AccumCondIndex.AddRange(CondIndex);
-                        CondIndex = ocondindex;
-                    }
-                }
-
-                if (ocondrepeat != null)
-                {
-                    if (CondRepeat == null)
-                    {
-                        CondRepeat = ocondrepeat;
-                        AccumCondRepeat = new List<int>();
-                    }
-                    else
-                    {
-                        AccumCondRepeat.AddRange(CondRepeat);
-                        CondRepeat = ocondrepeat;
-                    }
-                }
-
-                if (ocondstate != null)
-                {
-                    if (CondState == null)
-                    {
-                        CondState = ocondstate;
-                        AccumCondState = new List<List<Dictionary<string, double>>>();
-                    }
-                    else
-                    {
-                        AccumCondState.AddRange(CondState);
-                        CondState = ocondstate;
-                    }
-                }
-
-                if (ospike != null)
-                {
-                    if (spike == null)
-                    {
-                        spike = ospike;
-                        uid = ouid;
-                    }
-                    else
-                    {
-                        for (var i = 0; i < ospike.Length; i++)
-                        {
-                            spike[i].AddRange(ospike[i]);
-                            uid[i].AddRange(ouid[i]);
-                        }
-                    }
-                }
-
-                if (odintime != null)
-                {
-                    if (dintime == null)
-                    {
-                        dintime = odintime;
-                        dinvalue = odinvalue;
-                        // The falling edge time of the first TTL pulse in begin-trigger-channel 
-                        // marks the start of the experiment timer in VLab
-                        var bc = dintime[btc];
-                        if (bc.Count > 1)
-                        {
-                            vlabt0 = bc[1];
-                        }
-                    }
-                    else
-                    {
-                        for (var i = 0; i < odintime.Length; i++)
-                        {
-                            dintime[i].AddRange(odintime[i]);
-                            dinvalue[i].AddRange(odinvalue[i]);
-                        }
-                    }
-                    if (!isdinmark)
-                    {
-                        isdinmark = dintime[mc].Count > 0;
-                    }
-                    if (isdinmark && !isdinmarkerror)
-                    {
-                        if (dinvalue[mc].Count < ((AccumCondIndex.Count + CondIndex.Count) * nmpc))
-                        {
-                            var imi = dinvalue[mc].DiffFun((x, y) => x == y ? 1 : 0).ToList();
-                            if (imi.Any(x => x == 1))
-                            {
-                                var iimi = Enumerable.Range(0, imi.Count).Where(i => imi[i] != 0).ToList();
-                                for (var i = iimi.Count - 1; i >= 0; i--)
-                                {
-                                    dinvalue[mc].RemoveAt(iimi[i]);
-                                    dintime[mc].RemoveAt(iimi[i]);
-                                }
-                                if (dinvalue[mc].Count < ((AccumCondIndex.Count + CondIndex.Count) * nmpc))
-                                {
-                                    isdinmarkerror = true;
-                                }
-                            }
-                            else
-                            {
-                                isdinmarkerror = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        public bool IsData(int electrodeidx, SignalType signaltype)
-        {
-            switch (signaltype)
-            {
-                case SignalType.Spike:
-                    if (spike == null)
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        return spike[electrodeidx].Count == 0 ? false : true;
-                    }
-                default:
-                    return false;
-            }
-        }
+        First,
+        Last,
+        All
     }
 
     public interface IAnalysis : IDisposable
     {
-        ISignal SearchSignal();
-        ISignal SearchSignal(SignalSource source);
         ISignal Signal { get; set; }
         void AddAnalyzer(IAnalyzer analyzer);
         void RemoveAnalyzer(int analyzerid);
@@ -425,44 +71,47 @@ namespace VLabAnalysis
         void StartAnalysis();
         void StopAnalysis();
         void Reset();
+        void SaveVisualization(int width, int height, int dpi);
+        void VisualizeResults(VisualizeMode mode);
     }
 
     public class DotNetAnalysis : IAnalysis
     {
         int disposecount = 0;
-        ISignal signal;
         readonly int cleardataperanalysis, retainanalysisperclear, sleepresolution;
-        int analysisidx = 0;
 
+        ISignal signal; readonly object signallock = new object();
+        public ISignal Signal
+        { get { lock (signallock) { return signal; } } set { lock (signallock) { signal = value; } } }
         DataSet dataset = new DataSet();
+        ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
         ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
         ConcurrentQueue<double[]> analysisqueue = new ConcurrentQueue<double[]>();
-        List<double> analysistime = new List<double>();
-        ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
+        readonly List<double> analysistime = new List<double>();
+        int analysisidx = 0;
 
         Thread analysisthread;
-        bool gotothreadevent = false;readonly object gotolock = new object();
+        ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
+        readonly object datalock = new object();
+        readonly object gotoeventlock = new object();
+        bool gotothreadevent = false; readonly object gotolock = new object();
         bool GotoThreadEvent
         {
             get { lock (gotolock) { return gotothreadevent; } }
             set { lock (gotolock) { gotothreadevent = value; } }
         }
-        bool isanalyzing = false;readonly object isanalyzelock = new object();
+        bool isanalyzing = false; readonly object isanalyzelock = new object();
         bool IsAnalyzing
         {
             get { lock (isanalyzelock) { return isanalyzing; } }
             set { lock (isanalyzelock) { isanalyzing = value; } }
         }
-        bool isexperimentanalysisdone = false;readonly object isexanalyzedonelock = new object();
+        bool isexperimentanalysisdone = false; readonly object isexanalyzedonelock = new object();
         public bool IsExperimentAnalysisDone
         {
             get { lock (isexanalyzedonelock) { return isexperimentanalysisdone; } }
             set { lock (isexanalyzedonelock) { isexperimentanalysisdone = value; } }
         }
-        ManualResetEvent analysisthreadevent = new ManualResetEvent(true);
-        readonly object objlock = new object();
-        readonly object datalock = new object();
-        readonly object gotoeventlock = new object();
 
         public DotNetAnalysis(int cleardataperanalysis = 1, int retainanalysisperclear = 1, int sleepresolution = 2)
         {
@@ -503,53 +152,16 @@ namespace VLabAnalysis
             }
         }
 
-        public ISignal SearchSignal()
-        {
-            lock (objlock)
-            {
-                foreach (var ss in Enum.GetValues(typeof(SignalSource)))
-                {
-                    var s = SearchSignal((SignalSource)ss);
-                    if (s != null)
-                    {
-                        return s;
-                    }
-                }
-                return null;
-            }
-        }
-
-        public ISignal SearchSignal(SignalSource source)
-        {
-            lock (objlock)
-            {
-                ISignal s = null;
-                switch (source)
-                {
-                    case SignalSource.Ripple:
-                        s = new RippleSignal();
-                        break;
-                }
-                if (s != null && s.IsOnline)
-                {
-                    return s;
-                }
-                else
-                {
-                    return null;
-                }
-            }
-        }
-
         public void Reset()
         {
-            StopAnalysis();
             lock (datalock)
             {
-                if (Signal != null)
+                StopAnalysis();
+                if (signal != null)
                 {
-                    Signal.RestartCollectData(true);
+                    signal.RestartCollectData(true);
                 }
+                DataSet.Reset();
                 foreach (var aid in idanalyzer.Keys.ToArray())
                 {
                     IAnalyzer a;
@@ -558,13 +170,66 @@ namespace VLabAnalysis
                         a.Reset();
                     }
                 }
-                DataSet.Reset();
-                analysisidx = 0;
-                condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
+                condtest.Clear();
                 analysisqueue = new ConcurrentQueue<double[]>();
-                analysistime = new List<double>();
+                analysistime.Clear();
+                analysisidx = 0;
+                StartAnalysis();
             }
-            StartAnalysis();
+        }
+
+        public void SaveVisualization(int width, int height, int dpi)
+        {
+            var datapath = DataSet.Ex.DataPath;
+            var datadir = Path.GetDirectoryName(datapath);
+            var dataname = Path.GetFileNameWithoutExtension(datapath);
+            foreach (var i in Analyzers.Keys.ToList())
+            {
+                IAnalyzer a;
+                if (Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
+                {
+                    var filename = dataname + "_Ch" + a.Signal.Channel + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name;
+                    var filedir = Path.Combine(datadir, "Ch" + a.Signal.Channel);
+                    if (!Directory.Exists(filedir))
+                    {
+                        Directory.CreateDirectory(filedir);
+                    }
+                    a.Visualizer.Save(Path.Combine(filedir, filename), width, height, dpi);
+                }
+            }
+        }
+
+        public void VisualizeResults(VisualizeMode mode = VisualizeMode.First)
+        {
+            foreach (var i in Analyzers.Keys.ToArray())
+            {
+                IAnalyzer a;
+                if (Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
+                {
+                    IResult r;
+                    switch (mode)
+                    {
+                        case VisualizeMode.First:
+                            if (a.ResultVisualizeQueue.TryDequeue(out r))
+                            {
+                                a.Visualizer.Visualize(r);
+                            }
+                            break;
+                        case VisualizeMode.All:
+                            while (a.ResultVisualizeQueue.TryDequeue(out r))
+                            {
+                                a.Visualizer.Visualize(r);
+                            }
+                            break;
+                        case VisualizeMode.Last:
+                            while (a.ResultVisualizeQueue.TryDequeue(out r) && a.ResultVisualizeQueue.IsEmpty)
+                            {
+                                a.Visualizer.Visualize(r);
+                            }
+                            break;
+                    }
+                }
+            }
         }
 
         public void StartAnalysis()
@@ -605,7 +270,7 @@ namespace VLabAnalysis
                         if (!GotoThreadEvent)
                         {
                             IsAnalyzing = false;
-                            return;
+                            break;
                         }
                     }
                 }
@@ -647,6 +312,10 @@ namespace VLabAnalysis
         {
             lock (datalock)
             {
+                if (signal != null)
+                {
+                    signal.StopCollectData(true);
+                }
                 if (analysisthread != null)
                 {
                     analysisqueue.Enqueue(new double[] { -1 });
@@ -661,42 +330,41 @@ namespace VLabAnalysis
         #region ThreadAnalysisFunction
         void ProcessAnalysisQueue()
         {
-            List<double>[] spike;
-            List<int>[] uid;
-            List<double[,]> lfp;
-            List<double> lfpstarttime;
-            List<double>[] dintime;
-            List<int>[] dinvalue;
+            List<double>[] ospike;
+            List<int>[] ouid;
+            List<double[,]> olfp;
+            List<double> olfpstarttime;
+            List<double>[] odintime;
+            List<int>[] odinvalue;
 
-            double[] aqitem; object CondIndex, CondRepeat, CondState;
-            bool isaqitem = false;
+            object ocondindex, ocondrepeat, ocondstate; double[] aqitem; bool isaqitem = false;
             while (true)
             {
-            ThreadEvent:
+                ThreadEvent:
                 lock (gotoeventlock)
                 {
                     GotoThreadEvent = false;
                     analysisthreadevent.WaitOne();
                 }
                 isaqitem = analysisqueue.TryDequeue(out aqitem);
-                if (isaqitem && aqitem[0] < 0)
+                if (isaqitem && aqitem[0] == -1)
                 {
                     IsExperimentAnalysisDone = true;
                     continue;
                 }
-                if (isaqitem && condtest.ContainsKey(CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out CondIndex)
-                    && condtest.ContainsKey(CONDTESTPARAM.CONDSTATE) && condtest[CONDTESTPARAM.CONDSTATE].TryDequeue(out CondState)
-                    && condtest.ContainsKey(CONDTESTPARAM.CondRepeat) && condtest[CONDTESTPARAM.CondRepeat].TryDequeue(out CondRepeat))
+                if (isaqitem && condtest.ContainsKey(CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out ocondindex)
+                    && condtest.ContainsKey(CONDTESTPARAM.CONDSTATE) && condtest[CONDTESTPARAM.CONDSTATE].TryDequeue(out ocondstate)
+                    && condtest.ContainsKey(CONDTESTPARAM.CondRepeat) && condtest[CONDTESTPARAM.CondRepeat].TryDequeue(out ocondrepeat))
                 {
                     var aqidx = aqitem[0];
                     var aqclear = aqitem[1] == 1;
-                    var aqtime = DataSet.VLabTimeToDataTime(aqitem[2]);
-                    analysistime.Add(aqtime);
+                    var aqdatatime = DataSet.VLabTimeToDataTime(aqitem[2]);
+                    analysistime.Add(aqdatatime);
                     if (Signal != null)
                     {
                         // Wait the delayed data to be collected before analysis
-                        var dl = aqtime + DataSet.Latency;
-                        while (Signal.Time <= dl)
+                        var delayedtime = aqdatatime + DataSet.DataLatency;
+                        while (Signal.Time <= delayedtime)
                         {
                             if (GotoThreadEvent)
                             {
@@ -704,14 +372,14 @@ namespace VLabAnalysis
                             }
                             Thread.Sleep(sleepresolution);
                         }
-                        Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue);
-                        DataSet.Add(spike, uid, lfp, lfpstarttime, dintime, dinvalue,
-                        (List<int>)CondIndex, (List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
+                        Signal.GetData(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                        DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue,
+                        (List<int>)ocondindex, (List<int>)ocondrepeat, (List<List<Dictionary<string, double>>>)ocondstate);
                     }
                     else
                     {
                         DataSet.Add(null, null, null, null, null, null,
-                            (List<int>)CondIndex, (List<int>)CondRepeat, (List<List<Dictionary<string, double>>>)CondState);
+                            (List<int>)ocondindex, (List<int>)ocondrepeat, (List<List<Dictionary<string, double>>>)ocondstate);
                     }
 
                     if (GotoThreadEvent)
@@ -738,10 +406,10 @@ namespace VLabAnalysis
 
                     if (aqclear)
                     {
-                        var atidx = (int)aqidx - retainanalysisperclear - 1;
-                        if (atidx >= 0)
+                        var actidx = (int)aqidx - 1 - retainanalysisperclear;
+                        if (actidx >= 0)
                         {
-                            DataSet.Remove(analysistime[atidx]);
+                            DataSet.Remove(analysistime[actidx]);
                         }
                     }
                 }
@@ -752,9 +420,6 @@ namespace VLabAnalysis
             }
         }
         #endregion
-
-        public ISignal Signal
-        { get { return signal; } set { signal = value; } }
 
         public DataSet DataSet
         { get { return dataset; } }
@@ -800,6 +465,5 @@ namespace VLabAnalysis
 
         public int ClearDataPerAnalysis
         { get { return cleardataperanalysis; } }
-
     }
 }

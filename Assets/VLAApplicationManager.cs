@@ -1,6 +1,6 @@
 ﻿/*
 VLAApplicationManager.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -36,7 +36,7 @@ namespace VLabAnalysis
         AnalysisSleepResolution,
         AnalysisSystem,
         AddSpikeAnalysisWhenSignalOnLine,
-        SaveVisualizationWhenExperimentStop,
+        SaveVisualizationWhenExperimentAnalysisDone,
         VisualizerWidth,
         VisualizerHeight,
         PlotExportWidth,
@@ -125,13 +125,13 @@ namespace VLabAnalysis
             {
                 config[VLACFG.AddSpikeAnalysisWhenSignalOnLine] = config[VLACFG.AddSpikeAnalysisWhenSignalOnLine].Convert<bool>();
             }
-            if (!config.ContainsKey(VLACFG.SaveVisualizationWhenExperimentStop))
+            if (!config.ContainsKey(VLACFG.SaveVisualizationWhenExperimentAnalysisDone))
             {
-                config[VLACFG.SaveVisualizationWhenExperimentStop] = true;
+                config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone] = true;
             }
             else
             {
-                config[VLACFG.SaveVisualizationWhenExperimentStop] = config[VLACFG.SaveVisualizationWhenExperimentStop].Convert<bool>();
+                config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone] = config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone].Convert<bool>();
             }
             if (!config.ContainsKey(VLACFG.VisualizerWidth))
             {

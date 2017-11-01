@@ -1,6 +1,6 @@
 ﻿/*
 AnalysisGroup.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -35,17 +35,17 @@ namespace VLabAnalysis
         {
             if(analyzer.options.Count==0)
             {
-                var ia = AnalysisFactory.FindAll(AnalysisInterface.IAnalyzer);
+                var ia = VLAExtention.FindAll(AnalysisInterface.IAnalyzer);
                 analyzer.AddOptions(ia.Select(i => i.Name).ToList());
             }
             if (visualizer.options.Count == 0)
             {
-                var iv = AnalysisFactory.FindAll( AnalysisInterface.IVisualizer);
+                var iv = VLAExtention.FindAll( AnalysisInterface.IVisualizer);
                 visualizer.AddOptions(iv.Select(i => i.Name).ToList());
             }
             if (controller.options.Count == 0)
             {
-                var ic = AnalysisFactory.FindAll( AnalysisInterface.IController);
+                var ic = VLAExtention.FindAll( AnalysisInterface.IController);
                 controller.AddOptions(ic.Select(i => i.Name).ToList());
             }
             analyzer.value = analyzer.options.Select(i=>i.text).ToList().IndexOf(a);

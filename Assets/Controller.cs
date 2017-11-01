@@ -1,6 +1,6 @@
 ﻿/*
 Controller.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -22,6 +22,7 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using UnityEngine;
 using System.Linq;
 using System.Collections;
+using System.Threading;
 using System.Collections.Concurrent;
 using System;
 
@@ -36,7 +37,7 @@ namespace VLabAnalysis
 
     public class OPTController : IController
     {
-        bool disposed;
+        int disposecount = 0;
         ConcurrentQueue<IControlResult> controlresultqueue = new ConcurrentQueue<IControlResult>();
 
         ~OPTController()
@@ -52,13 +53,9 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposed)
+            if (Interlocked.Exchange(ref disposecount, 1) == 1) return;
+            if (disposing)
             {
-                if (disposing)
-                {
-                }
-
-                disposed = true;
             }
         }
 

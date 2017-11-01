@@ -1,6 +1,6 @@
 ﻿/*
 Signal.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -91,28 +91,7 @@ namespace VLabAnalysis
         int disposecount = 0;
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
         readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec,
-            sleepresolution, maxdigitalinchannel;
-
-        readonly object datalock = new object();
-        readonly object gotoeventlock = new object();
-        Thread datathread;
-        ManualResetEvent datathreadevent = new ManualResetEvent(true);
-        // those fields should be accessed only through corresponding property to provide thread safety
-        bool gotothreadevent = false; readonly object gotolock = new object();
-        bool GotoThreadEvent
-        {
-            get { lock (gotolock) { return gotothreadevent; } }
-            set { lock (gotolock) { gotothreadevent = value; } }
-        }
-        bool iscollectingdata = false; readonly object iscollectlock = new object();
-        bool IsCollectingData
-        {
-            get { lock (iscollectlock) { return iscollectingdata; } }
-            set { lock (iscollectlock) { iscollectingdata = value; } }
-        }
-        bool isonline;
-        int[] eids;
-
+            sleepresolution, maxdigitalinchannel, maxdigitalbuffersize;// 0.5hr spikes of each channel
         // Linear Data Buffers
         List<double>[] spike;
         List<int>[] uid;
@@ -121,8 +100,29 @@ namespace VLabAnalysis
         List<double>[] dintime;
         List<int>[] dinvalue;
 
+        readonly object xippmexlock = new object();
+        readonly object datalock = new object();
+        readonly object gotoeventlock = new object();
+        Thread datathread;
+        ManualResetEvent datathreadevent = new ManualResetEvent(true);
+        // those fields should be accessed only through corresponding property to provide thread safety
+        bool _gotothreadevent = false; readonly object gotolock = new object();
+        bool GotoThreadEvent
+        {
+            get { lock (gotolock) { return _gotothreadevent; } }
+            set { lock (gotolock) { _gotothreadevent = value; } }
+        }
+        bool _iscollectingdata = false; readonly object iscollectlock = new object();
+        bool IsCollectingData
+        {
+            get { lock (iscollectlock) { return _iscollectingdata; } }
+            set { lock (iscollectlock) { _iscollectingdata = value; } }
+        }
+        bool _isonline;
+        int[] _eids;
+
         public RippleSignal(int tickfreq = 30000, int maxelectrodeid = 5120, int timeunitpersec = 1000,
-            int digitalIPI = 800, int analogIPI = 4800, int sleepresolution = 1, int maxdigitalinchannel = 6)
+            int digitalIPI = 800, int analogIPI = 4800, int sleepresolution = 1, int maxdigitalinchannel = 6, int maxdigitalbuffersize = 1800000)
         {
             this.tickfreq = tickfreq;
             this.maxelectrodeid = maxelectrodeid;
@@ -131,6 +131,7 @@ namespace VLabAnalysis
             this.analogIPI = analogIPI;
             this.sleepresolution = Math.Max(1, sleepresolution);
             this.maxdigitalinchannel = maxdigitalinchannel;
+            this.maxdigitalbuffersize = maxdigitalbuffersize;
         }
 
         ~RippleSignal()
@@ -205,9 +206,9 @@ namespace VLabAnalysis
             return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
         }
 
-        public SignalType[] GetSignalTypes(int channel, bool isonlyreturnonsignaltype = true)
+        public SignalType[] GetSignalTypes(int channel, bool isonlyreturnsignalontype = true)
         {
-            lock (datalock)
+            lock (xippmexlock)
             {
                 SignalType[] v = null;
                 if (IsReady && Channels.Contains(channel))
@@ -223,7 +224,7 @@ namespace VLabAnalysis
                         }
                     }
                 }
-                if (v != null && isonlyreturnonsignaltype)
+                if (v != null && isonlyreturnsignalontype)
                 {
                     v = v.Where(i => IsSignalOn(channel, i)).ToArray();
                 }
@@ -233,7 +234,7 @@ namespace VLabAnalysis
 
         public bool IsSignalOn(int channel, SignalType signaltype)
         {
-            lock (datalock)
+            lock (xippmexlock)
             {
                 if (IsReady && Channels.Contains(channel))
                 {
@@ -248,20 +249,20 @@ namespace VLabAnalysis
         {
             get
             {
-                lock (datalock)
+                lock (xippmexlock)
                 {
-                    if (!isonline)
+                    if (!_isonline)
                     {
                         try
                         {
-                            isonline = ((MWLogicalArray)xippmexdotnet.xippmex(1)[0]).ToVector()[0];
+                            _isonline = ((MWLogicalArray)xippmexdotnet.xippmex(1)[0]).ToVector()[0];
                         }
                         catch (Exception ex)
                         {
                             Debug.Log(ex.Message);
                         }
                     }
-                    return isonline;
+                    return _isonline;
                 }
             }
         }
@@ -270,16 +271,16 @@ namespace VLabAnalysis
         {
             get
             {
-                if (IsOnline)
+                lock (datalock)
                 {
-                    lock (datalock)
+                    if (IsOnline)
                     {
-                        if (eids == null)
+                        if (_eids == null)
                         {
                             try
                             {
                                 var t = (double[])((MWNumericArray)xippmexdotnet.xippmex(1, "elec", "all")[0]).ToVector(MWArrayComponent.Real);
-                                eids = t.Select(i => (int)i).Where(i => i <= maxelectrodeid).ToArray();
+                                _eids = t.Select(i => (int)i).Where(i => i <= maxelectrodeid).ToArray();
                             }
                             catch (Exception ex)
                             {
@@ -287,18 +288,12 @@ namespace VLabAnalysis
                             }
                         }
                     }
+                    return _eids;
                 }
-                return eids;
             }
         }
 
-        public bool IsReady
-        {
-            get
-            {
-                return Channels != null;
-            }
-        }
+        public bool IsReady { get { lock (datalock) { return Channels != null; } } }
 
         public void StartCollectData(bool isclean = true)
         {
@@ -362,7 +357,7 @@ namespace VLabAnalysis
         #region Collect Data
         void CollectDataThreadFunction()
         {
-            // here we use local and readonly variables, threadsafe methods. 
+            // here we use local and readonly variables, thread safe properties.
             string fcs = "", scs = "";
             int fi, si, fn;
             if (digitalIPI < analogIPI)
@@ -477,10 +472,16 @@ namespace VLabAnalysis
                 {
                     var t = (double[])dt.ToVector(MWArrayComponent.Real);
                     var v = (double[])dv.ToVector(MWArrayComponent.Real);
-                    for (var j = 0; j < t.Length; j++)
+                    var n = t.Length;
+                    for (var j = 0; j < n; j++)
                     {
                         dintime[i].Add((t[j] / tickfreq) * timeunitpersec);
                         dinvalue[i].Add((int)v[j]);
+                    }
+                    if (dintime[i].Count > maxdigitalbuffersize)
+                    {
+                        dintime[i].RemoveRange(0, n);
+                        dinvalue[i].RemoveRange(0, n);
                     }
                 }
             }
@@ -503,10 +504,16 @@ namespace VLabAnalysis
                     var ss = (double[])st.ToVector(MWArrayComponent.Real);
                     var us = (double[])(s3[idx] as MWNumericArray).ToVector(MWArrayComponent.Real);
                     var sidx = sid[i] - 1;
-                    for (var j = 0; j < ss.Length; j++)
+                    var n = ss.Length;
+                    for (var j = 0; j < n; j++)
                     {
                         spike[sidx].Add((ss[j] / tickfreq) * timeunitpersec);
                         uid[sidx].Add((int)us[j]);
+                    }
+                    if (spike[sidx].Count > maxdigitalbuffersize)
+                    {
+                        spike[sidx].RemoveRange(0, n);
+                        uid[sidx].RemoveRange(0, n);
                     }
                 }
             }
@@ -576,7 +583,7 @@ namespace VLabAnalysis
         {
             get
             {
-                lock (datalock)
+                lock (xippmexlock)
                 {
                     return ((MWNumericArray)xippmexdotnet.xippmex(1, "time")[0]).ToScalarDouble() / tickfreq * timeunitpersec;
                 }
@@ -590,7 +597,7 @@ namespace VLabAnalysis
                 StopCollectData(false);
                 if (iscleanall)
                 {
-                    // Clear Xippmex buffer
+                    // Clear xippmex buffer
                     xippmexdotnet.xippmex("close");
                     xippmexdotnet.xippmex(1);
                 }

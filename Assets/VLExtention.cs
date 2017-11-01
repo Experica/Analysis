@@ -69,7 +69,14 @@ namespace VLab
 
     public static class VLExtention
     {
-        static Type TString, TFloat,TBool,TVector3,TColor, TListOfString, TListOfFloat, TListOfBool,TParam;
+        static Type TString, TFloat, TBool, TVector3, TColor, TListOfString, TListOfFloat, TListOfBool, TParam;
+
+        static HashSet<Type> NumericTypes = new HashSet<Type>
+        {
+            typeof(byte),typeof(sbyte),typeof(short),typeof(ushort),
+            typeof(int),typeof(uint),typeof(long),typeof(ulong),
+            typeof(float),typeof(double),typeof(decimal)
+        };
 
         static VLExtention()
         {
@@ -82,6 +89,11 @@ namespace VLab
             TListOfFloat = typeof(List<float>);
             TListOfBool = typeof(List<bool>);
             TParam = typeof(Param);
+        }
+
+        public static bool IsNumeric(this Type type)
+        {
+            return NumericTypes.Contains(Nullable.GetUnderlyingType(type) ?? type);
         }
 
         public static T Convert<T>(this object value)
@@ -308,8 +320,8 @@ namespace VLab
         {
             return rng.Permutation(seq.Count).Select(i => seq[i]).ToList();
         }
-        
-        public static Dictionary<string, List<object>> ResolveConditionReference(this Dictionary<string, List<object>> cond,Dictionary<string,Param> param)
+
+        public static Dictionary<string, List<object>> ResolveConditionReference(this Dictionary<string, List<object>> cond, Dictionary<string, Param> param)
         {
             return cond.ResolveCondFactorReference(param).ResolveCondLevelReference(param);
         }
@@ -327,10 +339,10 @@ namespace VLab
                 if (f.Count() > 1 && f.First() == '$')
                 {
                     var rf = f.Substring(1);
-                    if (param.ContainsKey(rf) && param[rf] != null &&param[rf].Type.IsList())
+                    if (param.ContainsKey(rf) && param[rf] != null && param[rf].Type.IsList())
                     {
                         var fl = cond[f]; fl.Clear();
-                        foreach(var i in (IEnumerable)param[rf].Value)
+                        foreach (var i in (IEnumerable)param[rf].Value)
                         {
                             fl.Add(i);
                         }
@@ -468,19 +480,19 @@ namespace VLab
             }
         }
 
-        public static bool FirstAtSplit(this string name,out string head,out string tail)
+        public static bool FirstAtSplit(this string name, out string head, out string tail)
         {
-            head = null;tail = null;
-            if(!string.IsNullOrEmpty(name))
+            head = null; tail = null;
+            if (!string.IsNullOrEmpty(name))
             {
                 var ati = name.IndexOf('@');
-                if(ati<0)
+                if (ati < 0)
                 {
                     head = name;
                     tail = null;
                     return false;
                 }
-                else if(ati==0)
+                else if (ati == 0)
                 {
                     if (name.Length >= 4)
                     {
@@ -525,8 +537,8 @@ namespace VLab
         public static bool IsEnvParamFullName(this string name, out string shortname, out string fullname)
         {
             string head, tail;
-            var t= name.FirstAtSplit(out head, out tail);
-            if(t)
+            var t = name.FirstAtSplit(out head, out tail);
+            if (t)
             {
                 shortname = head;
                 fullname = name;
@@ -546,7 +558,7 @@ namespace VLab
             return head != null && tail == null;
         }
 
-        public static bool LastAtSplit(this string name,out string head,out string tail)
+        public static bool LastAtSplit(this string name, out string head, out string tail)
         {
             head = null; tail = null;
             if (!string.IsNullOrEmpty(name))
@@ -610,27 +622,41 @@ namespace VLab
             }
         }
 
-        public static float GetColorScale(float luminance, float contrast )
+        public static float GetColorScale(float luminance, float contrast)
         {
             luminance = Mathf.Clamp(luminance, 0, 1);
             contrast = Mathf.Clamp(contrast, 0, 1);
-            return 2*luminance * contrast;
+            return 2 * luminance * contrast;
         }
 
-        public static void GetColor(this float scale,Color minc,Color maxc, out Color sminc,out Color smaxc)
+        public static void GetColor(this float scale, Color minc, Color maxc, out Color sminc, out Color smaxc)
         {
             var ac = (minc + maxc) / 2;
             var acd = maxc - ac;
-             sminc = new Color(ac.r - acd.r * scale, ac.g - acd.g * scale, ac.b - acd.b * scale, minc.a);
-             smaxc = new Color(ac.r + acd.r * scale, ac.g + acd.g * scale, ac.b + acd.b * scale, maxc.a);
+            sminc = new Color(ac.r - acd.r * scale, ac.g - acd.g * scale, ac.b - acd.b * scale, minc.a);
+            smaxc = new Color(ac.r + acd.r * scale, ac.g + acd.g * scale, ac.b + acd.b * scale, maxc.a);
         }
 
-        public static Vector3 RotateZCCW(this Vector3 v,float angle)
+        public static Vector3 RotateZCCW(this Vector3 v, float angle)
         {
             return Quaternion.AngleAxis(angle, Vector3.forward) * v;
         }
 
-        
-       
+        public static string[] ValidStrings(params string[] ss)
+        {
+            var r = new List<string>();
+            if (ss.Length > 0)
+            {
+                foreach (var s in ss)
+                {
+                    if (!string.IsNullOrEmpty(s))
+                    {
+                        r.Add(s);
+                    }
+                }
+            }
+            return r.ToArray();
+        }
+
     }
 }

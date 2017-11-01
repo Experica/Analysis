@@ -113,6 +113,7 @@
     <Compile Include="Assets\Analysis.cs" />
     <Compile Include="Assets\Analyzer.cs" />
     <Compile Include="Assets\Controller.cs" />
+    <Compile Include="Assets\DataSet.cs" />
     <Compile Include="Assets\Experiment.cs" />
     <Compile Include="Assets\Resources\UI\AnalysisGroup.cs" />
     <Compile Include="Assets\Resources\UI\Drag.cs" />
@@ -150,6 +151,7 @@
     <None Include="Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\System.Threading.xml" />
     <None Include="Assets\Plugins\TaskParallelLibrary.1.0.2856.0\Net35\redist.txt" />
     <None Include="Assets\Plugins\YamlDotNet\YamlDotNet.xml" />
+    <None Include="VLab.licenseheader" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="GenerateTargetFrameworkMonikerAttribute" />

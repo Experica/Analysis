@@ -1,6 +1,6 @@
 ﻿/*
 VLAnalysisManager.cs is part of the VLAB project.
-Copyright (c) 2016 Li Alex Zhang and Contributors
+Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -48,10 +48,6 @@ namespace VLabAnalysis
         public void RpcNotifyStopExperiment()
         {
             if (als == null) return;
-            if (als.Signal != null)
-            {
-                als.Signal.StopCollectData(true);
-            }
             als.ExperimentEndEnqueue();
         }
 
@@ -62,7 +58,7 @@ namespace VLabAnalysis
             if (als.Signal != null)
             {
                 var t = new VLTimer();
-                t.Countdown(als.DataSet.Latency);
+                t.Countdown(als.DataSet.DataLatency);
                 als.Signal.StopCollectData(true);
             }
         }
@@ -81,29 +77,39 @@ namespace VLabAnalysis
         public void RpcNotifyExperiment(byte[] value)
         {
             if (als == null) return;
-            // Set Experiment Data and VLabTimeZero
+            // Set Experiment Data
             var ex = VLMsgPack.ExSerializer.Unpack(new MemoryStream(value));
             if (ex.Cond != null && ex.Cond.Count > 0)
             {
-                foreach (var fl in ex.Cond.Values)
+                foreach (var fvs in ex.Cond.Values)
                 {
-                    for (var i = 0; i < fl.Count; i++)
+                    for (var i = 0; i < fvs.Count; i++)
                     {
-                        fl[i] = fl[i].MsgPackObjectToObject();
+                        fvs[i] = fvs[i].MsgPackObjectToObject();
                     }
                 }
             }
+            if (ex.EnvParam != null && ex.EnvParam.Count > 0)
+            {
+                foreach (var k in ex.EnvParam.Keys)
+                {
+                    ex.EnvParam[k] = ex.EnvParam[k].MsgPackObjectToObject();
+                }
+            }
             als.DataSet.Ex = ex;
+            //  Set VLabTimeZero
             if (als.Signal != null)
             {
-                List<double>[] spike;
-                List<int>[] uid;
-                List<double[,]> lfp;
-                List<double> lfpstarttime;
-                List<double>[] dintime;
-                List<int>[] dinvalue;
-                als.Signal.GetData(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue);
-                als.DataSet.Add(spike, uid, lfp, lfpstarttime, dintime, dinvalue, null, null, null);
+                var t = new VLTimer();
+                t.Countdown(als.DataSet.DataLatency);
+                List<double>[] ospike;
+                List<int>[] ouid;
+                List<double[,]> olfp;
+                List<double> olfpstarttime;
+                List<double>[] odintime;
+                List<int>[] odinvalue;
+                als.Signal.GetData(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                als.DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue, null, null, null);
             }
         }
 
@@ -135,97 +141,44 @@ namespace VLabAnalysis
             als.CondTestEndEnqueue(time);
         }
 
-        //[Command]
-        //public void CmdNotifyUpdate()
-        //{
-        //    if (als == null) return;
-        //}
-
-        //void Update()
-        //{
-        //    if (als == null) return;
-        //    if (als.Signal != null && als.Analyzers != null)
-        //    {
-        //        foreach (var a in als.Analyzers.Values)
-        //        {
-        //            if (a.Controller != null)
-        //            {
-        //                IControlResult command;
-        //                if (a.Controller.ControlResultQueue.TryDequeue(out command))
-        //                {
-        //                    CmdNotifyUpdate();
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
-
         void LateUpdate()
         {
-            if (als == null) return;
+            if (als == null || als.Analyzers == null) return;
+
             var isfront = Input.GetButton("ShowInFront"); var isalign = Input.GetButton("Align");
-            if (als.Signal != null && als.Analyzers != null)
+            var cn = 4f;
+            if (isalign)
             {
-                if (als.IsExperimentAnalysisDone)
+                cn = Mathf.Floor(Screen.currentResolution.width / (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth]);
+            }
+            foreach (var i in als.Analyzers.Keys.ToList())
+            {
+                IAnalyzer a;
+                if (als.Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
                 {
-                    var datapath = als.DataSet.Ex.DataPath;
-                    var datadir = Path.GetDirectoryName(datapath);
-                    var dataname = Path.GetFileNameWithoutExtension(datapath);
-                    int width = (int)uicontroller.appmanager.config[VLACFG.PlotExportWidth];
-                    int height = (int)uicontroller.appmanager.config[VLACFG.PlotExportHeight];
-                    int dpi = (int)uicontroller.appmanager.config[VLACFG.PlotExportDPI];
-                    foreach (var i in als.Analyzers.Keys.ToList())
+                    if (isfront)
                     {
-                        IAnalyzer a;
-                        if (als.Analyzers.TryGetValue(i, out a))
+                        if (isalign)
                         {
-                            if (a.Visualizer != null)
-                            {
-                                var filename = dataname + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name + "_Ch" + a.Signal.Channel;
-                                var filedir = Path.Combine(datadir, "Ch" + a.Signal.Channel);
-                                if (!Directory.Exists(filedir))
-                                {
-                                    Directory.CreateDirectory(filedir);
-                                }
-                                a.Visualizer.Save(Path.Combine(filedir, filename), width, height, dpi);
-                            }
+                            var ci = (a.Signal.Channel - 1) % cn; var ri = Mathf.Floor((a.Signal.Channel - 1) / cn);
+                            a.Visualizer.Position = new Vector2(ci * (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth],
+                                ri * (int)uicontroller.appmanager.config[VLACFG.VisualizerHeight]);
                         }
-                    }
-                    als.IsExperimentAnalysisDone = false;
-                }
-                else
-                {
-                    var cn = 4f;
-                    if (isalign)
-                    {
-                        cn = Mathf.Floor(Screen.currentResolution.width / (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth]);
-                    }
-                    foreach (var i in als.Analyzers.Keys.ToList())
-                    {
-                        IAnalyzer a;
-                        if (als.Analyzers.TryGetValue(i, out a))
-                        {
-                            if (a.Visualizer != null)
-                            {
-                                if (isfront)
-                                {
-                                    if (isalign)
-                                    {
-                                        var ci = (a.Signal.Channel - 1) % cn; var ri = Mathf.Floor((a.Signal.Channel - 1) / cn);
-                                        a.Visualizer.Position = new Vector2(ci * (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth],
-                                            ri * (int)uicontroller.appmanager.config[VLACFG.VisualizerHeight]);
-                                    }
-                                    a.Visualizer.ShowInFront();
-                                }
-                                IVisualizeResult vr;
-                                if (a.VisualizeResultQueue.TryDequeue(out vr))
-                                {
-                                    a.Visualizer.Visualize(vr);
-                                }
-                            }
-                        }
+                        a.Visualizer.ShowInFront();
                     }
                 }
+            }
+
+            als.VisualizeResults(VisualizeMode.First);
+            if (als.IsExperimentAnalysisDone)
+            {
+                als.VisualizeResults(VisualizeMode.Last);
+                if ((bool)uicontroller.appmanager.config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone])
+                {
+                    als.SaveVisualization((int)uicontroller.appmanager.config[VLACFG.PlotExportWidth], (int)uicontroller.appmanager.config[VLACFG.PlotExportHeight],
+                        (int)uicontroller.appmanager.config[VLACFG.PlotExportDPI]);
+                }
+                als.IsExperimentAnalysisDone = false;
             }
         }
 
