@@ -88,6 +88,7 @@ namespace VLabAnalysis
 
         public void Visualize(IResult result)
         {
+            if (!Visible) { Show(); }
             plotview.Visualize(result);
         }
 
@@ -120,6 +121,7 @@ namespace VLabAnalysis
             pm.LegendPlacement = LegendPlacement.Inside;
             Model = pm;
             ContextMenuStrip = cms;
+            Dock = DockStyle.Fill;
         }
 
         public void Reset()
@@ -306,7 +308,7 @@ namespace VLabAnalysis
             }
             if (string.IsNullOrEmpty(x1factor) && string.IsNullOrEmpty(x2factor)) return;
 
-            var alluuid = result.CondResponse.SelectMany(i => i.Keys).Distinct().ToList();
+            var alluuid = result.CondResponse.Where(i=>i!=null).SelectMany(i => i.Keys).Distinct().ToList();
             var nct = result.CondResponse.Count;
             // XY plot
             if (!string.IsNullOrEmpty(x1factor) && string.IsNullOrEmpty(x2factor))

@@ -217,14 +217,22 @@ namespace VLabAnalysis
             var clone = (MFRResult)MemberwiseClone();
             clone.experimentid = string.Copy(experimentid);
             var ccondmfr = new List<Dictionary<int, double>>();
-            foreach (var d in condmfr)
+            for(var i=0;i<condmfr.Count;i++)
             {
-                var cd = new Dictionary<int, double>();
-                foreach (var u in d.Keys)
+                var d = condmfr[i];
+                if (d==null)
                 {
-                    cd[u] = d[u];
+                    ccondmfr.Add(null);
                 }
-                ccondmfr.Add(cd);
+                else
+                {
+                    var cd = new Dictionary<int, double>();
+                    foreach (var u in d.Keys)
+                    {
+                        cd[u] = d[u];
+                    }
+                    ccondmfr.Add(cd);
+                }
             }
             clone.condmfr = ccondmfr;
             return clone;

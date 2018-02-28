@@ -49,9 +49,9 @@ namespace VLab
         public static object MsgPackObjectToObject(this object o)
         {
             var mpo = (MessagePackObject)o;
-            if (mpo.IsArray)
+            if (mpo.IsArray || mpo.IsList)
             {
-                return mpo.AsList().Select(i => i.ToObject()).ToArray();
+                return mpo.AsList().Select(i => i.ToObject()).ToList();
             }
             else
             {

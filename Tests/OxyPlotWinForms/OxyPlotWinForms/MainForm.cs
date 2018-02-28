@@ -17,8 +17,8 @@ namespace OxyPlotWinForms
         public MainForm()
         {
             InitializeComponent();
-            v.Visualize();
             Controls.Add(v);
+            v.Visualize();
         }
     }
 }

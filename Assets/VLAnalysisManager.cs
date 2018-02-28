@@ -59,7 +59,7 @@ namespace VLabAnalysis
             {
                 var t = new VLTimer();
                 t.Countdown(als.DataSet.DataLatency);
-                als.Signal.StopCollectData(true);
+                als.Signal.Stop(true);
             }
         }
 
@@ -69,7 +69,7 @@ namespace VLabAnalysis
             if (als == null) return;
             if (als.Signal != null)
             {
-                als.Signal.StartCollectData(false);
+                als.Signal.Start(false);
             }
         }
 
@@ -91,7 +91,7 @@ namespace VLabAnalysis
             }
             if (ex.EnvParam != null && ex.EnvParam.Count > 0)
             {
-                foreach (var k in ex.EnvParam.Keys)
+                foreach (var k in ex.EnvParam.Keys.ToArray())
                 {
                     ex.EnvParam[k] = ex.EnvParam[k].MsgPackObjectToObject();
                 }
@@ -108,7 +108,7 @@ namespace VLabAnalysis
                 List<double> olfpstarttime;
                 List<double>[] odintime;
                 List<int>[] odinvalue;
-                als.Signal.GetData(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                als.Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                 als.DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue, null, null, null);
             }
         }

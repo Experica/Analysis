@@ -2,13 +2,13 @@ AutoConnect: false
 AutoConnectTimeOut: 10
 ServerAddress: lyonvisual
 ClearDataPerAnalysis: 1
+RetainAnalysisPerClear: 1
+AnalysisSleepResolution: 2
 AnalysisSystem: DotNet
 AddSpikeAnalysisWhenSignalOnLine: true
-SaveVisualizationWhenExperimentStop: true
+SaveVisualizationWhenExperimentAnalysisDone: true
 VisualizerWidth: 400
 VisualizerHeight: 380
 PlotExportWidth: 1280
 PlotExportHeight: 854
 PlotExportDPI: 120
-RetainAnalysisPerClear: 1
-AnalysisSleepResolution: 2

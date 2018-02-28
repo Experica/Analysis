@@ -70,6 +70,7 @@ namespace VLab
     public static class VLExtention
     {
         static Type TString, TFloat, TBool, TVector3, TColor, TListOfString, TListOfFloat, TListOfBool, TParam;
+        static object lockobj = new object();
 
         static HashSet<Type> NumericTypes = new HashSet<Type>
         {
@@ -139,165 +140,168 @@ namespace VLab
 
         public static object Convert(this object value, Type CT)
         {
-            Type VT = value.GetType();
-            if (VT == CT)
+            lock (lockobj)
             {
-                return value;
-            }
-            else if (VT == TListOfString)
-            {
-                var v = (List<string>)value;
-                if (CT == TString)
+                Type VT = value.GetType();
+                if (VT == CT)
                 {
-                    return v.Count == 0 ? "[]" : "[" + v.Aggregate((i, j) => i + ", " + j) + "]";
+                    return value;
                 }
-            }
-            else if (VT == TListOfFloat)
-            {
-                var v = (List<float>)value;
-                if (CT == TString)
+                else if (VT == TListOfString)
                 {
-                    return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString("G3")).Aggregate((i, j) => i + ", " + j) + "]";
-                }
-            }
-            else if (VT == TListOfBool)
-            {
-                var v = (List<bool>)value;
-                if (CT == TString)
-                {
-                    return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString()).Aggregate((i, j) => i + ", " + j) + "]";
-                }
-            }
-            else if (VT == typeof(List<CONDTESTPARAM>))
-            {
-                var v = (List<CONDTESTPARAM>)value;
-                if (CT == typeof(string))
-                {
-                    return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString()).Aggregate((i, j) => i + ", " + j) + "]";
-                }
-            }
-            else if (VT == typeof(List<object>))
-            {
-                var v = (List<object>)value;
-                var vn = v.Count;
-                if (CT == typeof(Vector3))
-                {
-                    float x = 0, y = 0, z = 0;
-                    if (vn > 0)
+                    var v = (List<string>)value;
+                    if (CT == TString)
                     {
-                        x = v[0].Convert<float>();
+                        return v.Count == 0 ? "[]" : "[" + v.Aggregate((i, j) => i + ", " + j) + "]";
                     }
-                    if (vn > 1)
+                }
+                else if (VT == TListOfFloat)
+                {
+                    var v = (List<float>)value;
+                    if (CT == TString)
                     {
-                        y = v[1].Convert<float>();
+                        return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString("G3")).Aggregate((i, j) => i + ", " + j) + "]";
                     }
-                    if (vn > 2)
+                }
+                else if (VT == TListOfBool)
+                {
+                    var v = (List<bool>)value;
+                    if (CT == TString)
                     {
-                        z = v[2].Convert<float>();
+                        return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString()).Aggregate((i, j) => i + ", " + j) + "]";
                     }
-                    return new Vector3(x, y, z);
                 }
-                else if (CT == typeof(Color))
+                else if (VT == typeof(List<CONDTESTPARAM>))
                 {
-                    float r = 0, g = 0, b = 0, a = 1;
-                    if (vn > 0)
+                    var v = (List<CONDTESTPARAM>)value;
+                    if (CT == typeof(string))
                     {
-                        r = v[0].Convert<float>();
+                        return v.Count == 0 ? "[]" : "[" + v.Select(i => i.ToString()).Aggregate((i, j) => i + ", " + j) + "]";
                     }
-                    if (vn > 1)
+                }
+                else if (VT == typeof(List<object>))
+                {
+                    var v = (List<object>)value;
+                    var vn = v.Count;
+                    if (CT == typeof(Vector3))
                     {
-                        g = v[1].Convert<float>();
+                        float x = 0, y = 0, z = 0;
+                        if (vn > 0)
+                        {
+                            x = v[0].Convert<float>();
+                        }
+                        if (vn > 1)
+                        {
+                            y = v[1].Convert<float>();
+                        }
+                        if (vn > 2)
+                        {
+                            z = v[2].Convert<float>();
+                        }
+                        return new Vector3(x, y, z);
                     }
-                    if (vn > 2)
+                    else if (CT == typeof(Color))
                     {
-                        b = v[2].Convert<float>();
+                        float r = 0, g = 0, b = 0, a = 1;
+                        if (vn > 0)
+                        {
+                            r = v[0].Convert<float>();
+                        }
+                        if (vn > 1)
+                        {
+                            g = v[1].Convert<float>();
+                        }
+                        if (vn > 2)
+                        {
+                            b = v[2].Convert<float>();
+                        }
+                        if (vn > 3)
+                        {
+                            a = v[3].Convert<float>();
+                        }
+                        return new Color(r, g, b, a);
                     }
-                    if (vn > 3)
+                    else if (CT == typeof(string))
                     {
-                        a = v[3].Convert<float>();
+                        return v.Count == 0 ? "[]" : "[" + v.Aggregate((i, j) => i.Convert<string>() + ", " + j.Convert<string>()) + "]";
                     }
-                    return new Color(r, g, b, a);
                 }
-                else if (CT == typeof(string))
+                else if (VT == TVector3)
                 {
-                    return v.Count == 0 ? "[]" : "[" + v.Aggregate((i, j) => i.Convert<string>() + ", " + j.Convert<string>()) + "]";
+                    var v = (Vector3)value;
+                    if (CT == TString)
+                    {
+                        return v.ToString("G3");
+                    }
                 }
+                else if (VT == TColor)
+                {
+                    var v = (Color)value;
+                    if (CT == TString)
+                    {
+                        return v.ToString("G3").Substring(4);
+                    }
+                }
+                else if (VT == TParam)
+                {
+                    var v = (Param)value;
+                    if (CT == TString)
+                    {
+                        return v.Value.Convert<string>();
+                    }
+                }
+                else if (VT == TString)
+                {
+                    var v = (string)value;
+                    if (CT == TFloat)
+                    {
+                        return float.Parse(v);
+                    }
+                    else if (CT == TBool)
+                    {
+                        return bool.Parse(v);
+                    }
+                    else if (CT == TVector3)
+                    {
+                        var si = v.IndexOf('(') + 1; var ei = v.LastIndexOf(')');
+                        var vs = v.Substring(si, ei - si).Split(',');
+                        return new Vector3(float.Parse(vs[0]), float.Parse(vs[1]), float.Parse(vs[2]));
+                    }
+                    else if (CT == TColor)
+                    {
+                        var si = v.IndexOf('(') + 1; var ei = v.LastIndexOf(')');
+                        var vs = v.Substring(si, ei - si).Split(',');
+                        return new Color(float.Parse(vs[0]), float.Parse(vs[1]), float.Parse(vs[2]), float.Parse(vs[3]));
+                    }
+                    else if (CT.IsEnum && Enum.IsDefined(CT, v))
+                    {
+                        return Enum.Parse(CT, v);
+                    }
+                    else if (CT == TListOfString)
+                    {
+                        var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
+                        return v.Substring(si, ei - si).Split(',').Select(i => i.Trim()).ToList();
+                    }
+                    else if (CT == TListOfFloat)
+                    {
+                        var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
+                        return v.Substring(si, ei - si).Split(',').Select(i => float.Parse(i.Trim())).ToList();
+                    }
+                    else if (CT == TListOfBool)
+                    {
+                        var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
+                        return v.Substring(si, ei - si).Split(',').Select(i => bool.Parse(i.Trim())).ToList();
+                    }
+                }
+                else
+                {
+                    if (CT == TString)
+                    {
+                        return value.ToString();
+                    }
+                }
+                return System.Convert.ChangeType(value, CT);
             }
-            else if (VT == TVector3)
-            {
-                var v = (Vector3)value;
-                if (CT == TString)
-                {
-                    return v.ToString("G3");
-                }
-            }
-            else if (VT == TColor)
-            {
-                var v = (Color)value;
-                if (CT == TString)
-                {
-                    return v.ToString("G3").Substring(4);
-                }
-            }
-            else if (VT == TParam)
-            {
-                var v = (Param)value;
-                if (CT == TString)
-                {
-                    return v.Value.Convert<string>();
-                }
-            }
-            else if (VT == TString)
-            {
-                var v = (string)value;
-                if (CT == TFloat)
-                {
-                    return float.Parse(v);
-                }
-                else if (CT == TBool)
-                {
-                    return bool.Parse(v);
-                }
-                else if (CT == TVector3)
-                {
-                    var si = v.IndexOf('(') + 1; var ei = v.LastIndexOf(')');
-                    var vs = v.Substring(si, ei - si).Split(',');
-                    return new Vector3(float.Parse(vs[0]), float.Parse(vs[1]), float.Parse(vs[2]));
-                }
-                else if (CT == TColor)
-                {
-                    var si = v.IndexOf('(') + 1; var ei = v.LastIndexOf(')');
-                    var vs = v.Substring(si, ei - si).Split(',');
-                    return new Color(float.Parse(vs[0]), float.Parse(vs[1]), float.Parse(vs[2]), float.Parse(vs[3]));
-                }
-                else if (CT.IsEnum && Enum.IsDefined(CT, v))
-                {
-                    return Enum.Parse(CT, v);
-                }
-                else if (CT == TListOfString)
-                {
-                    var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
-                    return v.Substring(si, ei - si).Split(',').Select(i => i.Trim()).ToList();
-                }
-                else if (CT == TListOfFloat)
-                {
-                    var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
-                    return v.Substring(si, ei - si).Split(',').Select(i => float.Parse(i.Trim())).ToList();
-                }
-                else if (CT == TListOfBool)
-                {
-                    var si = v.IndexOf('[') + 1; var ei = v.LastIndexOf(']');
-                    return v.Substring(si, ei - si).Split(',').Select(i => bool.Parse(i.Trim())).ToList();
-                }
-            }
-            else
-            {
-                if (CT == TString)
-                {
-                    return value.ToString();
-                }
-            }
-            return System.Convert.ChangeType(value, CT);
         }
 
         public static List<int> Permutation(this System.Random rng, int maxexclusive)

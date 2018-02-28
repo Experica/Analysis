@@ -159,7 +159,7 @@ namespace VLabAnalysis
                 StopAnalysis();
                 if (signal != null)
                 {
-                    signal.RestartCollectData(true);
+                    signal.Restart(true);
                 }
                 DataSet.Reset();
                 foreach (var aid in idanalyzer.Keys.ToArray())
@@ -314,7 +314,7 @@ namespace VLabAnalysis
             {
                 if (signal != null)
                 {
-                    signal.StopCollectData(true);
+                    signal.Stop(true);
                 }
                 if (analysisthread != null)
                 {
@@ -372,7 +372,7 @@ namespace VLabAnalysis
                             }
                             Thread.Sleep(sleepresolution);
                         }
-                        Signal.GetData(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                        Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                         DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue,
                         (List<int>)ocondindex, (List<int>)ocondrepeat, (List<List<Dictionary<string, double>>>)ocondstate);
                     }

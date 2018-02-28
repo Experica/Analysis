@@ -1,5 +1,5 @@
 ﻿/*
-Signal.cs is part of the VLAB project.
+RippleSignal.cs is part of the VLAB project.
 Copyright (c) 2017 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -19,10 +19,8 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using VLab;
 using System;
 using System.Linq;
 using Ripple;
@@ -31,61 +29,9 @@ using MathWorks.MATLAB.NET.Utility;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
-using MathNet;
 
 namespace VLabAnalysis
 {
-    public enum SignalSource
-    {
-        Ripple,
-        Plexon,
-        TDT
-    }
-
-    public enum SignalType
-    {
-        Raw,
-        ThirtyKSpS,
-        TwoKSpS,
-        OneKSpS,
-        LFP,
-        Event,
-        Spike,
-        Stim
-    }
-
-    public struct Signal
-    {
-        public int Channel { get; set; }
-        public SignalType Type { get; set; }
-
-        public Signal(int channel, SignalType type)
-        {
-            Channel = channel;
-            Type = type;
-        }
-    }
-
-    /// <summary>
-    /// Implementation should be thread safe
-    /// </summary>
-    public interface ISignal : IDisposable
-    {
-        bool IsOnline { get; }
-        SignalSource Source { get; }
-        bool IsReady { get; }
-        int[] Channels { get; }
-        SignalType[] GetSignalTypes(int channel, bool isonlyreturnonsignaltype);
-        bool IsSignalOn(int channel, SignalType signaltype);
-        double Time { get; }
-        void StartCollectData(bool isclean);
-        void StopCollectData(bool iscollectallbeforestop);
-        void RestartCollectData(bool iscleanall);
-        void GetData(out List<double>[] spike, out List<int>[] uid,
-            out List<double[,]> lfp, out List<double> lfpstarttime,
-            out List<double>[] dintime, out List<int>[] dinvalue);
-    }
-
     public class RippleSignal : ISignal
     {
         int disposecount = 0;
@@ -151,7 +97,7 @@ namespace VLabAnalysis
             if (disposing)
             {
             }
-            StopCollectData(false);
+            Stop(false);
             xippmexdotnet.xippmex("close");
             xippmexdotnet.Dispose();
         }
@@ -179,31 +125,32 @@ namespace VLabAnalysis
 
         SignalType RippleToSignalType(string ripplesignaltype)
         {
+            string ripple;
             switch (ripplesignaltype)
             {
                 case "raw":
-                    ripplesignaltype = "Raw";
+                    ripple = "Raw";
                     break;
                 case "30ksps":
-                    ripplesignaltype = "ThirtyKSpS";
+                    ripple = "ThirtyKSpS";
                     break;
                 case "hi-res":
-                    ripplesignaltype = "TwoKSpS";
+                    ripple = "TwoKSpS";
                     break;
                 case "1ksps":
-                    ripplesignaltype = "OneKSpS";
+                    ripple = "OneKSpS";
                     break;
                 case "lfp":
-                    ripplesignaltype = "LFP";
+                    ripple = "LFP";
                     break;
                 case "stim":
-                    ripplesignaltype = "Stim";
+                    ripple = "Stim";
                     break;
                 default:
-                    ripplesignaltype = "Spike";
+                    ripple = "Spike";
                     break;
             }
-            return (SignalType)Enum.Parse(typeof(SignalType), ripplesignaltype);
+            return (SignalType)Enum.Parse(typeof(SignalType), ripple);
         }
 
         public SignalType[] GetSignalTypes(int channel, bool isonlyreturnsignalontype = true)
@@ -259,7 +206,7 @@ namespace VLabAnalysis
                         }
                         catch (Exception ex)
                         {
-                            Debug.Log(ex.Message);
+                            //Debug.Log(ex.Message);
                         }
                     }
                     return _isonline;
@@ -284,7 +231,7 @@ namespace VLabAnalysis
                             }
                             catch (Exception ex)
                             {
-                                Debug.Log(ex.Message);
+                                //Debug.Log(ex.Message);
                             }
                         }
                     }
@@ -295,7 +242,7 @@ namespace VLabAnalysis
 
         public bool IsReady { get { lock (datalock) { return Channels != null; } } }
 
-        public void StartCollectData(bool isclean = true)
+        public void Start(bool isclean = true)
         {
             lock (datalock)
             {
@@ -326,7 +273,7 @@ namespace VLabAnalysis
             }
         }
 
-        public void StopCollectData(bool iscollectallbeforestop = true)
+        public void Stop(bool iscollectallbeforestop = true)
         {
             lock (datalock)
             {
@@ -358,11 +305,11 @@ namespace VLabAnalysis
         void CollectDataThreadFunction()
         {
             // here we use local and readonly variables, thread safe properties.
-            string fcs = "", scs = "";
+            string fcs, scs;
             int fi, si, fn;
             if (digitalIPI < analogIPI)
             {
-                fn = (int)Mathf.Floor(analogIPI / digitalIPI);
+                fn = (int)Math.Floor((double)analogIPI / digitalIPI);
                 fcs = "digital";
                 scs = "analog";
                 fi = digitalIPI;
@@ -378,7 +325,7 @@ namespace VLabAnalysis
             }
             else
             {
-                fn = (int)Mathf.Floor(digitalIPI / analogIPI);
+                fn = (int)Math.Floor((double)digitalIPI / analogIPI);
                 fcs = "analog";
                 scs = "digital";
                 fi = analogIPI;
@@ -524,7 +471,7 @@ namespace VLabAnalysis
         }
         #endregion
 
-        public void GetData(out List<double>[] ospike, out List<int>[] ouid,
+        public void Read(out List<double>[] ospike, out List<int>[] ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
             out List<double>[] odintime, out List<int>[] odinvalue)
         {
@@ -532,9 +479,9 @@ namespace VLabAnalysis
             {
                 if (IsCollectingData)
                 {
-                    StopCollectData(true);
+                    Stop(true);
                     GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
-                    StartCollectData(false);
+                    Start(false);
                 }
                 else
                 {
@@ -590,18 +537,18 @@ namespace VLabAnalysis
             }
         }
 
-        public void RestartCollectData(bool iscleanall = true)
+        public void Restart(bool iscleanall = true)
         {
             lock (datalock)
             {
-                StopCollectData(false);
+                Stop(false);
                 if (iscleanall)
                 {
                     // Clear xippmex buffer
                     xippmexdotnet.xippmex("close");
                     xippmexdotnet.xippmex(1);
                 }
-                StartCollectData(true);
+                Start(true);
             }
         }
     }
