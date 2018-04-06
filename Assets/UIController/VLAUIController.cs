@@ -1,6 +1,6 @@
 ﻿/*
 VLAUIController.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -36,10 +36,10 @@ namespace VLabAnalysis
         public VLANetManager netmanager;
         public VLAApplicationManager appmanager;
         public VLAnalysisManager alsmanager;
-        public IAnalysis als;
         public VLControlManager ctrlmanager;
         public ControlPanel controlpanel;
         public SignalPanel signalpanel;
+        public Text version;
 
         bool isautoconn, isconnect;
         int autoconncountdown;
@@ -61,19 +61,19 @@ namespace VLabAnalysis
 
         public void OnServerAddressEndEdit(string v)
         {
-            appmanager.config[VLACFG.ServerAddress] = v;
+            appmanager.config.ServerAddress = v;
         }
 
         public void OnToggleAutoConnect(bool ison)
         {
-            appmanager.config[VLACFG.AutoConnect] = ison;
+            appmanager.config.AutoConnect = ison;
             ResetAutoConnect();
         }
 
         public void ResetAutoConnect()
         {
-            autoconncountdown = (int)appmanager.config[VLACFG.AutoConnectTimeOut];
-            isautoconn = (bool)appmanager.config[VLACFG.AutoConnect];
+            autoconncountdown = appmanager.config.AutoConnectTimeOut;
+            isautoconn = appmanager.config.AutoConnect;
             if (!isautoconn)
             {
                 autoconntext.text = "Auto Connect OFF";
@@ -83,7 +83,7 @@ namespace VLabAnalysis
 
         void Start()
         {
-            serveraddress.text = (string)appmanager.config[VLACFG.ServerAddress];
+            serveraddress.text = appmanager.config.ServerAddress;
             ResetAutoConnect();
         }
 
@@ -121,27 +121,20 @@ namespace VLabAnalysis
 
         public void OnAnalysisManagerSpwaned()
         {
-            if (ctrlmanager != null)
+            autoconntext.text = "AnalysisManager Online";
+            if (alsmanager.als == null)
             {
-                autoconntext.text = "Ready";
+                var das = appmanager.config.AnalysisSystem;
+                var cdpa = appmanager.config.ClearDataPerAnalysis;
+                var rapc = appmanager.config.RetainAnalysisPerClear;
+                var asr = appmanager.config.AnalysisSleepResolution;
+                alsmanager.als = das.GetAnalysisSystem(cdpa, rapc, asr);
             }
-            else
-            {
-                autoconntext.text = "AnalysisManager Online";
-            }
-            if (als == null)
-            {
-                var das = (AnalysisSystem)appmanager.config[VLACFG.AnalysisSystem];
-                var cdpa = (int)appmanager.config[VLACFG.ClearDataPerAnalysis];
-                var rapc = (int)appmanager.config[VLACFG.RetainAnalysisPerClear];
-                var asr = (int)appmanager.config[VLACFG.AnalysisSleepResolution];
-                als = das.GetAnalysisSystem(cdpa, rapc, asr);
-            }
-            alsmanager.als = als;
 
-            QualitySettings.vSyncCount = 0;
-            QualitySettings.maxQueuedFrames = 0;
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
+            if (appmanager.config.SearchSignalWhenConnect)
+            {
+                SearchSignal();
+            }
         }
 
         public void OnControlManagerSpwaned()
@@ -158,24 +151,30 @@ namespace VLabAnalysis
 
         public void OnClientDisconnect()
         {
-            if (alsmanager != null && alsmanager.als != null)
+            if (alsmanager != null)
             {
-                alsmanager.als.Dispose();
-                signalpanel.UpdateSignal(false);
+                if (alsmanager.als != null)
+                {
+                    alsmanager.als.Dispose();
+                    alsmanager.als = null;
+                    signalpanel.UpdateSignal(false);
+                }
+                Destroy(alsmanager.gameObject);
+                alsmanager = null;
+                Destroy(ctrlmanager.gameObject);
+                ctrlmanager = null;
             }
             isconnect = false;
-            ResetAutoConnect();
             clientconnect.isOn = false;
-
-            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.Normal;
+            ResetAutoConnect();
         }
 
         public void SearchSignal()
         {
-            if (alsmanager != null)
+            if (alsmanager != null && alsmanager.als != null)
             {
-                var ss = controlpanel.signalsystemdropdown.captionText.text;
-                var s = ss == "All" ? VLAExtention.SearchSignal() : VLAExtention.SearchSignal(ss.Convert<SignalSource>());
+                var ss = controlpanel.signalsourcedropdown.captionText.text;
+                var s = ss == "All" ? VLAExtention.SearchSignal() : ss.Convert<SignalSource>().SearchSignal();
                 var sr = false;
                 if (s != null)
                 {
@@ -186,5 +185,24 @@ namespace VLabAnalysis
             }
         }
 
+        public void UpdateVisualizationDone(int done)
+        {
+            controlpanel.visualizationdone.text = done.ToString();
+        }
+
+        public void UpdateAnalysisEventIndex(int aeidx)
+        {
+            controlpanel.analysiseventindex.text = aeidx.ToString();
+        }
+
+        public void UpdateAnalysisDone(int done)
+        {
+            controlpanel.analysisdone.text = done.ToString();
+        }
+
+        public void UpdateSystemInformation()
+        {
+            version.text = $"Version {Application.version}\nUnity {Application.unityVersion}";
+        }
     }
 }

@@ -1,6 +1,6 @@
 ﻿/*
 VLAApplicationManager.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -26,153 +26,28 @@ using VLab;
 
 namespace VLabAnalysis
 {
-    public enum VLACFG
-    {
-        AutoConnect,
-        AutoConnectTimeOut,
-        ServerAddress,
-        ClearDataPerAnalysis,
-        RetainAnalysisPerClear,
-        AnalysisSleepResolution,
-        AnalysisSystem,
-        AddSpikeAnalysisWhenSignalOnLine,
-        SaveVisualizationWhenExperimentAnalysisDone,
-        VisualizerWidth,
-        VisualizerHeight,
-        PlotExportWidth,
-        PlotExportHeight,
-        PlotExportDPI
-    }
-
     public class VLAApplicationManager : MonoBehaviour
     {
         public VLAUIController uicontroller;
-        public Dictionary<VLACFG, object> config;
-        public readonly string configpath = "VLabAnalysisConfig.yaml";
+        public VLACFG config;
+        readonly string configpath = "VLabAnalysisConfig.yaml";
 
         void Awake()
         {
+            Application.runInBackground = true;
             if (File.Exists(configpath))
             {
-                config = Yaml.ReadYaml<Dictionary<VLACFG, object>>(configpath);
+                config = configpath.ReadYamlFile<VLACFG>();
             }
             if (config == null)
             {
-                config = new Dictionary<VLACFG, object>();
+                config = new VLACFG();
             }
-            ValidateConfig();
         }
 
-        void ValidateConfig()
+        void Start()
         {
-            if (!config.ContainsKey(VLACFG.AutoConnect))
-            {
-                config[VLACFG.AutoConnect] = true;
-            }
-            else
-            {
-                config[VLACFG.AutoConnect] = config[VLACFG.AutoConnect].Convert<bool>();
-            }
-            if (!config.ContainsKey(VLACFG.AutoConnectTimeOut))
-            {
-                config[VLACFG.AutoConnectTimeOut] = 10;
-            }
-            else
-            {
-                config[VLACFG.AutoConnectTimeOut] = config[VLACFG.AutoConnectTimeOut].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.ServerAddress))
-            {
-                config[VLACFG.ServerAddress] = "LocalHost";
-            }
-            if (!config.ContainsKey(VLACFG.ClearDataPerAnalysis))
-            {
-                config[VLACFG.ClearDataPerAnalysis] = 1;
-            }
-            else
-            {
-                config[VLACFG.ClearDataPerAnalysis] = config[VLACFG.ClearDataPerAnalysis].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.RetainAnalysisPerClear))
-            {
-                config[VLACFG.RetainAnalysisPerClear] = 1;
-            }
-            else
-            {
-                config[VLACFG.RetainAnalysisPerClear] = config[VLACFG.RetainAnalysisPerClear].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.AnalysisSleepResolution))
-            {
-                config[VLACFG.AnalysisSleepResolution] = 2;
-            }
-            else
-            {
-                config[VLACFG.AnalysisSleepResolution] = config[VLACFG.AnalysisSleepResolution].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.AnalysisSystem))
-            {
-                config[VLACFG.AnalysisSystem] = AnalysisSystem.DotNet;
-            }
-            else
-            {
-                config[VLACFG.AnalysisSystem] = config[VLACFG.AnalysisSystem].Convert<AnalysisSystem>();
-            }
-            if (!config.ContainsKey(VLACFG.AddSpikeAnalysisWhenSignalOnLine))
-            {
-                config[VLACFG.AddSpikeAnalysisWhenSignalOnLine] = true;
-            }
-            else
-            {
-                config[VLACFG.AddSpikeAnalysisWhenSignalOnLine] = config[VLACFG.AddSpikeAnalysisWhenSignalOnLine].Convert<bool>();
-            }
-            if (!config.ContainsKey(VLACFG.SaveVisualizationWhenExperimentAnalysisDone))
-            {
-                config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone] = true;
-            }
-            else
-            {
-                config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone] = config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone].Convert<bool>();
-            }
-            if (!config.ContainsKey(VLACFG.VisualizerWidth))
-            {
-                config[VLACFG.VisualizerWidth] = 400;
-            }
-            else
-            {
-                config[VLACFG.VisualizerWidth] = config[VLACFG.VisualizerWidth].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.VisualizerHeight))
-            {
-                config[VLACFG.VisualizerHeight] = 380;
-            }
-            else
-            {
-                config[VLACFG.VisualizerHeight] = config[VLACFG.VisualizerHeight].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.PlotExportWidth))
-            {
-                config[VLACFG.PlotExportWidth] = 1280;
-            }
-            else
-            {
-                config[VLACFG.PlotExportWidth] = config[VLACFG.PlotExportWidth].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.PlotExportHeight))
-            {
-                config[VLACFG.PlotExportHeight] = 854;
-            }
-            else
-            {
-                config[VLACFG.PlotExportHeight] = config[VLACFG.PlotExportHeight].Convert<int>();
-            }
-            if (!config.ContainsKey(VLACFG.PlotExportDPI))
-            {
-                config[VLACFG.PlotExportDPI] = 120;
-            }
-            else
-            {
-                config[VLACFG.PlotExportDPI] = config[VLACFG.PlotExportDPI].Convert<int>();
-            }
+            uicontroller.UpdateSystemInformation();
         }
 
         void OnApplicationQuit()
@@ -185,7 +60,7 @@ namespace VLabAnalysis
             {
                 uicontroller.alsmanager.als.Dispose();
             }
-            Yaml.WriteYaml(configpath, config);
+            configpath.WriteYamlFile(config);
         }
 
     }

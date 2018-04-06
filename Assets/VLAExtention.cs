@@ -1,6 +1,6 @@
 ﻿/*
 VLAExtention.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -59,7 +59,7 @@ namespace VLabAnalysis
             return null;
         }
 
-        public static ISignal SearchSignal(SignalSource source)
+        public static ISignal SearchSignal(this SignalSource source)
         {
             ISignal s = null;
             switch (source)
@@ -84,14 +84,14 @@ namespace VLabAnalysis
             switch (analysissystem)
             {
                 default:
-                    return new DotNetAnalysis(cleardataperanalysis, retainanalysisperclear, sleepresolution);
+                    return new ConditionTestAnalysis(cleardataperanalysis, retainanalysisperclear, sleepresolution);
             }
         }
 
         public static Type[] FindAll(this AnalysisInterface i)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            var ts = assemblies.Where(a => a.GetName().Name == "Assembly-CSharp").SelectMany(a => a.GetTypes())
+            var ts = assemblies.Where(a => a.GetName().Name == "VLabAnalysis").SelectMany(a => a.GetTypes())
                 .Where(t => t.Namespace == "VLabAnalysis" && t.IsClass && t.GetInterface(i.ToString()) != null).ToArray();
             return ts;
         }
@@ -116,16 +116,16 @@ namespace VLabAnalysis
             return null;
         }
 
-        public static IEnumerable<T> InterMap<T>(this IEnumerable<T> s, Func<T, T, T> f)
+        public static IEnumerable<K> InterMap<T, K>(this IEnumerable<T> s, Func<T, T, K> f)
         {
             var c = s.Count();
             if (c < 2)
             {
-                yield return s.ElementAt(1);
+                yield return default(K);
             }
             else
             {
-                for (var i = 0; i < s.Count() - 1; i++)
+                for (var i = 0; i < c - 1; i++)
                 {
                     yield return f(s.ElementAt(i), s.ElementAt(i + 1));
                 }
@@ -134,9 +134,9 @@ namespace VLabAnalysis
 
         public static int Count(this List<double> st, double start, double end)
         {
-            if (start >= end) return 0;
-
             int c = 0;
+            if (start >= end) return c;
+
             foreach (var t in st)
             {
                 if (t >= start && t < end)
@@ -234,44 +234,36 @@ namespace VLabAnalysis
             }
         }
 
-        public static string GetFactorInfo(this string factorname, object factorvalue,
-            out int valuendim, out int[] valuevdimidx, out string[] valuevdimunit, out Type valuetype, out Type valueelementtype, string exid)
+        public static void GetFactorInfo(this string factorname, object factorvalue, string exid,
+            out string factorunit, out Type valuetype, out Type valueelementtype, out int valuendim, out int[] valuevdimidx, out string[] valuevdimunit)
         {
             valuetype = factorvalue.GetType();
-            string unit;
+            valueelementtype = null;
+            valuendim = 1;
+            valuevdimidx = new[] { 0 };
             switch (factorname)
             {
                 case "Diameter":
                 case "Ori":
                 case "OriOffset":
                 case "Ori_Final":
-                    valuendim = 1;
-                    valuevdimidx = new[] { 0 };
-                    valuetype = typeof(float);
-                    valueelementtype = null;
-                    unit = "Deg";
+                    factorunit = "Deg";
                     break;
                 case "SpatialFreq":
-                    valuendim = 1;
-                    valuevdimidx = new[] { 0 };
-                    valuetype = typeof(float);
-                    valueelementtype = null;
-                    unit = "Cycle/Deg";
+                    factorunit = "Cycle/Deg";
+                    break;
+                case "SpatialPhase":
+                    factorunit = "2π";
                     break;
                 case "TemporalFreq":
-                    valuendim = 1;
-                    valuevdimidx = new[] { 0 };
-                    valuetype = typeof(float);
-                    valueelementtype = null;
-                    unit = "Cycle/Sec";
+                    factorunit = "Cycle/Sec";
                     break;
                 case "Position":
                 case "PositionOffset":
                 case "Position_Final":
-                    valuendim = 3;
-                    valuetype = typeof(Vector3);
+                    factorunit = "Deg";
                     valueelementtype = typeof(float);
-                    unit = "Deg";
+                    valuendim = 3;
                     if (!string.IsNullOrEmpty(exid) && exid.StartsWith("RF"))
                     {
                         if (exid.Contains('X'))
@@ -297,31 +289,19 @@ namespace VLabAnalysis
                     }
                     break;
                 default:
-                    unit = "";
-                    if (valuetype == typeof(Vector2))
+                    factorunit = "";
+                    if (valuetype.IsNumeric() || valuetype == typeof(string))
                     {
-                        valuendim = 2;
-                        valuevdimidx = new[] { 0, 1 };
-                        valueelementtype = typeof(float);
-                    }
-                    else if (valuetype == typeof(Vector3))
-                    {
-                        valuendim = 3;
-                        valuevdimidx = new[] { 0, 1, 2 };
-                        valueelementtype = typeof(float);
-                    }
-                    else if (valuetype == typeof(float) || valuetype == typeof(string))
-                    {
-                        valuendim = 1;
-                        valuevdimidx = new[] { 0 };
-                        valueelementtype = null;
                     }
                     else
                     {
-                        var v = (object[])factorvalue;
-                        valuendim = v.Length;
-                        valuevdimidx = Enumerable.Range(0, valuendim).ToArray();
-                        valueelementtype = v[0].GetType();
+                        var v = factorvalue.Convert<IList>();
+                        if (v != null)
+                        {
+                            valueelementtype = v[0].GetType();
+                            valuendim = v.Count;
+                            valuevdimidx = Enumerable.Range(0, valuendim).ToArray();
+                        }
                     }
                     break;
             }
@@ -335,18 +315,21 @@ namespace VLabAnalysis
                 valuevdimunit = new string[vdn];
                 for (var i = 0; i < vdn; i++)
                 {
-                    var dimidx = valuevdimidx[i];
-                    valuevdimunit[i] = valuetype.GetFactorDimUnit(dimidx);
+                    var vdimidx = valuevdimidx[i];
+                    valuevdimunit[i] = valuetype.GetDimUnit(vdimidx);
                 }
             }
-            return unit;
         }
 
-        public static string GetFactorDimUnit(this Type vt, int dimidx)
+        public static string GetDimUnit(this Type vt, int dimidx)
         {
-            if (vt == typeof(Vector3))
+            if (vt == typeof(Vector2) || vt == typeof(Vector3) || vt == typeof(Vector4))
             {
-                return dimidx == 0 ? "X" : dimidx == 1 ? "Y" : "Z";
+                return dimidx == 0 ? "X" : dimidx == 1 ? "Y" : dimidx == 2 ? "Z" : "W";
+            }
+            else if (vt == typeof(Color))
+            {
+                return dimidx == 0 ? "R" : dimidx == 1 ? "G" : dimidx == 2 ? "B" : "A";
             }
             else
             {
@@ -354,17 +337,17 @@ namespace VLabAnalysis
             }
         }
 
-        public static List<object>[] GetFactorValues(this IEnumerable<object> vs, Type vt, Type vet, int[] valuedimidx, int valuendim, out Type valuetype, out string[] dimunits)
+        public static List<object>[] GetFactorValues(this IEnumerable<object> vs, Type vt, Type vet, int valuendim, int[] valuedimidx, out Type valuetype, out string[] dimunits)
         {
             if (vet == null)
             {
                 valuetype = vt;
                 dimunits = new[] { "" };
-                return new[] { vs.Select(i => i.Convert(vt)).ToList() };
+                return new[] { vs.ToList() };
             }
             else
             {
-                var valuevdimidx = valuedimidx.Where(i => i < valuendim).ToArray();
+                var valuevdimidx = valuedimidx.Where(i => i >= 0 && i < valuendim).ToArray();
                 var vdn = valuevdimidx.Length;
                 if (vdn > 0)
                 {
@@ -373,9 +356,9 @@ namespace VLabAnalysis
                     var v = new List<object>[vdn];
                     for (var i = 0; i < vdn; i++)
                     {
-                        var dimidx = valuevdimidx[i];
-                        dimunits[i] = vt.GetFactorDimUnit(dimidx);
-                        v[i] = vs.Select(j => ((object[])j)[dimidx].Convert(vet)).ToList();
+                        var vdimidx = valuevdimidx[i];
+                        dimunits[i] = vt.GetDimUnit(vdimidx);
+                        v[i] = vs.Select(j => j.Convert<IList>()[vdimidx]).ToList();
                     }
                     return v;
                 }
@@ -403,18 +386,14 @@ namespace VLabAnalysis
 
         public static string JoinFactorTitle(this string factor, string dimunit, string factorunit)
         {
-            var ft = "";
+            var ft = factor;
+            if (!string.IsNullOrEmpty(dimunit))
+            {
+                ft = ft + "_" + dimunit;
+            }
             if (!string.IsNullOrEmpty(factorunit))
             {
-                ft = factor;
-                if (!string.IsNullOrEmpty(dimunit))
-                {
-                    ft = ft + "_" + dimunit;
-                }
-                if (!string.IsNullOrEmpty(factorunit))
-                {
-                    ft = ft + " (" + factorunit + ")";
-                }
+                ft = ft + " (" + factorunit + ")";
             }
             return ft;
         }

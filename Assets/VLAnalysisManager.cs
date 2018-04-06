@@ -1,6 +1,6 @@
 ﻿/*
 VLAnalysisManager.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -41,7 +41,7 @@ namespace VLabAnalysis
         public void RpcNotifyStartExperiment()
         {
             if (als == null) return;
-            als.Reset();
+            als.Restart();
         }
 
         [ClientRpc]
@@ -58,8 +58,8 @@ namespace VLabAnalysis
             if (als.Signal != null)
             {
                 var t = new VLTimer();
-                t.Countdown(als.DataSet.DataLatency);
-                als.Signal.StopCollectData(true);
+                t.Timeout(als.DataSet.DataLatency);
+                als.Signal.Stop(true);
             }
         }
 
@@ -69,7 +69,7 @@ namespace VLabAnalysis
             if (als == null) return;
             if (als.Signal != null)
             {
-                als.Signal.StartCollectData(false);
+                als.Signal.Start(false);
             }
         }
 
@@ -78,37 +78,22 @@ namespace VLabAnalysis
         {
             if (als == null) return;
             // Set Experiment Data
-            var ex = VLMsgPack.ExSerializer.Unpack(new MemoryStream(value));
-            if (ex.Cond != null && ex.Cond.Count > 0)
+            using (var stream = new MemoryStream(value))
             {
-                foreach (var fvs in ex.Cond.Values)
-                {
-                    for (var i = 0; i < fvs.Count; i++)
-                    {
-                        fvs[i] = fvs[i].MsgPackObjectToObject();
-                    }
-                }
+                als.DataSet.Ex = VLMsgPack.ExSerializer.Unpack(stream);
             }
-            if (ex.EnvParam != null && ex.EnvParam.Count > 0)
-            {
-                foreach (var k in ex.EnvParam.Keys)
-                {
-                    ex.EnvParam[k] = ex.EnvParam[k].MsgPackObjectToObject();
-                }
-            }
-            als.DataSet.Ex = ex;
             //  Set VLabTimeZero
             if (als.Signal != null)
             {
                 var t = new VLTimer();
-                t.Countdown(als.DataSet.DataLatency);
+                t.Timeout(als.DataSet.DataLatency);
                 List<double>[] ospike;
                 List<int>[] ouid;
                 List<double[,]> olfp;
                 List<double> olfpstarttime;
                 List<double>[] odintime;
                 List<int>[] odinvalue;
-                als.Signal.GetData(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                als.Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                 als.DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue, null, null, null);
             }
         }
@@ -117,21 +102,29 @@ namespace VLabAnalysis
         public void RpcNotifyCondTest(CONDTESTPARAM name, byte[] value)
         {
             if (als == null) return;
-            object v;
-            switch (name)
+            object v = null;
+            using (var stream = new MemoryStream(value))
             {
-                case CONDTESTPARAM.CondRepeat:
-                case CONDTESTPARAM.CondIndex:
-                    v = VLMsgPack.ListIntSerializer.Unpack(new MemoryStream(value));
-                    break;
-                case CONDTESTPARAM.CONDSTATE:
-                    v = VLMsgPack.CONDSTATESerializer.Unpack(new MemoryStream(value));
-                    break;
-                default:
-                    v = VLMsgPack.ListObjectSerializer.Unpack(new MemoryStream(value));
-                    break;
+                switch (name)
+                {
+                    case CONDTESTPARAM.BlockRepeat:
+                    case CONDTESTPARAM.BlockIndex:
+                    case CONDTESTPARAM.CondRepeat:
+                    case CONDTESTPARAM.CondIndex:
+                        v = VLMsgPack.ListIntSerializer.Unpack(stream);
+                        break;
+                    case CONDTESTPARAM.TASKSTATE:
+                    case CONDTESTPARAM.BLOCKSTATE:
+                    case CONDTESTPARAM.TRIALSTATE:
+                    case CONDTESTPARAM.CONDSTATE:
+                        v = VLMsgPack.ListCONDSTATESerializer.Unpack(stream);
+                        break;
+                }
             }
-            als.CondTestEnqueue(name, v);
+            if (v != null)
+            {
+                als.CondTestEnqueue(name, v);
+            }
         }
 
         [ClientRpc]
@@ -149,7 +142,7 @@ namespace VLabAnalysis
             var cn = 4f;
             if (isalign)
             {
-                cn = Mathf.Floor(Screen.currentResolution.width / (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth]);
+                cn = Mathf.Floor(Screen.currentResolution.width / uicontroller.appmanager.config.VisualizerWidth);
             }
             foreach (var i in als.Analyzers.Keys.ToList())
             {
@@ -161,8 +154,8 @@ namespace VLabAnalysis
                         if (isalign)
                         {
                             var ci = (a.Signal.Channel - 1) % cn; var ri = Mathf.Floor((a.Signal.Channel - 1) / cn);
-                            a.Visualizer.Position = new Vector2(ci * (int)uicontroller.appmanager.config[VLACFG.VisualizerWidth],
-                                ri * (int)uicontroller.appmanager.config[VLACFG.VisualizerHeight]);
+                            a.Visualizer.Position = new Vector2(ci * uicontroller.appmanager.config.VisualizerWidth,
+                                ri * uicontroller.appmanager.config.VisualizerHeight);
                         }
                         a.Visualizer.ShowInFront();
                     }
@@ -173,15 +166,16 @@ namespace VLabAnalysis
             if (als.IsExperimentAnalysisDone)
             {
                 als.VisualizeResults(VisualizeMode.Last);
-                if ((bool)uicontroller.appmanager.config[VLACFG.SaveVisualizationWhenExperimentAnalysisDone])
+                if (uicontroller.appmanager.config.SaveVisualizationWhenExperimentAnalysisDone)
                 {
-                    als.SaveVisualization((int)uicontroller.appmanager.config[VLACFG.PlotExportWidth], (int)uicontroller.appmanager.config[VLACFG.PlotExportHeight],
-                        (int)uicontroller.appmanager.config[VLACFG.PlotExportDPI]);
+                    als.SaveVisualization(uicontroller.appmanager.config.PlotExportWidth, uicontroller.appmanager.config.PlotExportHeight, uicontroller.appmanager.config.PlotExportDPI);
                 }
                 als.IsExperimentAnalysisDone = false;
             }
+            uicontroller.UpdateAnalysisEventIndex(als.AnalysisEventIndex);
+            uicontroller.UpdateAnalysisDone(als.AnalysisDone);
+            uicontroller.UpdateVisualizationDone(als.VisualizationDone);
         }
 
     }
-
 }

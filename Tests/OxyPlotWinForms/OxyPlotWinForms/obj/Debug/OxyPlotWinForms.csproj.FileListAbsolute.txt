@@ -1,0 +1,16 @@
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlotWinForms.exe.config
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlotWinForms.exe
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlotWinForms.pdb
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.dll
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.WindowsForms.dll
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.pdb
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.xml
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.WindowsForms.pdb
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\bin\Debug\OxyPlot.WindowsForms.xml
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.csprojResolveAssemblyReference.cache
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.MainForm.resources
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.Properties.Resources.resources
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.csproj.GenerateResource.Cache
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.csproj.CoreCompileInputs.cache
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.exe
+C:\Users\LyonLab\Desktop\VLabAnalysis\Tests\OxyPlotWinForms\OxyPlotWinForms\obj\Debug\OxyPlotWinForms.pdb

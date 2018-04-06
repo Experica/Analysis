@@ -1,6 +1,6 @@
 ﻿/*
 ControlPanel.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -23,19 +23,22 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using VLab;
+using System;
+using System.Linq;
 
 namespace VLabAnalysis
 {
     public class ControlPanel : MonoBehaviour
     {
         public VLAUIController uicontroller;
-        public Dropdown signalsystemdropdown;
+        public Dropdown signalsourcedropdown;
+        public Text visualizationdone, analysiseventindex,analysisdone;
 
         void Start()
         {
-            var os = new List<string> { "All" };
-            os.AddRange(typeof(SignalSource).GetValue());
-            signalsystemdropdown.AddOptions(os);
+            var ss = new List<string> { "All" };
+            ss.AddRange(Enum.GetNames(typeof(SignalSource)).ToList());
+            signalsourcedropdown.AddOptions(ss);
         }
 
     }

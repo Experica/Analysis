@@ -1,6 +1,6 @@
 ﻿/*
 SignalPanel.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -81,7 +81,7 @@ namespace VLabAnalysis
             ep.uicontroller = uicontroller;
             ep.electrodeid = electrodeid;
             ep.title.text = electrodeid.ToString();
-            if ((bool)uicontroller.appmanager.config[VLACFG.AddSpikeAnalysisWhenSignalOnLine])
+            if (uicontroller.appmanager.config.AddSpikeAnalysisWhenSignalOnLine)
             {
                 ep.AddAnalysis(SignalType.Spike);
             }

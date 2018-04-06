@@ -1,6 +1,6 @@
 ﻿/*
 VLANetManager.cs is part of the VLAB project.
-Copyright (c) 2017 Li Alex Zhang and Contributors
+Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
 copy of this software and associated documentation files (the "Software"),
@@ -32,31 +32,27 @@ namespace VLabAnalysis
     public class VLANetManager : NetworkManager
     {
         public VLAUIController uicontroller;
-        GameObject vlabanalysismanagerprefab, vlabcontrolmanagerprefab;
+        public GameObject vlabanalysismanagerprefab, vlabcontrolmanagerprefab;
 
-        void RegisterSpawnHandler()
+        void Start()
         {
-            vlabanalysismanagerprefab = Resources.Load<GameObject>("VLAnalysisManager");
             var assetida = vlabanalysismanagerprefab.GetComponent<NetworkIdentity>().assetId;
             ClientScene.RegisterSpawnHandler(assetida, new SpawnDelegate(AnalysisManagerSpawnHandler),
                 new UnSpawnDelegate(AnalysisManagerUnSpawnHandler));
 
-            vlabcontrolmanagerprefab = Resources.Load<GameObject>("VLControlManager");
             var assetidc = vlabcontrolmanagerprefab.GetComponent<NetworkIdentity>().assetId;
             ClientScene.RegisterSpawnHandler(assetidc, new SpawnDelegate(ControlManagerSpawnHandler),
                 new UnSpawnDelegate(ControlManagerUnSpawnHandler));
         }
 
         /// <summary>
-        /// Prepare network so that when connected to server, will react properly to 
-        /// server commands
+        /// Prepare client so that when connected to server, will react properly to server commands.
         /// </summary>
         /// <param name="client"></param>
         public override void OnStartClient(NetworkClient client)
         {
             // override default handler with our own to deal with server's ChangeScene message.
             client.RegisterHandler(MsgType.Scene, new NetworkMessageDelegate(OnClientScene));
-            RegisterSpawnHandler();
         }
 
         /// <summary>
@@ -72,20 +68,13 @@ namespace VLabAnalysis
 
         GameObject AnalysisManagerSpawnHandler(Vector3 position, NetworkHash128 assetId)
         {
-            GameObject go;
-            if (uicontroller.alsmanager == null)
-            {
-                go = Instantiate(vlabanalysismanagerprefab);
-                var am = go.GetComponent<VLAnalysisManager>();
-                am.uicontroller = uicontroller;
-                uicontroller.alsmanager = am;
-                go.name = "VLAnalysisManager";
-                go.transform.SetParent(transform, false);
-            }
-            else
-            {
-                go = uicontroller.alsmanager.gameObject;
-            }
+            GameObject go = Instantiate(vlabanalysismanagerprefab);
+            var am = go.GetComponent<VLAnalysisManager>();
+            am.uicontroller = uicontroller;
+            uicontroller.alsmanager = am;
+            go.name = "VLAnalysisManager";
+            go.transform.SetParent(transform, false);
+
             uicontroller.OnAnalysisManagerSpwaned();
             return go;
         }
@@ -119,9 +108,8 @@ namespace VLabAnalysis
         }
 
         /// <summary>
-        /// because the fundamental difference of VLabAnalysis and VLabEnvironment, VLab should treat them
-        /// differently, so whenever a client connected to server, it seeds information about the client, so
-        /// that server could treat them accordingly.
+        /// because the difference of VLabAnalysis and VLabEnvironment, VLab should treat them
+        /// differently, so whenever a client connected to server, it seeds client information.
         /// </summary>
         /// <param name="conn"></param>
         public override void OnClientConnect(NetworkConnection conn)
@@ -137,10 +125,14 @@ namespace VLabAnalysis
 
         public override void OnClientDisconnect(NetworkConnection conn)
         {
-            UnityEngine.Debug.Log("disconnect.");
             base.OnClientDisconnect(conn);
             uicontroller.OnClientDisconnect();
         }
 
+        public override void OnStopClient()
+        {
+            NetworkClient.ShutdownAll();
+            client = null;
+        }
     }
 }
