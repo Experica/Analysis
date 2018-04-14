@@ -4,6 +4,59 @@
     <assembly>
       <name>UnityEngine.XRModule</name>
     </assembly>
+    <member name="T:UnityEngine.Experimental.Subsystem">
+      <summary>
+        <para>An Subsystem is initialized from an SubsystemDescriptor for a given Subsystem (Example, Input, Environment, Display, etc.) and provides an interface to interact with that given Subsystem until it is Destroyed. After an Subsystem is created it can be Started or Stopped to turn on and off functionality (and preserve performance). The base type for Subsystem only exposes this functionality; this class is designed to be a base class for derived classes that expose more functionality specific to a given Subsystem.
+
+            Note: initializing a second Subsystem from the same SubsystemDescriptor will return a reference to the existing Subsystem as only one Subsystem is currently allowed for a single Subsystem provider.
+            </para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.Subsystem.Destroy">
+      <summary>
+        <para>Destroys this instance of a subsystem.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.Subsystem.Start">
+      <summary>
+        <para>Starts an instance of a subsystem.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.Subsystem.Stop">
+      <summary>
+        <para>Stops an instance of a subsystem.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.Experimental.SubsystemDescriptor`1">
+      <summary>
+        <para>Information about a subsystem that can be queried before creating a subsystem instance.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.SubsystemDescriptor_1.Create">
+      <summary>
+        <para>Creates an Subsystem from this descriptor.</para>
+      </summary>
+      <returns>
+        <para>Instance of subsystem.</para>
+      </returns>
+    </member>
+    <member name="T:UnityEngine.Experimental.SubsystemManager">
+      <summary>
+        <para>Gives access to subsystems which provide additional functionality through plugins.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.SubsystemManager.GetInstances(System.Collections.Generic.List`1&lt;T&gt;)">
+      <summary>
+        <para>Returns active Subsystems of a specific instance type.</para>
+      </summary>
+      <param name="instances">Active instances.</param>
+    </member>
+    <member name="M:UnityEngine.Experimental.SubsystemManager.GetSubsystemDescriptors(System.Collections.Generic.List`1&lt;T&gt;)">
+      <summary>
+        <para>Returns a list of SubsystemDescriptors which describe additional functionality that can be enabled.</para>
+      </summary>
+      <param name="descriptors">Subsystem specific descriptors.</param>
+    </member>
     <member name="T:UnityEngine.Experimental.XR.BoundedPlane">
       <summary>
         <para>Structure describing a bounded plane representing a real-world surface.</para>
@@ -16,12 +69,12 @@
     </member>
     <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Center">
       <summary>
-        <para>Center point of the plane in world space.</para>
+        <para>Center point of the plane in device space.</para>
       </summary>
     </member>
     <member name="M:UnityEngine.Experimental.XR.BoundedPlane.GetCorners(UnityEngine.Vector3&amp;,UnityEngine.Vector3&amp;,UnityEngine.Vector3&amp;,UnityEngine.Vector3&amp;)">
       <summary>
-        <para>Outputs four points, in world space, representing the four corners of the plane. The corners are in clockwise order.</para>
+        <para>Outputs four points, in device space, representing the four corners of the plane. The corners are in clockwise order.</para>
       </summary>
       <param name="p0">The vertex of the first corner.</param>
       <param name="p1">The vertex of the second corner.</param>
@@ -40,7 +93,7 @@
     </member>
     <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Normal">
       <summary>
-        <para>Normal vector of the plane in world space.</para>
+        <para>Normal vector of the plane in device space.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Plane">
@@ -48,14 +101,9 @@
         <para>Returns the infinite Plane associated with this BoundedPlane.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Position">
+    <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Pose">
       <summary>
-        <para>Position of the plane in world space.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Rotation">
-      <summary>
-        <para>Orientation of the plane in world space.</para>
+        <para>Pose of the plane in device space.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Experimental.XR.BoundedPlane.Size">
@@ -63,9 +111,14 @@
         <para>Current size of the plane.</para>
       </summary>
     </member>
+    <member name="P:UnityEngine.Experimental.XR.BoundedPlane.SubsumedById">
+      <summary>
+        <para>A session-unique identifier for the BoundedPlane that subsumed this plane.</para>
+      </summary>
+    </member>
     <member name="M:UnityEngine.Experimental.XR.BoundedPlane.TryGetBoundary(System.Collections.Generic.List`1&lt;UnityEngine.Vector3&gt;)">
       <summary>
-        <para>Try to retrieve a list of positions in world space describing current plane boundary.</para>
+        <para>Try to retrieve a list of positions in device space describing current plane boundary.</para>
       </summary>
       <param name="boundaryOut">A list of vertices representing the boundary.</param>
       <returns>
@@ -77,19 +130,29 @@
         <para>Current width of the plane.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.PlaneAddedEventArgs">
+    <member name="T:UnityEngine.Experimental.XR.FrameReceivedEventArgs">
       <summary>
-        <para>Contains data supplied to a XRPlane.PlaneAdded event.</para>
+        <para>Structure containing data passed during Frame Received Event.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneAddedEventArgs.AddedPlane">
+    <member name="P:UnityEngine.Experimental.XR.FrameReceivedEventArgs.CameraSubsystem">
+      <summary>
+        <para>Reference to the XRCameraSubsystem associated with this event.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.Experimental.XR.PlaneAddedEventArgs">
+      <summary>
+        <para>Contains data supplied to a XRPlaneSubsystem.PlaneAdded event.</para>
+      </summary>
+    </member>
+    <member name="P:UnityEngine.Experimental.XR.PlaneAddedEventArgs.Plane">
       <summary>
         <para>The BoundedPlane that was added.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneAddedEventArgs.XRPlane">
+    <member name="P:UnityEngine.Experimental.XR.PlaneAddedEventArgs.PlaneSubsystem">
       <summary>
-        <para>A reference to the XRPlane object from which the event originated.</para>
+        <para>A reference to the PlaneSubsystem object from which the event originated.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.PlaneAlignment">
@@ -114,37 +177,32 @@
     </member>
     <member name="T:UnityEngine.Experimental.XR.PlaneRemovedEventArgs">
       <summary>
-        <para>Contains data supplied to a XRPlane.PlaneRemoved event.</para>
+        <para>Contains data supplied to a XRPlaneSubsystem.PlaneRemoved event.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneRemovedEventArgs.RemovedPlane">
+    <member name="P:UnityEngine.Experimental.XR.PlaneRemovedEventArgs.Plane">
       <summary>
         <para>The BoundedPlane that was removed.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneRemovedEventArgs.SubsumedByPlane">
+    <member name="P:UnityEngine.Experimental.XR.PlaneRemovedEventArgs.PlaneSubsystem">
       <summary>
-        <para>The BoundedPlane that subsumed the removed plane.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneRemovedEventArgs.XRPlane">
-      <summary>
-        <para>A reference to the XRPlane object from which the event originated.</para>
+        <para>A reference to the XRPlaneSubsystem object from which the event originated.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.PlaneUpdatedEventArgs">
       <summary>
-        <para>Contains data supplied to a XRPlane.PlaneUpdated event.</para>
+        <para>Contains data supplied to a XRPlaneSubsystem.PlaneUpdated event.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneUpdatedEventArgs.UpdatedPlane">
+    <member name="P:UnityEngine.Experimental.XR.PlaneUpdatedEventArgs.Plane">
       <summary>
         <para>The BoundedPlane that was updated.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PlaneUpdatedEventArgs.XRPlane">
+    <member name="P:UnityEngine.Experimental.XR.PlaneUpdatedEventArgs.PlaneSubsystem">
       <summary>
-        <para>A reference to the XRPlane object from which the event originated.</para>
+        <para>A reference to the XRPlaneSubsystem object from which the event originated.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.PointCloudUpdatedEventArgs">
@@ -152,9 +210,9 @@
         <para>Contains data supplied to a XRDepth.PointCloudUpdated event.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.PointCloudUpdatedEventArgs.XRDepth">
+    <member name="P:UnityEngine.Experimental.XR.PointCloudUpdatedEventArgs.DepthSubsystem">
       <summary>
-        <para>A reference to the XRDepth object from which the event originated.</para>
+        <para>A reference to the XRDepthSubsystem object from which the event originated.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.ReferencePoint">
@@ -167,14 +225,14 @@
         <para>ID for the reference point that is unique across the session.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.ReferencePoint.Position">
+    <member name="P:UnityEngine.Experimental.XR.ReferencePoint.Pose">
       <summary>
-        <para>Respond to changes in this position to correct for changes in the device's understanding of where this point is in the real world.</para>
+        <para>The pose (position and rotation) of the reference point. Respond to changes in this pose to correct for changes in the device's understanding of where this point is in the real world.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.ReferencePoint.Rotation">
+    <member name="P:UnityEngine.Experimental.XR.ReferencePoint.TrackingState">
       <summary>
-        <para>Respond to changes in this rotation to correct for changes in the device's understanding of where this point is in the real world.</para>
+        <para>The TrackingState of the reference point.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs">
@@ -182,34 +240,34 @@
         <para>Data to be passed to the user when the device corrects its understanding of the world enough that the ReferencePoint's position or rotation has changed.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs.UpdatedReferencePoint">
+    <member name="P:UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs.PreviousPose">
       <summary>
-        <para>The reference point that has the value of its position, rotation, or both changed enough through the device correcting its understanding of where this point should be located in Unity space.</para>
+        <para>The previous Pose of the ReferencePoint, prior to this event.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.SessionConfiguration">
+    <member name="P:UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs.PreviousTrackingState">
       <summary>
-        <para>Struct defines sets of parameters used when connecting to a session.</para>
+        <para>The previous TrackingState of the ReferencePoint, prior to this event.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.SessionConfiguration.EnableCamera">
+    <member name="P:UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs.ReferencePoint">
       <summary>
-        <para>True if the device's camera should be enabled.</para>
+        <para>The reference point that has the value of its position, rotation, or both changed enough through the device correcting its understanding of where this point should be located in device space.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.SessionConfiguration.EnableDepthData">
+    <member name="T:UnityEngine.Experimental.XR.SessionTrackingStateChangedEventArgs">
       <summary>
-        <para>True if depth data should be enabled.</para>
+        <para>Structure defining Tracking State Changed event arguments passed when tracking state changes.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.SessionConfiguration.EnableLightEstimation">
+    <member name="P:UnityEngine.Experimental.XR.SessionTrackingStateChangedEventArgs.NewState">
       <summary>
-        <para>True if light estimation should be enabled.</para>
+        <para>New Tracking State.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.SessionConfiguration.EnablePlaneDetection">
+    <member name="P:UnityEngine.Experimental.XR.SessionTrackingStateChangedEventArgs.SessionSubsystem">
       <summary>
-        <para>True if plane detection should be enabled.</para>
+        <para>Reference to the XRSessionSubsystem object associated with the event.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.TrackableId">
@@ -280,57 +338,99 @@
         <para>Current tracking state of the device.</para>
       </summary>
     </member>
-    <member name="F:UnityEngine.Experimental.XR.TrackingState.Aborted">
-      <summary>
-        <para>Tracking was aborted.</para>
-      </summary>
-    </member>
-    <member name="F:UnityEngine.Experimental.XR.TrackingState.Initializing">
-      <summary>
-        <para>Tracking is initializing.</para>
-      </summary>
-    </member>
-    <member name="F:UnityEngine.Experimental.XR.TrackingState.Suspended">
-      <summary>
-        <para>Tracking was suspended.</para>
-      </summary>
-    </member>
     <member name="F:UnityEngine.Experimental.XR.TrackingState.Tracking">
       <summary>
         <para>Tracking is currently working.</para>
       </summary>
     </member>
-    <member name="F:UnityEngine.Experimental.XR.TrackingState.Unknown">
+    <member name="F:UnityEngine.Experimental.XR.TrackingState.Unavailable">
       <summary>
-        <para>Unidentified tracking status.</para>
+        <para>Tracking is not available.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRCameraInstance">
+    <member name="F:UnityEngine.Experimental.XR.TrackingState.Unknown">
+      <summary>
+        <para>Tracking state is unknown.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.Experimental.XR.XRCameraSubsystem">
       <summary>
         <para>Provides access to a device's camera.</para>
       </summary>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRCameraInstance.GetAverageBrightness">
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystem.Camera">
       <summary>
-        <para>Provides brightness for the whole image as an average of all pixels' brightness.</para>
+        <para>Set current Camera component within the app to be used by this XRCameraInstance.</para>
       </summary>
-      <returns>
-        <para>An estimated average brightness for the environment.</para>
-      </returns>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRCameraInstance.GetAverageColorTemperature">
+    <member name="?:UnityEngine.Experimental.XR.XRCameraSubsystem.FrameReceived(System.Action`1&lt;UnityEngine.Experimental.XR.FrameReceivedEventArgs&gt;)">
       <summary>
-        <para>Provides color temperature for the whole image as an average of all pixels' color temperature.</para>
+        <para>Event raised when a new camera frame is received.</para>
       </summary>
-      <returns>
-        <para>An estimated color temperature.</para>
-      </returns>
+      <param name="value"></param>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRCameraInstance.SetMaterial(UnityEngine.Material)">
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.GetTextures(System.Collections.Generic.List`1&lt;UnityEngine.Texture2D&gt;)">
+      <summary>
+        <para>Fills the provided texturesOut with the texture(s) associated with the XRCameraSubsystem.</para>
+      </summary>
+      <param name="texturesOut">A List of Texture2D to be filled. Passing null will throw an ArgumentNullException.</param>
+    </member>
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystem.LastUpdatedFrame">
+      <summary>
+        <para>The frame during which the camera subsystem was last successfully updated.</para>
+      </summary>
+    </member>
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystem.LightEstimationRequested">
+      <summary>
+        <para>True if the XRCameraSubsystem should try to provide light estimation.</para>
+      </summary>
+    </member>
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystem.Material">
       <summary>
         <para>Set current Material to be used while rendering to the render target.</para>
       </summary>
-      <param name="mat">The Material to use.</param>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetAverageBrightness(System.Single&amp;)">
+      <summary>
+        <para>Provides brightness for the whole image as an average of all pixels' brightness.</para>
+      </summary>
+      <param name="averageBrightness">An estimated average brightness for the environment.</param>
+      <returns>
+        <para>Returns true if average brigthness was provided.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetAverageColorTemperature(System.Single&amp;)">
+      <summary>
+        <para>Provides color temperature for the whole image as an average of all pixels' color temperature.</para>
+      </summary>
+      <param name="averageColorTemperature">An estimated color temperature.</param>
+      <returns>
+        <para>Return true if succesful.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetDisplayMatrix(UnityEngine.Matrix4x4&amp;)">
+      <summary>
+        <para>Provides display matrix defining how texture is being rendered on the screen.</para>
+      </summary>
+      <param name="displayMatrix"></param>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetProjectionMatrix(UnityEngine.Matrix4x4&amp;)">
+      <summary>
+        <para>Provides projection matrix used by camera subsystem.</para>
+      </summary>
+      <param name="projectionMatrix"></param>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetShaderName(System.String&amp;)">
+      <summary>
+        <para>Provides shader name used by Camera subsystem to render texture.</para>
+      </summary>
+      <param name="shaderName"></param>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRCameraSubsystem.TryGetTimestamp(System.Int64&amp;)">
+      <summary>
+        <para>Provides timestamp.</para>
+      </summary>
+      <param name="timestampNs"></param>
     </member>
     <member name="T:UnityEngine.Experimental.XR.XRCameraSubsystemDescriptor">
       <summary>
@@ -347,112 +447,63 @@
         <para>Specifies if current subsystem is allowed to provide average camera temperature.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRDepth">
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystemDescriptor.ProvidesDisplayMatrix">
       <summary>
-        <para>Provides access to depth measurements of the environment in the form of a point cloud.</para>
+        <para>Specifies if current subsystem is allowed to provide display matrix.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRDepth.FrameOfLastPointCloudUpdate">
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystemDescriptor.ProvidesProjectionMatrix">
       <summary>
-        <para>The frame during which the point cloud was last updated.</para>
+        <para>Specifies if current subsystem is allowed to provide projection matrix.</para>
       </summary>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRDepth.GetPointCloudConfidence(System.Collections.Generic.List`1&lt;System.Single&gt;)">
+    <member name="P:UnityEngine.Experimental.XR.XRCameraSubsystemDescriptor.ProvidesTimestamp">
+      <summary>
+        <para>Specifies if current subsystem is allowed to provide timestamp.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.Experimental.XR.XRDepthSubsystem">
+      <summary>
+        <para>Provides access to depth data of the physical environment, such as a point cloud.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRDepthSubsystem.GetConfidence(System.Collections.Generic.List`1&lt;System.Single&gt;)">
       <summary>
         <para>Retrieves the confidence values for each point in the point cloud.</para>
       </summary>
       <param name="confidenceOut">A list of floats containing all confidence values for the point cloud.</param>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRDepth.GetPointCloudPoints(System.Collections.Generic.List`1&lt;UnityEngine.Vector3&gt;)">
+    <member name="M:UnityEngine.Experimental.XR.XRDepthSubsystem.GetPoints(System.Collections.Generic.List`1&lt;UnityEngine.Vector3&gt;)">
       <summary>
         <para>Retrieves the point cloud points.</para>
       </summary>
       <param name="pointsOut">A list of Vector3s containing all points in the point cloud.</param>
     </member>
-    <member name="?:UnityEngine.Experimental.XR.XRDepth.PointCloudUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.PointCloudUpdatedEventArgs&gt;)">
+    <member name="P:UnityEngine.Experimental.XR.XRDepthSubsystem.LastUpdatedFrame">
+      <summary>
+        <para>The frame during which the point cloud was last updated.</para>
+      </summary>
+    </member>
+    <member name="?:UnityEngine.Experimental.XR.XRDepthSubsystem.PointCloudUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.PointCloudUpdatedEventArgs&gt;)">
       <summary>
         <para>Raised once during each frame in which the point cloud is updated.</para>
       </summary>
       <param name="value"></param>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRDepth.TryGetPoint(UnityEngine.Experimental.XR.TrackableId,UnityEngine.Vector3&amp;)">
+    <member name="T:UnityEngine.Experimental.XR.XRDepthSubsystemDescriptor">
       <summary>
-        <para>Attempt to retrieve the position of a point cloud point by id.</para>
-      </summary>
-      <param name="pointId">The TrackableId of the point cloud point to get.</param>
-      <param name="point">The position of the point cloud point.</param>
-      <returns>
-        <para>True if the point exists (i.e., is being tracked). False otherwise.</para>
-      </returns>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRDepth.Valid">
-      <summary>
-        <para>If true, the XREnvironment object that owns this XRDepth object is still alive. If false, calls made on this XRDepth object will result in ArgumentNullExceptions getting thrown.</para>
+        <para>Class providing information about XRDepthSubsystem registration.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRDepth.XREnvironment">
+    <member name="P:UnityEngine.Experimental.XR.XRDepthSubsystemDescriptor.SupportsFeaturePoints">
       <summary>
-        <para>Returns the XREnvironment object that this XRDepth object was retrieved from.</para>
+        <para>When true, XRDepthSubsystem will provide list of feature points detected so far.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XREnvironment">
+    <member name="T:UnityEngine.Experimental.XR.XRInputSubsystem">
       <summary>
-        <para>Entry-point for reasoning about the physical world in an AR game or app.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironment.Depth">
-      <summary>
-        <para>Returns the environment's XRDepth object, which allows for interfacing with point clouds ("feature points") from the physical world.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironment.Planes">
-      <summary>
-        <para>Returns the environment's XRPlanes object, which allows for interfacing with planes that the platform has identified from the physical world.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironment.Raycast">
-      <summary>
-        <para>Returns the environment's XRRaycast object, which allows for simplified raycasting into the physical world against known constructs (currently feature points and planes).</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironment.ReferencePoints">
-      <summary>
-        <para>Returns the environment's XRReferencePoints object, which allows for defining points of interest for which you can respond to updates concerning their transforms to further stabilize your virtual objects with the physical world.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironment.Session">
-      <summary>
-        <para>Returns the environment's XRSession object, which allows for more global control of AR functionality.</para>
-      </summary>
-    </member>
-    <member name="T:UnityEngine.Experimental.XR.XREnvironmentSubsystemDescriptor">
-      <summary>
-        <para>Class providing information about XREnvironment registration.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironmentSubsystemDescriptor.SupportsFeaturePoints">
-      <summary>
-        <para>When true, XRDepth will provide list of feature points detected so far.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironmentSubsystemDescriptor.SupportsLightEstimation">
-      <summary>
-        <para>When true, the XRCameraInstance can be queried for light estimates of the physical environment.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironmentSubsystemDescriptor.SupportsPlaneFinding">
-      <summary>
-        <para>When true, XRPlanes will provide functionality to access all planes detected so far as well as respond to events associated with planes.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XREnvironmentSubsystemDescriptor.SupportsReferencePoints">
-      <summary>
-        <para>When true, XRReferencePoints supports tracking real-world points in the form of ReferencePoints, which the device can track and correct its understanding of.</para>
-      </summary>
-    </member>
-    <member name="T:UnityEngine.Experimental.XR.XRInputInstance">
-      <summary>
-        <para>XRInputInstance is used to enable and disable the inputs coming from a specific plugin.</para>
+        <para>XRInputSubsystem
+Instance is used to enable and disable the inputs coming from a specific plugin.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.XRInputSubsystemDescriptor">
@@ -460,64 +511,41 @@
         <para>Information about an Input subsystem.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRInstance">
-      <summary>
-        <para>An XRInstance is initialized from an XRSubsystemDescriptor for a given XRSubsystem (Example, Input, Environment, Display, etc.) and provides an interface to interact with that given Subsystem until it is Destroyed.  After an XRInstance is created it can be Started or Stopped to turn on and off functionality (and preserve performance).  The base type for XRInstance only exposes this functionality; this class is designed to be a base class for derived classes that expose more functionality specific to a given Subsystem.
-
-            Note: initializing a second XRInstance from the same XRSubsystemDescriptor will return a reference to the existing XRInstance as only one XRInstance is currently allowed for a single Subsystem provider.
-            </para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRInstance.Destroy">
-      <summary>
-        <para>Destroys this instance of a subsystem.</para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRInstance.Start">
-      <summary>
-        <para>Starts an instance of a subsystem.</para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRInstance.Stop">
-      <summary>
-        <para>Stops an instance of a subsystem.</para>
-      </summary>
-    </member>
-    <member name="T:UnityEngine.Experimental.XR.XRPlane">
+    <member name="T:UnityEngine.Experimental.XR.XRPlaneSubsystem">
       <summary>
         <para>Provides methods, events, and properties that provides information about planes detected in the environment. </para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRPlane.FrameOfLastPlaneUpdate">
-      <summary>
-        <para>The frame during which the planes were last updated.</para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRPlane.GetAllPlanes(System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.BoundedPlane&gt;)">
+    <member name="M:UnityEngine.Experimental.XR.XRPlaneSubsystem.GetAllPlanes(System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.BoundedPlane&gt;)">
       <summary>
         <para>Get all the BoundedPlanes currently tracked by the system.</para>
       </summary>
       <param name="planesOut">A list of BoundedPlanes containing all planes currently tracked by the system.</param>
     </member>
-    <member name="?:UnityEngine.Experimental.XR.XRPlane.PlaneAdded(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneAddedEventArgs&gt;)">
+    <member name="P:UnityEngine.Experimental.XR.XRPlaneSubsystem.LastUpdatedFrame">
+      <summary>
+        <para>The frame during which the planes were last updated.</para>
+      </summary>
+    </member>
+    <member name="?:UnityEngine.Experimental.XR.XRPlaneSubsystem.PlaneAdded(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneAddedEventArgs&gt;)">
       <summary>
         <para>Raised for each BoundedPlane that has been added in the current frame.</para>
       </summary>
       <param name="value"></param>
     </member>
-    <member name="?:UnityEngine.Experimental.XR.XRPlane.PlaneRemoved(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneRemovedEventArgs&gt;)">
+    <member name="?:UnityEngine.Experimental.XR.XRPlaneSubsystem.PlaneRemoved(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneRemovedEventArgs&gt;)">
       <summary>
         <para>Raised for each BoundedPlane that has been removed in the current frame.</para>
       </summary>
       <param name="value"></param>
     </member>
-    <member name="?:UnityEngine.Experimental.XR.XRPlane.PlaneUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneUpdatedEventArgs&gt;)">
+    <member name="?:UnityEngine.Experimental.XR.XRPlaneSubsystem.PlaneUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.PlaneUpdatedEventArgs&gt;)">
       <summary>
         <para>Raised for each plane that has been updated in the current frame.</para>
       </summary>
       <param name="value"></param>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRPlane.TryGetPlane(UnityEngine.Experimental.XR.TrackableId,UnityEngine.Experimental.XR.BoundedPlane&amp;)">
+    <member name="M:UnityEngine.Experimental.XR.XRPlaneSubsystem.TryGetPlane(UnityEngine.Experimental.XR.TrackableId,UnityEngine.Experimental.XR.BoundedPlane&amp;)">
       <summary>
         <para>Get a BoundedPlane by TrackableId</para>
       </summary>
@@ -527,9 +555,9 @@
         <para>True if the BoundedPlane with planeId exists, false otherwise.</para>
       </returns>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRPlane.TryGetPlaneBoundary(UnityEngine.Experimental.XR.TrackableId,System.Collections.Generic.List`1&lt;UnityEngine.Vector3&gt;)">
+    <member name="M:UnityEngine.Experimental.XR.XRPlaneSubsystem.TryGetPlaneBoundary(UnityEngine.Experimental.XR.TrackableId,System.Collections.Generic.List`1&lt;UnityEngine.Vector3&gt;)">
       <summary>
-        <para>Try to retrieve a list of positions in world space describing the current plane boundary.</para>
+        <para>Try to retrieve a list of positions in device space describing the current plane boundary.</para>
       </summary>
       <param name="planeId">The session-unique TrackableId of the plane.</param>
       <param name="boundaryOut">A list of vertices representing the plane's boundary.</param>
@@ -537,60 +565,19 @@
         <para>True if the plane exists (i.e., is still being tracked), otherwise false.</para>
       </returns>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRPlane.Valid">
+    <member name="T:UnityEngine.Experimental.XR.XRPlaneSubsystemDescriptor">
       <summary>
-        <para>If true, the XREnvironment object that owns this XRPlanes object is still alive. If false, calls made on this XRPlanes object will result in ArgumentNullExceptions getting thrown.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRPlane.XREnvironment">
-      <summary>
-        <para>Returns the XREnvironment object that this XRPlane object was retrieved from.</para>
-      </summary>
-    </member>
-    <member name="T:UnityEngine.Experimental.XR.XRRaycast">
-      <summary>
-        <para>Provides methods and properties that allow for querying portions of the physical environment that are near a provided specified ray. These trackables include planes and depth data.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRRaycast.Environment">
-      <summary>
-        <para>Returns the XREnvironment object that this XRRaycast object was retrieved from.</para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRRaycast.Raycast(UnityEngine.Ray,System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.XRRaycastHit&gt;,UnityEngine.Experimental.XR.TrackableType)">
-      <summary>
-        <para>Casts a ray using ray against selected trackables (e.g., planes and feature points).</para>
-      </summary>
-      <param name="ray">The Ray to use.</param>
-      <param name="hitResults">The resulting list of XRRaycastHit.</param>
-      <param name="trackableTypeMask">An optional mask of TrackableType to raycast against.</param>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRRaycast.Raycast(UnityEngine.Vector3,System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.XRRaycastHit&gt;,UnityEngine.Experimental.XR.TrackableType)">
-      <summary>
-        <para>Casts a ray from a screen point against selected trackables (e.g., planes and feature points).</para>
-      </summary>
-      <param name="screenPoint">The screen point from which to cast.</param>
-      <param name="hitResults">The resulting list of XRRaycastHit.</param>
-      <param name="trackableTypeMask">An optional mask of TrackableType to raycast against.</param>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRRaycast.RaycastAngle">
-      <summary>
-        <para>Get or set the angle, in degrees, to use during point cloud raycasts.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRRaycast.Valid">
-      <summary>
-        <para>If true, the XREnvironment object that owns this XRRaycast object is still alive. If false, calls made on this XRRaycast object will result in ArgumentNullExceptions getting thrown.</para>
+        <para>Class providing information about XRPlaneSubsystem registration.</para>
       </summary>
     </member>
     <member name="T:UnityEngine.Experimental.XR.XRRaycastHit">
       <summary>
-        <para>Structure describing the result of a XREnvironment.Raycast hit.</para>
+        <para>Structure describing the result of a XRRaycastSubsystem.Raycast hit.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.Distance">
       <summary>
-        <para>The distance, in meters, between the Ray origin and the hit's XRRaycastHit.Position.</para>
+        <para>The distance, in meters, from the screen to the hit's XRRaycastSubsystemHit.Position.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.HitType">
@@ -598,14 +585,9 @@
         <para>The TrackableType(s) that were hit.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.Position">
+    <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.Pose">
       <summary>
-        <para>The position of the hit result in world space where the Ray hit the trackable.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.Rotation">
-      <summary>
-        <para>The orientation of the hit result in world space.</para>
+        <para>The position and rotation of the hit result in device space where the ray hit the trackable.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Experimental.XR.XRRaycastHit.TrackableId">
@@ -613,40 +595,79 @@
         <para>The TrackableId of the trackable that was hit by the raycast.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRReferencePoint">
+    <member name="T:UnityEngine.Experimental.XR.XRRaycastSubsystem">
       <summary>
-        <para>Provides methods and properties that allow for querying, creating, and removing of reference points. These reference points are cues to the XREnvironment that indicate areas of interest in the environment which helps assure that tracking of these points remains accurate.</para>
+        <para>Provides methods and properties that allow for querying portions of the physical environment that are near a provided specified ray. These trackables include planes and depth data.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRReferencePoint.FrameOfLastReferencePointUpdate">
+    <member name="M:UnityEngine.Experimental.XR.XRRaycastSubsystem.Raycast(UnityEngine.Vector3,System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.XRRaycastHit&gt;,UnityEngine.Experimental.XR.TrackableType)">
+      <summary>
+        <para>Casts a ray from a screen point against selected trackables (e.g., planes and feature points).</para>
+      </summary>
+      <param name="screenPoint">The screen point from which to cast.</param>
+      <param name="hitResults">The resulting list of XRRaycastHit.</param>
+      <param name="trackableTypeMask">An optional mask of TrackableType to raycast against.</param>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRRaycastSubsystem.Raycast(UnityEngine.Ray,UnityEngine.Experimental.XR.XRDepthSubsystem,UnityEngine.Experimental.XR.XRPlaneSubsystem,System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.XRRaycastHit&gt;,UnityEngine.Experimental.XR.TrackableType,System.Single)">
+      <summary>
+        <para>Casts a ray using ray against selected trackables (e.g., planes and feature points).</para>
+      </summary>
+      <param name="ray">The Ray to use.</param>
+      <param name="depthSubsystem">The XRDepthSubsystem to raycast against. May be null.</param>
+      <param name="planeSubsystem">The XRPlaneSubsystem to raycast against. May be null.</param>
+      <param name="hitResults">The resulting list of XRRaycastHit.</param>
+      <param name="trackableTypeMask">An optional mask of TrackableType to raycast against.</param>
+      <param name="pointCloudRaycastAngleInDegrees">When raycasting against feature points, cast a cone with this angle.</param>
+    </member>
+    <member name="T:UnityEngine.Experimental.XR.XRRaycastSubsystemDescriptor">
+      <summary>
+        <para>Class providing information about XRRaycastSubsystem registration.</para>
+      </summary>
+    </member>
+    <member name="T:UnityEngine.Experimental.XR.XRReferencePointSubsystem">
+      <summary>
+        <para>Provides methods and properties that allow for querying, creating, and removing of reference points. These reference points are cues to the XRSessionSubsystem that indicate areas of interest in the environment which helps assure that tracking of these points remains accurate.</para>
+      </summary>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRReferencePointSubsystem.GetAllReferencePoints(System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.ReferencePoint&gt;)">
+      <summary>
+        <para>Retrieves all ReferencePoints added by calls to XRReferencePointSubsystem.TryAddReferencePoint.</para>
+      </summary>
+      <param name="referencePointsOut">A list of ReferencePoints containing all reference points.</param>
+    </member>
+    <member name="P:UnityEngine.Experimental.XR.XRReferencePointSubsystem.LastUpdatedFrame">
       <summary>
         <para>The frame during which the reference points were last updated.</para>
       </summary>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRReferencePoint.GetAllReferencePoints(System.Collections.Generic.List`1&lt;UnityEngine.Experimental.XR.ReferencePoint&gt;)">
-      <summary>
-        <para>Retrieves all ReferencePoints added by calls to XRReferencePoint.TryAddReferencePoint.</para>
-      </summary>
-      <param name="referencePointsOut">A list of ReferencePoints containing all reference points.</param>
-    </member>
-    <member name="?:UnityEngine.Experimental.XR.XRReferencePoint.ReferencePointUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs&gt;)">
+    <member name="?:UnityEngine.Experimental.XR.XRReferencePointSubsystem.ReferencePointUpdated(System.Action`1&lt;UnityEngine.Experimental.XR.ReferencePointUpdatedEventArgs&gt;)">
       <summary>
         <para>Raised each frame for each ReferencePoint that had the values of its position, rotation, or both changed enough by the device correcting its understanding of where the point should be located in Unity space.</para>
       </summary>
       <param name="value"></param>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRReferencePoint.TryAddReferencePoint(UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Experimental.XR.TrackableId&amp;)">
+    <member name="M:UnityEngine.Experimental.XR.XRReferencePointSubsystem.TryAddReferencePoint(UnityEngine.Vector3,UnityEngine.Quaternion,UnityEngine.Experimental.XR.TrackableId&amp;)">
       <summary>
         <para>Attempt to add a ReferencePoint that gets tracked by the device.</para>
       </summary>
-      <param name="position">Current position, in world space, of a point you want the device to track.</param>
-      <param name="rotation">Current rotation, in world space, of a point you want the device to track.</param>
+      <param name="position">Current position, in device space, of a point you want the device to track.</param>
+      <param name="rotation">Current rotation, in device space, of a point you want the device to track.</param>
       <param name="referencePointId">If this method returns true, this is filled out with the ID (unique to the session) of the point.</param>
       <returns>
         <para>If the ReferencePoint was added successfully, this method returns true. Otherwise, it returns false.</para>
       </returns>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRReferencePoint.TryGetReferencePoint(UnityEngine.Experimental.XR.TrackableId,UnityEngine.Experimental.XR.ReferencePoint&amp;)">
+    <member name="M:UnityEngine.Experimental.XR.XRReferencePointSubsystem.TryAddReferencePoint(UnityEngine.Pose,UnityEngine.Experimental.XR.TrackableId&amp;)">
+      <summary>
+        <para>Attempt to add a ReferencePoint that gets tracked by the device.</para>
+      </summary>
+      <param name="pose">Current pose, in device space, of a point you want the device to track.</param>
+      <param name="referencePointId">If this method returns true, this is filled out with the ID (unique to the session) of the point.</param>
+      <returns>
+        <para>If the ReferencePoint was added successfully, this method returns true. Otherwise, it returns false.</para>
+      </returns>
+    </member>
+    <member name="M:UnityEngine.Experimental.XR.XRReferencePointSubsystem.TryGetReferencePoint(UnityEngine.Experimental.XR.TrackableId,UnityEngine.Experimental.XR.ReferencePoint&amp;)">
       <summary>
         <para>Attempt to retrieve a ReferencePoint.</para>
       </summary>
@@ -656,7 +677,7 @@
         <para>If the ReferencePoint was found and filled out successfully, this method returns true. Otherwise, it return false.</para>
       </returns>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRReferencePoint.TryRemoveReferencePoint(UnityEngine.Experimental.XR.TrackableId)">
+    <member name="M:UnityEngine.Experimental.XR.XRReferencePointSubsystem.TryRemoveReferencePoint(UnityEngine.Experimental.XR.TrackableId)">
       <summary>
         <para>Attempt to remove a ReferencePoint getting tracked by the device.</para>
       </summary>
@@ -665,76 +686,36 @@
         <para>If the ReferencePoint was removed successfully, this method returns true. Otherwise, it returns false.</para>
       </returns>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRReferencePoint.Valid">
+    <member name="T:UnityEngine.Experimental.XR.XRReferencePointSubsystemDescriptor">
       <summary>
-        <para>If true, the XREnvironment object that owns this XRReferencePoints object is still alive. If false, calls made on this XRReferencePoints object will result in ArgumentNullExceptions getting thrown.</para>
+        <para>Class providing information about XRReferencePointSubsystem registration.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRReferencePoint.XREnvironment">
+    <member name="T:UnityEngine.Experimental.XR.XRSessionSubsystem">
       <summary>
-        <para>Returns the XREnvironment object that this XRReferencePoint object was retrieved from.</para>
+        <para>A collection of methods and properties used to interact with and configure an XR session.</para>
       </summary>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRSession">
-      <summary>
-        <para>A collection of methods and properties used to interact with and configure an AR session.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRSession.Environment">
-      <summary>
-        <para>Returns the XREnvironment object that this XRSession object was retrieved from.</para>
-      </summary>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRSession.FrameOfLastTrackingStateUpdate">
+    <member name="P:UnityEngine.Experimental.XR.XRSessionSubsystem.LastUpdatedFrame">
       <summary>
         <para>The frame during which the tracking state was last updated.</para>
       </summary>
     </member>
-    <member name="M:UnityEngine.Experimental.XR.XRSession.SetConfig(UnityEngine.Experimental.XR.SessionConfiguration)">
-      <summary>
-        <para>Sets the AR session configuration to be used when the Environment subsystem starts.</para>
-      </summary>
-      <param name="config"></param>
-    </member>
-    <member name="P:UnityEngine.Experimental.XR.XRSession.TrackingState">
+    <member name="P:UnityEngine.Experimental.XR.XRSessionSubsystem.TrackingState">
       <summary>
         <para>Get current tracking status of the device.</para>
       </summary>
     </member>
-    <member name="P:UnityEngine.Experimental.XR.XRSession.Valid">
+    <member name="?:UnityEngine.Experimental.XR.XRSessionSubsystem.TrackingStateChanged(System.Action`1&lt;UnityEngine.Experimental.XR.SessionTrackingStateChangedEventArgs&gt;)">
       <summary>
-        <para>If true, the XREnvironment object that owns this XRSession object is still alive. If false, calls made on this XRSession object will result in ArgumentNullExceptions getting thrown.</para>
+        <para>Raised when the TrackingState changes.</para>
       </summary>
+      <param name="value"></param>
     </member>
-    <member name="T:UnityEngine.Experimental.XR.XRSubsystemDescriptor`1">
+    <member name="T:UnityEngine.Experimental.XR.XRSessionSubsystemDescriptor">
       <summary>
-        <para>Information about a subsystem that can be queried before creating a subsystem instance.</para>
+        <para>Class providing information about XRSessionSubsystem registration.</para>
       </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRSubsystemDescriptor_1.Create">
-      <summary>
-        <para>Creates an XRInstance from this descriptor.</para>
-      </summary>
-      <returns>
-        <para>Instance of subsystem.</para>
-      </returns>
-    </member>
-    <member name="T:UnityEngine.Experimental.XR.XRSubsystemManager">
-      <summary>
-        <para>Gives access to XR related subsystems which provide XR functionality.</para>
-      </summary>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRSubsystemManager.GetInstances(System.Collections.Generic.List`1&lt;T&gt;)">
-      <summary>
-        <para>Returns active XRInstances of a specific instance type.</para>
-      </summary>
-      <param name="instances">Active instances.</param>
-    </member>
-    <member name="M:UnityEngine.Experimental.XR.XRSubsystemManager.GetSubsystemDescriptors(System.Collections.Generic.List`1&lt;T&gt;)">
-      <summary>
-        <para>Returns a list of descriptors which describe XR related functionality that can be enabled.</para>
-      </summary>
-      <param name="descriptors">Subsystem specific descriptors.</param>
     </member>
   </members>
 </doc>

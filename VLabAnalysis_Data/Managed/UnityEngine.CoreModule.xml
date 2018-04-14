@@ -1619,7 +1619,7 @@ Note: Using raw JNI functions requires advanced knowledge of the Android Java Na
     </member>
     <member name="P:UnityEngine.Application.isLoadingLevel">
       <summary>
-        <para>Is some level being loaded? (Read Only)</para>
+        <para>Is some level being loaded? (Read Only) (Obsolete).</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Application.isMobilePlatform">
@@ -3401,7 +3401,7 @@ Note: Every time you call the method with tolerance specified, a new instance of
     </member>
     <member name="M:UnityEngine.Caching.ClearCache">
       <summary>
-        <para>Removes all AssetBundle and Procedural Material content that has been cached by the current application.</para>
+        <para>Removes all AssetBundle content that has been cached by the current application.</para>
       </summary>
       <param name="expiration">The number of seconds that AssetBundles may remain unused in the cache.</param>
       <returns>
@@ -3410,7 +3410,7 @@ Note: Every time you call the method with tolerance specified, a new instance of
     </member>
     <member name="M:UnityEngine.Caching.ClearCache(System.Int32)">
       <summary>
-        <para>Removes all AssetBundle and Procedural Material content that has been cached by the current application.</para>
+        <para>Removes all AssetBundle content that has been cached by the current application.</para>
       </summary>
       <param name="expiration">The number of seconds that AssetBundles may remain unused in the cache.</param>
       <returns>
@@ -4191,7 +4191,7 @@ The default value is Camera.MonoOrStereoscopicEye.Left, so Camera.MonoOrStereosc
     </member>
     <member name="F:UnityEngine.Color.a">
       <summary>
-        <para>Alpha component of the color.</para>
+        <para>Alpha component of the color (0 is transparent, 1 is opaque).</para>
       </summary>
     </member>
     <member name="F:UnityEngine.Color.b">
@@ -6506,9 +6506,7 @@ The default value is Camera.MonoOrStereoscopicEye.Left, so Camera.MonoOrStereosc
     </member>
     <member name="T:UnityEngine.DeviceType">
       <summary>
-        <para>Enumeration for SystemInfo.deviceType, denotes a coarse grouping of kinds of devices.
-
-Universal Windows Platform: tablets are treated as desktop machines, thus DeviceType.Handheld will only be returned for Windows Phones and IoT family devices.</para>
+        <para>Enumeration for SystemInfo.deviceType, denotes a coarse grouping of kinds of devices.</para>
       </summary>
     </member>
     <member name="F:UnityEngine.DeviceType.Console">
@@ -9215,6 +9213,12 @@ The RenderPass mechanism has the following limitations:
         <para>Defines a series of commands and settings that describes how Unity renders a frame.</para>
       </summary>
     </member>
+    <member name="?:UnityEngine.Experimental.Rendering.RenderPipeline.beginCameraRendering(System.Action`1&lt;UnityEngine.Camera&gt;)">
+      <summary>
+        <para>Call that should be issued by an SRP when the SRP begins to render a Camera so that other systems can inject per camera render logic.</para>
+      </summary>
+      <param name="value"></param>
+    </member>
     <member name="?:UnityEngine.Experimental.Rendering.RenderPipeline.beginFrameRendering(System.Action`1&lt;UnityEngine.Camera[]&gt;)">
       <summary>
         <para>Call that should be issued by an SRP when the SRP begins to render so that other systems can inject 'pre render' logic.</para>
@@ -9226,9 +9230,15 @@ The RenderPass mechanism has the following limitations:
         <para>When the IRenderPipeline is invalid or destroyed this returns true.</para>
       </summary>
     </member>
+    <member name="M:UnityEngine.Experimental.Rendering.RenderPipeline.BeginCameraRendering(UnityEngine.Camera)">
+      <summary>
+        <para>Call the delegate used during SRP rendering before a single camera starts rendering.</para>
+      </summary>
+      <param name="camera"></param>
+    </member>
     <member name="M:UnityEngine.Experimental.Rendering.RenderPipeline.BeginFrameRendering(UnityEngine.Camera[])">
       <summary>
-        <para>Delegate used during SRP rendering before a render begins.</para>
+        <para>Call the delegate used during SRP rendering before a render begins.</para>
       </summary>
       <param name="cameras"></param>
     </member>
@@ -21068,7 +21078,7 @@ The Player ID is always 1, because only one Editor can be connected.</param>
     </member>
     <member name="P:UnityEngine.Profiling.Profiler.enableBinaryLog">
       <summary>
-        <para>Sets profiler output file in built players.</para>
+        <para>Enables the logging of profiling data to a file.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Profiling.Profiler.enabled">
@@ -21078,7 +21088,7 @@ The Player ID is always 1, because only one Editor can be connected.</param>
     </member>
     <member name="P:UnityEngine.Profiling.Profiler.logFile">
       <summary>
-        <para>Sets profiler output file in built players.</para>
+        <para>Specifies the file to use when writing profiling data.</para>
       </summary>
     </member>
     <member name="P:UnityEngine.Profiling.Profiler.maxNumberOfSamplesPerFrame">
@@ -23987,6 +23997,11 @@ See Also: ReflectionProbeTimeSlicingMode.</para>
         <para>Create a new empty command buffer.</para>
       </summary>
     </member>
+    <member name="M:UnityEngine.Rendering.CommandBuffer.DisableScissorRect">
+      <summary>
+        <para>Add a command to disable the hardware scissor rectangle.</para>
+      </summary>
+    </member>
     <member name="M:UnityEngine.Rendering.CommandBuffer.DisableShaderKeyword(System.String)">
       <summary>
         <para>Adds a command to disable global shader keyword.</para>
@@ -24088,6 +24103,12 @@ InvalidOperationException will be thrown if the current platform doesn't support
       <param name="material">Material to use.</param>
       <param name="submeshIndex">Which subset of the mesh to render.</param>
       <param name="shaderPass">Which pass of the shader to use (default is -1, which renders all passes).</param>
+    </member>
+    <member name="M:UnityEngine.Rendering.CommandBuffer.EnableScissorRect(UnityEngine.Rect)">
+      <summary>
+        <para>Add a command to enable the hardware scissor rectangle.</para>
+      </summary>
+      <param name="scissor">Viewport rectangle in pixel coordinates.</param>
     </member>
     <member name="M:UnityEngine.Rendering.CommandBuffer.EnableShaderKeyword(System.String)">
       <summary>
@@ -27277,9 +27298,9 @@ A scene may be invalid if, for example, you tried to open a scene that does not 
     </member>
     <member name="?:UnityEngine.SceneManagement.SceneManager.activeSceneChanged(UnityEngine.Events.UnityAction`2&lt;UnityEngine.SceneManagement.Scene,UnityEngine.SceneManagement.Scene&gt;)">
       <summary>
-        <para>Add a delegate to this to get notifications when the active Scene has changed</para>
+        <para>Subscribe to this event to get notified when the active Scene has changed.</para>
       </summary>
-      <param name="value"></param>
+      <param name="value">Previous active scene and the new active scene.</param>
     </member>
     <member name="P:UnityEngine.SceneManagement.SceneManager.sceneCount">
       <summary>
@@ -31744,6 +31765,12 @@ Useful for restarting a trail from a new position.</para>
         <para>True if struct is blittable, otherwise false.</para>
       </returns>
     </member>
+    <member name="M:Unity.Collections.LowLevel.Unsafe.UnsafeUtility.IsValidAllocator(Unity.Collections.Allocator)">
+      <summary>
+        <para>Returns true if the allocator label is valid and can be used to allocate or deallocate memory.</para>
+      </summary>
+      <param name="allocator"></param>
+    </member>
     <member name="M:Unity.Collections.LowLevel.Unsafe.UnsafeUtility.Malloc">
       <summary>
         <para>Allocate memory.</para>
@@ -33213,6 +33240,9 @@ See Also: JobHandle.CombineDependencies.</para>
       </summary>
       <param name="from">The vector from which the angular difference is measured.</param>
       <param name="to">The vector to which the angular difference is measured.</param>
+      <returns>
+        <para>The angle in degrees between the two vectors.</para>
+      </returns>
     </member>
     <member name="M:UnityEngine.Vector3.ClampMagnitude(UnityEngine.Vector3,System.Single)">
       <summary>
