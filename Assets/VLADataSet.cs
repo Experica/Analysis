@@ -110,7 +110,7 @@ namespace VLabAnalysis
                     ex = value;
                     if (ex != null)
                     {
-                        datalatency = ex.Latency + msr + ex.Delay + oll;
+                        datalatency = ex.DisplayLatency + msr + ex.ResponseDelay + oll;
                     }
                 }
             }
@@ -372,30 +372,30 @@ namespace VLabAnalysis
                     {
                         if (!isdinmarkerror)
                         {
-                            ts = dintime[markch][i * nmpc] + ex.Delay;
-                            te = dintime[markch][i * nmpc + 1] + ex.Delay;
+                            ts = dintime[markch][i * nmpc] + ex.ResponseDelay;
+                            te = dintime[markch][i * nmpc + 1] + ex.ResponseDelay;
                         }
                         else
                         {
                             var tss = condstate[i].FindStateTime(CONDSTATE.COND.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            vlabt0 + ex.Latency;
+                            vlabt0 + ex.DisplayLatency;
                             var tes = condstate[i].FindStateTime(CONDSTATE.SUFICI.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            vlabt0 + ex.Latency;
+                            vlabt0 + ex.DisplayLatency;
                             if (!TrySearchMarkTime(tss, tes, out ts, out te))
                             {
                                 ts = tss;
                                 te = tes;
                             }
-                            ts += ex.Delay;
-                            te += ex.Delay;
+                            ts += ex.ResponseDelay;
+                            te += ex.ResponseDelay;
                         }
                     }
                     else
                     {
                         ts = condstate[i].FindStateTime(CONDSTATE.COND.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            vlabt0 + ex.Latency + ex.Delay;
+                            vlabt0 + ex.DisplayLatency + ex.ResponseDelay;
                         te = condstate[i].FindStateTime(CONDSTATE.SUFICI.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            vlabt0 + ex.Latency + ex.Delay;
+                            vlabt0 + ex.DisplayLatency + ex.ResponseDelay;
                     }
                     condontime.Add(ts); condofftime.Add(te);
                 }

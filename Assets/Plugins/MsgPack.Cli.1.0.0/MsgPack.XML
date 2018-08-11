@@ -6,7 +6,7 @@
     <members>
         <member name="T:MsgPack.BigEndianBinary">
             <summary>
-            	Define bit operations which enforce big endian.
+            	Defines bit operations which enforce big endian.
             </summary>
         </member>
         <member name="T:MsgPack.Binary">

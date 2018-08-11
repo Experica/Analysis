@@ -24,6 +24,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Linq;
+using System.Net;
+using System.Net.Mail;
 
 namespace VLab
 {
@@ -33,6 +35,8 @@ namespace VLab
         CondRepeat,
         BlockIndex,
         BlockRepeat,
+        Event,
+        SyncEvent,
         CONDSTATE,
         TRIALSTATE,
         BLOCKSTATE,
@@ -82,12 +86,17 @@ namespace VLab
         {
             lock (apilock)
             {
+                if (value == null)
+                {
+                    return null;
+                }
                 Type VT = value.GetType();
                 if (VT == CT)
                 {
                     return value;
                 }
-                else if (VT == TFloat)
+
+                if (VT == TFloat)
                 {
                     var v = (float)value;
                     if (CT == TString)
@@ -381,6 +390,30 @@ namespace VLab
             }
             return conddesign;
         }
+
+        public static string GetAddresses(this string experimenter, VLCFG config)
+        {
+            string addresses = null;
+            if (string.IsNullOrEmpty(experimenter)) return addresses;
+            var al = experimenter.Split(',', ';').Where(i => config.ExperimenterAddress.ContainsKey(i)).Select(i => config.ExperimenterAddress[i]).ToArray();
+            if (al != null && al.Length > 0)
+            {
+                addresses = String.Join(",", al);
+            }
+            return addresses;
+        }
+
+        public static ILaser GetLaser(this string lasername, VLCFG config)
+        {
+            switch (lasername)
+            {
+                case "luxx473":
+                    return new Omicron(config.SerialPort1);
+                case "mambo594":
+                    return new Cobolt(config.SerialPort2);
+            }
+            return null;
+        }
 #endif
         public static Dictionary<string, List<object>> OrthoCondOfFactorLevel(this Dictionary<string, List<object>> fsls)
         {
@@ -451,6 +484,7 @@ namespace VLab
                 case "Ori":
                 case "OriOffset":
                 case "Ori_Final":
+                case "Speed":
                     return typeof(float);
                 case "Rotation":
                 case "RotationOffset":
@@ -709,5 +743,53 @@ namespace VLab
             return rule.ContainsKey(to);
         }
 
+        public static void Mail(this string to, string subject, string body)
+        {
+            if (string.IsNullOrEmpty(to)) return;
+            var smtp = new SmtpClient() { Host = "smtp.gmail.com", Port = 587, EnableSsl = true, Credentials = new NetworkCredential("vlabsys@gmail.com", "VLab$y$tem") };
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            smtp.Send("vlabsys@gmail.com", to, subject, body);
+        }
+
+        public static Dictionary<string, Texture2D> LoadImageSet(this string imgsetdir, int startidx = 0, int numofimg = 10)
+        {
+            if (string.IsNullOrEmpty(imgsetdir)) return null;
+            var imgs = new Dictionary<string, Texture2D>();
+            for (var i = startidx; i < numofimg + startidx; i++)
+            {
+                var img = Resources.Load<Texture2D>(imgsetdir + "/" + i);
+                if (img != null)
+                {
+                    imgs[i.ToString()] = img;
+                }
+            }
+            return imgs;
+        }
+
+        public static Texture2DArray LoadImageSet(this string imgsetdir, int startidx = 0, int numofimg = 10, bool forcereload = false)
+        {
+            if (string.IsNullOrEmpty(imgsetdir)) return null;
+            Texture2DArray imgarray;
+            if (!forcereload)
+            {
+                imgarray = Resources.Load<Texture2DArray>(imgsetdir + ".asset");
+                if (imgarray != null) return imgarray;
+            }
+            var img = Resources.Load<Texture2D>(imgsetdir + "/" + startidx);
+            if (img == null) return null;
+
+            imgarray = new Texture2DArray(img.width, img.height, numofimg + startidx, img.format, false);
+            imgarray.SetPixels(img.GetPixels(), startidx);
+            for (var i = startidx + 1; i < numofimg + startidx; i++)
+            {
+                img = Resources.Load<Texture2D>(imgsetdir + "/" + i);
+                if (img != null)
+                {
+                    imgarray.SetPixels(img.GetPixels(), i);
+                }
+            }
+            imgarray.Apply();
+            return imgarray;
+        }
     }
 }

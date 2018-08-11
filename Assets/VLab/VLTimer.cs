@@ -20,6 +20,7 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 using System.Diagnostics;
+using System;
 
 namespace VLab
 {
@@ -46,6 +47,39 @@ namespace VLab
             while ((ElapsedMillisecond - start) < timeout_ms)
             {
             }
+        }
+
+        public TimeoutResult Timeout<T>(Func<T, object> function, T argument, double timeout_ms = 1.0)
+        {
+            if (!IsRunning)
+            {
+                Start();
+            }
+            var start = ElapsedMillisecond;
+            while ((ElapsedMillisecond - start) < timeout_ms)
+            {
+                if (function != null)
+                {
+                    var r = function(argument);
+                    if (r != null)
+                    {
+                        return new TimeoutResult(r, ElapsedMillisecond - start);
+                    }
+                }
+            }
+            return new TimeoutResult(null, ElapsedMillisecond - start);
+        }
+    }
+
+    public class TimeoutResult
+    {
+        public object Result;
+        public double ElapsedMillisecond;
+
+        public TimeoutResult(object result, double time)
+        {
+            Result = result;
+            ElapsedMillisecond = time;
         }
     }
 }
