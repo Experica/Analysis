@@ -92,6 +92,7 @@ namespace VLab
         public double DisplayLatency { get; set; }
         public double ResponseDelay { get; set; }
         public uint Version { get; set; } = 1;
+        public VLCFG Config { get; set; }
     }
 
     public enum Gender

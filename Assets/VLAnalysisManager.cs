@@ -27,7 +27,6 @@ using System;
 using System.IO;
 using System.Linq;
 using VLab;
-using MsgPack;
 
 namespace VLabAnalysis
 {
@@ -40,8 +39,7 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
-            if (als == null) return;
-            als.Restart();
+            als?.Restart();
         }
 
         [ClientRpc]
@@ -77,12 +75,12 @@ namespace VLabAnalysis
         public void RpcNotifyExperiment(byte[] value)
         {
             if (als == null) return;
-            // Set Experiment Data
+            // Set Experiment
             using (var stream = new MemoryStream(value))
             {
                 als.DataSet.Ex = VLMsgPack.ExSerializer.Unpack(stream);
             }
-            //  Set VLabTimeZero
+            // Set VLabTimeZero
             if (als.Signal != null)
             {
                 var t = new VLTimer();
@@ -113,11 +111,15 @@ namespace VLabAnalysis
                     case CONDTESTPARAM.CondIndex:
                         v = VLMsgPack.ListIntSerializer.Unpack(stream);
                         break;
+                    case CONDTESTPARAM.SyncEvent:
+                        v = VLMsgPack.ListListStringSerializer.Unpack(stream);
+                        break;
+                    case CONDTESTPARAM.Event:
                     case CONDTESTPARAM.TASKSTATE:
                     case CONDTESTPARAM.BLOCKSTATE:
                     case CONDTESTPARAM.TRIALSTATE:
                     case CONDTESTPARAM.CONDSTATE:
-                        v = VLMsgPack.ListCONDSTATESerializer.Unpack(stream);
+                        v = VLMsgPack.ListListEventSerializer.Unpack(stream);
                         break;
                 }
             }
@@ -130,8 +132,7 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyCondTestEnd(double time)
         {
-            if (als == null) return;
-            als.CondTestEndEnqueue(time);
+            als?.CondTestEndEnqueue(time);
         }
 
         void LateUpdate()
@@ -163,18 +164,18 @@ namespace VLabAnalysis
             }
 
             als.VisualizeResults(VisualizeMode.First);
-            if (als.IsExperimentAnalysisDone)
+            if (als.IsExperimentEnd)
             {
                 als.VisualizeResults(VisualizeMode.Last);
                 if (uicontroller.appmanager.config.SaveVisualizationWhenExperimentAnalysisDone)
                 {
                     als.SaveVisualization(uicontroller.appmanager.config.PlotExportWidth, uicontroller.appmanager.config.PlotExportHeight, uicontroller.appmanager.config.PlotExportDPI);
                 }
-                als.IsExperimentAnalysisDone = false;
+                als.IsExperimentEnd = false;
             }
-            uicontroller.UpdateAnalysisEventIndex(als.AnalysisEventIndex);
-            uicontroller.UpdateAnalysisDone(als.AnalysisDone);
-            uicontroller.UpdateVisualizationDone(als.VisualizationDone);
+            uicontroller.UpdateAnalysisEventIndex(als.AnalysisEventCount);
+            uicontroller.UpdateAnalysisDone(als.AnalysisDoneCount);
+            uicontroller.UpdateVisualizationDone(als.VisualizationDoneCount);
         }
 
     }

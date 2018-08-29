@@ -139,7 +139,7 @@ namespace VLabAnalysis
         {
             if (result == null)
             {
-                result = new MFRResult(Signal.Channel, dataset.Ex.ID, dataset.CondIndex, dataset.CondRepeat, dataset.CondTestCond, dataset.Ex.EnvParam);
+                result = new MFRResult(Signal.Channel, dataset.Ex.ID, dataset.CondIndex, dataset.SyncEvent, dataset.CondTestCond, dataset.Ex.EnvParam);
             }
             if (dataset.CondIndex == null) return;
             var nct = dataset.CondIndex.Count;

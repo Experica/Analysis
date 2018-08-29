@@ -62,29 +62,30 @@ namespace VLabAnalysis
     }
 
     /// <summary>
-    /// Implementation should be thread safe
+    /// Analysis Engine Interface
     /// </summary>
     public interface IAnalysis : IDisposable
     {
         ISignal Signal { get; set; }
+        VLADataSet DataSet { get; }
+        ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>> Analyzers { get; }
+        void AddAnalyzer(IAnalyzer analyzer, int rank);
+        void RemoveAnalyzer(Guid id);
+        int ClearDataPerAnalysis { get; set; }
+        int RetainAnalysisPerClear { get; set; }
+        int SleepDuration { get; set; }
+        bool IsExperimentEnd { get; set; }
+        bool IsAnalyzing { get; }
+        int AnalysisEventCount { get; }
+        int AnalysisDoneCount { get; }
+        int VisualizationDoneCount { get; }
         void CondTestEnqueue(CONDTESTPARAM name, object value);
         void CondTestEndEnqueue(double time);
         void ExperimentEndEnqueue();
-        VLADataSet DataSet { get; }
-        int ClearDataPerAnalysis { get; set; }
-        int RetainAnalysisPerClear { get; set; }
-        ConcurrentDictionary<int, IAnalyzer> Analyzers { get; }
-        void AddAnalyzer(IAnalyzer analyzer);
-        void RemoveAnalyzer(int analyzerid);
         void Start();
         void Stop();
-        void VisualizeResults(VisualizeMode mode);
-        bool IsExperimentAnalysisDone { get; set; }
-        void SaveVisualization(int width, int height, int dpi);
         void Restart();
-        bool IsAnalyzing { get; }
-        int AnalysisEventIndex { get; }
-        int AnalysisDone { get; }
-        int VisualizationDone { get; }
+        void VisualizeResults(VisualizeMode mode);
+        void SaveVisualization(int width, int height, int dpi);
     }
 }

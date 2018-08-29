@@ -33,51 +33,73 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using MathNet.Numerics.Statistics;
+using MathNet.Numerics;
 
 namespace VLabAnalysis
 {
+    /// <summary>
+    /// Analysis Engine for Condition Test Experiment. Use internal analysis thread, triggered by analysis event.
+    /// </summary>
     public class ConditionTestAnalysis : IAnalysis
     {
-        int disposecount = 0;
-        int gotothreadevent = 0;
-        int cleardataperanalysis, retainanalysisperclear, sleepresolution;
-        int analysiseventidx = 0;
-        public int AnalysisEventIndex { get { lock (apilock) { return analysiseventidx; } } }
-        int analysisdone = 0;
-        public int AnalysisDone { get { return Interlocked.CompareExchange(ref analysisdone, 0, -1); } }
-        int visualizationdone = 0;
-        public int VisualizationDone { get { return Interlocked.CompareExchange(ref visualizationdone, 0, -1); } }
+        int _disposecount = 0;
+        int _gotothreadevent = 0;
 
-        ISignal signal;
+        bool _analyzing = false;
+        public bool IsAnalyzing { get { lock (apilock) { return _analyzing; } } }
+        int _analysiseventcount = 0;
+        public int AnalysisEventCount { get { lock (apilock) { return _analysiseventcount; } } }
+        int _analysisdonecount = 0;
+        public int AnalysisDoneCount { get { return Interlocked.CompareExchange(ref _analysisdonecount, 0, -255); } }
+        int _visualizationdonecount = 0;
+        public int VisualizationDoneCount { get { return Interlocked.CompareExchange(ref _visualizationdonecount, 0, -255); } }
+        int _cleardataperanalysis = 1;
+        public int ClearDataPerAnalysis
+        {
+            get { lock (apilock) { return _cleardataperanalysis; } }
+            set { lock (apilock) { _cleardataperanalysis = Math.Max(0, value); } }
+        }
+        int _retainanalysisperclear = 1;
+        public int RetainAnalysisPerClear
+        {
+            get { lock (apilock) { return _retainanalysisperclear; } }
+            set { lock (apilock) { _retainanalysisperclear = Math.Max(0, value); } }
+        }
+        int _sleepduration = 1;
+        public int SleepDuration
+        {
+            get { lock (apilock) { return _sleepduration; } }
+            set { lock (apilock) { _sleepduration = Math.Max(1, value); } }
+        }
+        bool _isexperimentend = false;
+        public bool IsExperimentEnd
+        {
+            get { lock (apilock) { return _isexperimentend; } }
+            set { lock (apilock) { _isexperimentend = value; } }
+        }
+
+        ISignal _signal;
         public ISignal Signal
         {
-            get { lock (apilock) { return signal; } }
-            set { lock (apilock) { signal = value; } }
+            get { lock (apilock) { return _signal; } }
+            set { lock (apilock) { _signal = value; } }
         }
-        VLADataSet dataset = new VLADataSet();
-        ConcurrentDictionary<int, IAnalyzer> idanalyzer = new ConcurrentDictionary<int, IAnalyzer>();
+        public VLADataSet DataSet { get; } = new VLADataSet();
+        public ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>> Analyzers { get; } = new ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>>();
         ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
         ConcurrentQueue<AnalysisEvent> analysisqueue = new ConcurrentQueue<AnalysisEvent>();
-        readonly List<double> analysistime = new List<double>();
-
+        ConcurrentDictionary<int, double> analysistime = new ConcurrentDictionary<int, double>();
         Thread analysisthread;
         ManualResetEvent analysisthreadevent = new ManualResetEvent(false);
         readonly object apilock = new object();
         readonly object gotoeventlock = new object();
-        bool analyzing = false;
-        public bool IsAnalyzing { get { lock (apilock) { return analyzing; } } }
-        bool isexperimentanalysisdone = false;
-        public bool IsExperimentAnalysisDone
-        {
-            get { lock (apilock) { return isexperimentanalysisdone; } }
-            set { lock (apilock) { isexperimentanalysisdone = value; } }
-        }
 
-        public ConditionTestAnalysis(int cleardataperanalysis = 1, int retainanalysisperclear = 1, int sleepresolution = 2)
+
+        public ConditionTestAnalysis(int cleardataperanalysis = 1, int retainanalysisperclear = 1, int sleepduration = 1)
         {
-            this.cleardataperanalysis = Math.Max(0, cleardataperanalysis);
-            this.retainanalysisperclear = Math.Max(0, retainanalysisperclear);
-            this.sleepresolution = Math.Max(1, sleepresolution);
+            _cleardataperanalysis = Math.Max(0, cleardataperanalysis);
+            _retainanalysisperclear = Math.Max(0, retainanalysisperclear);
+            _sleepduration = Math.Max(1, sleepduration);
         }
 
         ~ConditionTestAnalysis()
@@ -93,21 +115,20 @@ namespace VLabAnalysis
 
         protected virtual void Dispose(bool disposing)
         {
-            if (1 == Interlocked.Exchange(ref disposecount, 1))
+            if (1 == Interlocked.Exchange(ref _disposecount, 1))
             {
                 return;
             }
             Stop();
-            if (signal != null)
+            Signal?.Dispose();
+            foreach (var ra in Analyzers.Values.ToArray())
             {
-                signal.Dispose();
-            }
-            foreach (var aid in idanalyzer.Keys.ToArray())
-            {
-                IAnalyzer a;
-                if (idanalyzer.TryGetValue(aid, out a) && a != null)
+                if (ra != null)
                 {
-                    a.Dispose();
+                    foreach (var a in ra.Values.ToArray())
+                    {
+                        a?.Dispose();
+                    }
                 }
             }
         }
@@ -133,13 +154,13 @@ namespace VLabAnalysis
         {
             lock (apilock)
             {
-                analysiseventidx++;
+                _analysiseventcount++;
                 bool iscleardata = false;
-                if (cleardataperanalysis > 0)
+                if (_cleardataperanalysis > 0)
                 {
-                    iscleardata = analysiseventidx % cleardataperanalysis == 0;
+                    iscleardata = _analysiseventcount % _cleardataperanalysis == 0;
                 }
-                analysisqueue.Enqueue(new AnalysisEvent(analysiseventidx, iscleardata, time));
+                analysisqueue.Enqueue(new AnalysisEvent(_analysiseventcount - 1, iscleardata, time));
             }
         }
 
@@ -147,58 +168,42 @@ namespace VLabAnalysis
         {
             lock (apilock)
             {
-                if (signal != null)
-                {
-                    signal.Stop(true);
-                }
-                analysisqueue.Enqueue(new AnalysisEvent(index: -1));
+                _analysiseventcount++;
+                _signal?.Stop(true);
+                analysisqueue.Enqueue(new AnalysisEvent(-1));
             }
         }
 
-        public VLADataSet DataSet { get { return dataset; } }
-
-        public int RetainAnalysisPerClear
-        {
-            get { lock (apilock) { return retainanalysisperclear; } }
-            set { lock (apilock) { retainanalysisperclear = value; } }
-        }
-
-        public int ClearDataPerAnalysis
-        {
-            get { lock (apilock) { return cleardataperanalysis; } }
-            set { lock (apilock) { cleardataperanalysis = value; } }
-        }
-
-        public ConcurrentDictionary<int, IAnalyzer> Analyzers { get { return idanalyzer; } }
-
-        public void AddAnalyzer(IAnalyzer analyzer)
+        public void AddAnalyzer(IAnalyzer analyzer, int rank = 0)
         {
             lock (apilock)
             {
-                int id;
-                if (idanalyzer.Count == 0)
+                if (Analyzers.ContainsKey(rank))
                 {
-                    id = 0;
+                    Analyzers[rank][analyzer.ID] = analyzer;
                 }
                 else
                 {
-                    id = idanalyzer.Keys.Max() + 1;
+                    var ra = new ConcurrentDictionary<Guid, IAnalyzer> { [analyzer.ID] = analyzer };
+                    Analyzers[rank] = ra;
                 }
-                analyzer.ID = id;
-                idanalyzer[id] = analyzer;
             }
         }
 
-        public void RemoveAnalyzer(int analyzerid)
+        public void RemoveAnalyzer(Guid id)
         {
             lock (apilock)
             {
-                if (idanalyzer.ContainsKey(analyzerid))
+                IAnalyzer a;
+                foreach (var ra in Analyzers.Values.ToArray())
                 {
-                    IAnalyzer a;
-                    if (idanalyzer.TryRemove(analyzerid, out a) && a != null && !analyzing)
+                    if (ra != null && ra.ContainsKey(id))
                     {
-                        a.Dispose();
+                        if (ra.TryRemove(id, out a) && !_analyzing)
+                        {
+                            a?.Dispose();
+                        }
+                        break;
                     }
                 }
             }
@@ -211,16 +216,16 @@ namespace VLabAnalysis
                 if (analysisthread == null)
                 {
                     analysisthread = new Thread(ProcessAnalysisQueue);
-                    analysisthread.Name = "DotNetAnalysis";
+                    analysisthread.Name = "ConditionTestAnalysis";
                     analysisthreadevent.Set();
-                    analyzing = true;
+                    _analyzing = true;
                     analysisthread.Start();
                 }
                 else
                 {
-                    if (!analyzing)
+                    if (!_analyzing)
                     {
-                        analyzing = true;
+                        _analyzing = true;
                         analysisthreadevent.Set();
                     }
                 }
@@ -231,22 +236,52 @@ namespace VLabAnalysis
         {
             lock (apilock)
             {
-                if (analysisthread != null && analyzing)
+                if (analysisthread != null && _analyzing)
                 {
+                    // lock the analysis thread event region and set thread stop and jump to stop point flags
                     lock (gotoeventlock)
                     {
                         analysisthreadevent.Reset();
-                        Interlocked.Exchange(ref gotothreadevent, 1);
+                        Interlocked.Exchange(ref _gotothreadevent, 1);
                     }
+                    // wait until thread jumped to thread stop point
                     while (true)
                     {
-                        if (0 == Interlocked.CompareExchange(ref gotothreadevent, 0, 255))
+                        // just check the value, never change it so it's compared with an arbitrary value(here -255) other than 0 or 1.
+                        if (0 == Interlocked.CompareExchange(ref _gotothreadevent, 0, -255))
                         {
-                            analyzing = false;
+                            _analyzing = false;
                             break;
                         }
                     }
                 }
+            }
+        }
+
+        public void Restart()
+        {
+            lock (apilock)
+            {
+                Stop();
+                _signal?.Restart(true);
+                condtest.Clear();
+                analysisqueue = new ConcurrentQueue<AnalysisEvent>();
+                analysistime.Clear();
+                DataSet.Reset();
+                foreach (var ra in Analyzers.Values.ToArray())
+                {
+                    if (ra != null)
+                    {
+                        foreach (var a in ra.Values.ToArray())
+                        {
+                            a?.Reset();
+                        }
+                    }
+                }
+                _analysiseventcount = 0;
+                Interlocked.Exchange(ref _analysisdonecount, 0);
+                Interlocked.Exchange(ref _visualizationdonecount, 0);
+                Start();
             }
         }
 
@@ -259,7 +294,7 @@ namespace VLabAnalysis
             List<double> olfpstarttime;
             List<double>[] odintime;
             List<int>[] odinvalue;
-            object ocondindex = null, ocondrepeat = null, ocondstate = null;
+            object ocondindex = null, oevent = null, osyncevent = null;
             AnalysisEvent aqevent; bool isaqevent;
 
             while (true)
@@ -267,194 +302,184 @@ namespace VLabAnalysis
                 ThreadEvent:
                 lock (gotoeventlock)
                 {
-                    Interlocked.Exchange(ref gotothreadevent, 0);
+                    Interlocked.Exchange(ref _gotothreadevent, 0);
                     analysisthreadevent.WaitOne();
                 }
                 isaqevent = analysisqueue.TryDequeue(out aqevent);
                 if (isaqevent)
                 {
+                    // experiment end event
                     if (aqevent.Index < 0)
                     {
-                        Interlocked.Increment(ref analysisdone);
-                        IsExperimentAnalysisDone = true;
-                        if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
+                        Interlocked.Increment(ref _analysisdonecount);
+                        IsExperimentEnd = true;
+                        if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
                         {
                             goto ThreadEvent;
                         }
-                        Thread.Sleep(sleepresolution);
+                        Thread.Sleep(SleepDuration);
                         continue;
                     }
                 }
                 else
                 {
-                    if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
+                    if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
                     {
                         goto ThreadEvent;
                     }
-                    Thread.Sleep(sleepresolution);
+                    Thread.Sleep(SleepDuration);
                     continue;
                 }
+                // condtest analysis event
                 if (condtest.ContainsKey(CONDTESTPARAM.CondIndex) && condtest[CONDTESTPARAM.CondIndex].TryDequeue(out ocondindex)
-                    && condtest.ContainsKey(CONDTESTPARAM.CONDSTATE) && condtest[CONDTESTPARAM.CONDSTATE].TryDequeue(out ocondstate))
+                    && condtest.ContainsKey(CONDTESTPARAM.Event) && condtest[CONDTESTPARAM.Event].TryDequeue(out oevent)
+                    && condtest.ContainsKey(CONDTESTPARAM.SyncEvent) && condtest[CONDTESTPARAM.SyncEvent].TryDequeue(out osyncevent))
                 {
-                    if (condtest.ContainsKey(CONDTESTPARAM.CondRepeat)) { condtest[CONDTESTPARAM.CondRepeat].TryDequeue(out ocondrepeat); }
-
-                    var aqeventdatatime = DataSet.VLabTimeToDataTime(aqevent.Time);
-                    analysistime.Add(aqeventdatatime);
+                    var datalatency = DataSet.DataLatency;
+                    var aqeventanalysistime = DataSet.VLabTimeToDataTime(aqevent.Time) + datalatency;
+                    analysistime[aqevent.Index] = aqeventanalysistime;
                     if (Signal != null)
                     {
-                        // Wait the delayed data to be collected before analysis
-                        var delayedtime = aqeventdatatime + DataSet.DataLatency;
-                        while (Signal.Time <= delayedtime)
+                        // Wait the corresponding signal data to be buffered before analysis
+                        double slept = 0;
+                        while (Signal.Time <= aqeventanalysistime || slept <= datalatency)
                         {
-                            Thread.Sleep(sleepresolution);
+                            Thread.Sleep(SleepDuration);
+                            slept += SleepDuration;
                         }
                         Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                         DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue,
-                        (List<int>)ocondindex, (List<int>)ocondrepeat, (List<List<Dictionary<string, double>>>)ocondstate);
+                        (List<int>)ocondindex, (List<List<Dictionary<string, double>>>)oevent, (List<List<string>>)osyncevent);
                     }
                     else
                     {
                         DataSet.Add(null, null, null, null, null, null,
-                            (List<int>)ocondindex, (List<int>)ocondrepeat, (List<List<Dictionary<string, double>>>)ocondstate);
+                            (List<int>)ocondindex, (List<List<Dictionary<string, double>>>)oevent, (List<List<string>>)osyncevent);
                     }
 
-                    if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
+                    if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
                     {
                         goto ThreadEvent;
                     }
-                    foreach (var aid in idanalyzer.Keys.ToArray())
+
+                    // sequential analysis in rank order: high to low
+                    var ranks = Analyzers.Keys.ToArray(); Array.Sort(ranks, (i, j) => j.CompareTo(i)); ConcurrentDictionary<Guid, IAnalyzer> ra;
+                    foreach (var rank in ranks)
                     {
-                        IAnalyzer a;
-                        if (idanalyzer.TryGetValue(aid, out a) && a != null)
+                        if (Analyzers.TryGetValue(rank, out ra) && ra != null)
                         {
-                            a.Analyze(DataSet);
-                            if (a.Controller != null)
+                            foreach (var a in ra.Values.ToArray())
                             {
-                                a.Controller.Control(a.Result);
+                                if (a != null)
+                                {
+                                    a.Analyze(DataSet);
+                                    if (a.Controller != null)
+                                    {
+                                        a.Controller.Control(a.Result);
+                                    }
+                                }
                             }
                         }
                     }
-                    //Parallel.ForEach(Signal.Analyzers,(i)=>i.Analysis(DataSet));
-                    Interlocked.Increment(ref analysisdone);
-                    if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
+
+                    Interlocked.Increment(ref _analysisdonecount);
+                    if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
                     {
                         goto ThreadEvent;
                     }
 
                     if (aqevent.IsClear)
                     {
-                        var clearidx = aqevent.Index - 1 - RetainAnalysisPerClear;
-                        if (clearidx >= 0)
+                        var analysiseventclearidx = aqevent.Index - RetainAnalysisPerClear;
+                        if (analysistime.ContainsKey(analysiseventclearidx))
                         {
-                            DataSet.Remove(analysistime[clearidx]);
+                            DataSet.Remove(analysistime[analysiseventclearidx]);
                         }
                     }
                 }
                 else
                 {
-                    Thread.Sleep(sleepresolution);
+                    if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
+                    {
+                        goto ThreadEvent;
+                    }
+                    Thread.Sleep(SleepDuration);
                 }
             }
         }
         #endregion
+
+        /// <summary>
+        /// Visualize only works in the GUI thread which creates visualization at the first palce.
+        /// So it should be called only by the GUI thread, and because it uses copyed result data in concurrentqueue, it needs no locking
+        /// </summary>
+        /// <param name="mode"></param>
+        public void VisualizeResults(VisualizeMode mode = VisualizeMode.First)
+        {
+            // sequential visualize in rank order: high to low
+            var ranks = Analyzers.Keys.ToArray(); Array.Sort(ranks, (i, j) => j.CompareTo(i)); ConcurrentDictionary<Guid, IAnalyzer> ra;
+            foreach (var rank in ranks)
+            {
+                if (Analyzers.TryGetValue(rank, out ra) && ra != null)
+                {
+                    foreach (var a in ra.Values.ToArray())
+                    {
+                        if (a != null && a.Visualizer != null)
+                        {
+                            IResult r;
+                            switch (mode)
+                            {
+                                case VisualizeMode.First:
+                                    if (a.ResultVisualizeQueue.TryDequeue(out r))
+                                    {
+                                        a.Visualizer.Visualize(r);
+                                        Interlocked.Increment(ref _visualizationdonecount);
+                                    }
+                                    break;
+                                case VisualizeMode.All:
+                                    while (a.ResultVisualizeQueue.TryDequeue(out r))
+                                    {
+                                        a.Visualizer.Visualize(r);
+                                        Interlocked.Increment(ref _visualizationdonecount);
+                                    }
+                                    break;
+                                case VisualizeMode.Last:
+                                    while (a.ResultVisualizeQueue.TryDequeue(out r) && a.ResultVisualizeQueue.IsEmpty)
+                                    {
+                                        a.Visualizer.Visualize(r);
+                                        Interlocked.Increment(ref _visualizationdonecount);
+                                    }
+                                    break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         public void SaveVisualization(int width, int height, int dpi)
         {
             var datapath = DataSet.Ex.DataPath;
             var datadir = Path.GetDirectoryName(datapath);
             var dataname = Path.GetFileNameWithoutExtension(datapath);
-            foreach (var i in Analyzers.Keys.ToList())
+            foreach (var ra in Analyzers.Values.ToArray())
             {
-                IAnalyzer a;
-                if (Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
+                if (ra != null)
                 {
-                    var filename = dataname + "_Ch" + a.Signal.Channel + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name;
-                    var filedir = Path.Combine(datadir, "Ch" + a.Signal.Channel);
-                    if (!Directory.Exists(filedir))
+                    foreach (var a in ra.Values.ToArray())
                     {
-                        Directory.CreateDirectory(filedir);
-                    }
-                    a.Visualizer.Save(Path.Combine(filedir, filename), width, height, dpi);
-                }
-            }
-        }
-
-        public void VisualizeResults(VisualizeMode mode = VisualizeMode.First)
-        {
-            bool isvisualized = false;
-            foreach (var i in Analyzers.Keys.ToArray())
-            {
-                IAnalyzer a;
-                if (Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
-                {
-                    IResult r;
-                    switch (mode)
-                    {
-                        case VisualizeMode.First:
-                            if (a.ResultVisualizeQueue.TryDequeue(out r))
+                        if (a != null && a.Visualizer != null)
+                        {
+                            var filename = dataname + "_Ch" + a.Signal.Channel + "_" + a.GetType().Name + "_" + a.Visualizer.GetType().Name;
+                            var filedir = Path.Combine(datadir, "Ch" + a.Signal.Channel);
+                            if (!Directory.Exists(filedir))
                             {
-                                a.Visualizer.Visualize(r);
-                                if (!isvisualized)
-                                {
-                                    isvisualized = true;
-                                }
+                                Directory.CreateDirectory(filedir);
                             }
-                            break;
-                        case VisualizeMode.All:
-                            while (a.ResultVisualizeQueue.TryDequeue(out r))
-                            {
-                                a.Visualizer.Visualize(r);
-                                if (!isvisualized)
-                                {
-                                    isvisualized = true;
-                                }
-                            }
-                            break;
-                        case VisualizeMode.Last:
-                            while (a.ResultVisualizeQueue.TryDequeue(out r) && a.ResultVisualizeQueue.IsEmpty)
-                            {
-                                a.Visualizer.Visualize(r);
-                                if (!isvisualized)
-                                {
-                                    isvisualized = true;
-                                }
-                            }
-                            break;
+                            a.Visualizer.Save(Path.Combine(filedir, filename), width, height, dpi);
+                        }
                     }
                 }
-            }
-            if (isvisualized)
-            {
-                Interlocked.Increment(ref visualizationdone);
-            }
-        }
-
-        public void Restart()
-        {
-            lock (apilock)
-            {
-                Stop();
-                if (signal != null)
-                {
-                    signal.Restart(true);
-                }
-                condtest.Clear();
-                analysisqueue = new ConcurrentQueue<AnalysisEvent>();
-                analysistime.Clear();
-                analysiseventidx = 0;
-                Interlocked.Exchange(ref analysisdone, 0);
-                Interlocked.Exchange(ref visualizationdone, 0);
-                DataSet.Reset();
-                foreach (var aid in idanalyzer.Keys.ToArray())
-                {
-                    IAnalyzer a;
-                    if (idanalyzer.TryGetValue(aid, out a) && a != null)
-                    {
-                        a.Reset();
-                    }
-                }
-                Start();
             }
         }
     }

@@ -132,6 +132,32 @@ namespace VLabAnalysis
             }
         }
 
+        /// <summary>
+        /// Pure function, thread safe
+        /// </summary>
+        /// <param name="vlabtime"></param>
+        /// <param name="t0"></param>
+        /// <param name="timerdriftspeed"></param>
+        /// <param name="latency"></param>
+        /// <returns></returns>
+        public static double VLabTimeToRefTime(this double vlabtime,double t0,double timerdriftspeed,double latency=0)
+        {
+            return vlabtime * (1 + timerdriftspeed) + t0+latency;
+        }
+
+        /// <summary>
+        /// Pure function, thread safe
+        /// </summary>
+        /// <param name="reftime"></param>
+        /// <param name="t0"></param>
+        /// <param name="timerdriftspeed"></param>
+        /// <param name="latency"></param>
+        /// <returns></returns>
+        public static double RefTimeToVLabTime(this double reftime,double t0,double timerdriftspeed,double latency=0)
+        {
+            return (reftime - t0) / (1 + timerdriftspeed) - latency;
+        }
+
         public static int Count(this List<double> st, double start, double end)
         {
             int c = 0;
@@ -193,16 +219,39 @@ namespace VLabAnalysis
             return v;
         }
 
-        public static double FindStateTime(this List<Dictionary<string, double>> stateevents, string state)
+        public static List<double> FindEventTime(this List<Dictionary<string, double>> events, string eventname)
         {
-            foreach (var e in stateevents)
+            List<double> ts = new List<double>();
+            foreach (var e in events)
             {
-                if (e.ContainsKey(state))
+                if (e.ContainsKey(eventname))
                 {
-                    return e[state];
+                    ts.Add(e[eventname]);
                 }
             }
-            return 0;
+            return ts;
+        }
+
+        public static double TrySearchTime(this double starttime,List<double> data,double sr)
+        {
+            var ts = new List<double>();
+            foreach(var t in data)
+            {
+                var d = t - starttime;
+                if(Math.Abs(d)<=sr)
+                {
+                    ts.Add(t);
+                }
+                if (d > sr) break;
+            }
+            if(ts.Count==1)
+            {
+                return ts[0];
+            }
+            else
+            {
+                return double.NaN;
+            }
         }
 
         public static double MFR(this List<double> st, double start, double end, int timeunitpersec = 1000)

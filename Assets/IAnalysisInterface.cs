@@ -29,7 +29,7 @@ namespace VLabAnalysis
 {
     public interface IAnalyzer : IDisposable
     {
-        int ID { get; set; }
+        Guid ID { get;  }
         Signal Signal { get; set; }
         void Analyze(VLADataSet dataset);
         IVisualizer Visualizer { get; set; }
