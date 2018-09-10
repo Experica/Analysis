@@ -20,10 +20,8 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 using System;
+using System.Collections.Immutable;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace VLabAnalysis
 {
@@ -46,36 +44,35 @@ namespace VLabAnalysis
         Stim
     }
 
-    public struct Signal
+    public struct SignalDescription
     {
         public readonly int Channel;
         public readonly SignalType Type;
 
-        public Signal(int channel, SignalType type)
+        public SignalDescription(int channel, SignalType type)
         {
             Channel = channel;
             Type = type;
         }
     }
 
-    /// <summary>
-    /// Implementation should be thread safe
-    /// </summary>
     public interface ISignal : IDisposable
     {
-        bool IsOnline { get; }
         SignalSource Source { get; }
-        int[] Channels { get; }
-        SignalType[] GetSignalTypes(int channel, bool isonlyreturnonsignaltype);
-        bool IsSignalOn(int channel, SignalType signaltype);
+        bool Connect();
+        void Close();
+        void RefreshChannels();
+        ImmutableArray<int> Channels { get; }
+        bool IsChannel { get; }
         double Time { get; }
-        bool IsReady { get; }
-        bool Start(bool isclean);
-        bool Stop(bool iscollectallbeforestop);
-        bool Restart(bool iscleanall);
-        bool Read(out List<double>[] spike, out List<int>[] uid,
-            out List<double[,]> lfp, out List<double> lfpstarttime,
-            out List<double>[] dintime, out List<int>[] dinvalue);
+        ImmutableArray<SignalType> GetSignalTypes(int channel, bool onlyreturnsignalontype);
+        bool IsSignalOn(int channel, SignalType signaltype);
         bool IsRunning { get; }
+        bool Start(bool isclean);
+        bool Stop(bool collectallbeforestop);
+        bool Restart(bool iscleanall);
+        bool Read(out Dictionary<int, List<double>> spike, out Dictionary<int, List<int>> uid,
+            out List<double[,]> lfp, out List<double> lfpstarttime,
+            out Dictionary<int, List<double>> dintime, out Dictionary<int, List<int>> dinvalue);
     }
 }

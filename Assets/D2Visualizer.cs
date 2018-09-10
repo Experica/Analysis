@@ -40,7 +40,7 @@ namespace VLabAnalysis
     {
         D2VisualizeControl plotview = new D2VisualizeControl();
 
-        public D2Visualizer(int width = 400, int height = 380)
+        public D2Visualizer(int width = 300, int height = 280)
         {
             Width = width;
             Height = height;
@@ -55,17 +55,17 @@ namespace VLabAnalysis
 
         public void ShowInFront()
         {
-            WindowState = FormWindowState.Minimized;
-            Show();
-            WindowState = FormWindowState.Normal;
+            if (Visible)
+            {
+                WindowState = FormWindowState.Minimized;
+                Show();
+                WindowState = FormWindowState.Normal;
+            }
         }
 
         public Vector2 Position
         {
-            get
-            {
-                return new Vector2(Location.X, Location.Y);
-            }
+            get { return new Vector2(Location.X, Location.Y); }
 
             set
             {
@@ -94,7 +94,8 @@ namespace VLabAnalysis
 
     public class D2VisualizeControl : PlotView
     {
-        PlotModel pm; bool isawake, isstart;
+        PlotModel pm;
+        bool isprepared, isupdated;
         ContextMenuStrip cms = new ContextMenuStrip();
         IResult result;
 
@@ -121,8 +122,8 @@ namespace VLabAnalysis
         public void Reset()
         {
             Visible = false;
-            isawake = false;
-            isstart = false;
+            isprepared = false;
+            isupdated = false;
 
             x1factor = null;
             x2factor = null;
@@ -239,25 +240,24 @@ namespace VLabAnalysis
                 x2factor = f;
                 x2dimidx = 0;
             }
-            isstart = false;
+            isupdated = false;
             if (isvisualize) Visualize(result);
         }
 
         public void Visualize(IResult result)
         {
-            this.result = result;
             if (result == null) return;
-            if (!isawake)
+            this.result = result;
+            var ctc = result.DataSet.CondTestCond;
+            if (!isprepared)
             {
-                foreach (var f in result.CondTestCond.Keys.ToArray())
+                foreach (var f in ctc.Keys.ToArray())
                 {
-                    if (result.CondTestCond[f].Count > 0)
+                    if (ctc[f].Count > 0)
                     {
                         string funit; int valuendim; int[] valuevdimidx; string[] valuevdimunit; Type valuetype; Type valueelementtype;
-                        f.GetFactorInfo(result.CondTestCond[f].First(), result.ExperimentID, out funit, out valuetype, out valueelementtype,
-                           out valuendim, out valuevdimidx, out valuevdimunit);
-                        factorunit[f] = funit; factorvaluetype[f] = valuetype; factorvalueelementtype[f] = valueelementtype;
-                        factorvaluendim[f] = valuendim; factorvaluevdimidx[f] = valuevdimidx; factorvaluevdimunit[f] = valuevdimunit;
+                        f.GetFactorInfo(ctc[f].First(), result.ExperimentID, out funit, out valuetype, out valueelementtype, out valuendim, out valuevdimidx, out valuevdimunit);
+                        factorunit[f] = funit; factorvaluetype[f] = valuetype; factorvalueelementtype[f] = valueelementtype; factorvaluendim[f] = valuendim; factorvaluevdimidx[f] = valuevdimidx; factorvaluevdimunit[f] = valuevdimunit;
                     }
                 }
                 NewContextMenuStrip();
@@ -292,23 +292,22 @@ namespace VLabAnalysis
                         break;
                 }
                 ytitle = result.GetResultTitle();
-                Parent.Text = "Channel_" + result.SignalID;
-                pm.Title = "Ch" + result.SignalID + "_" + result.ExperimentID;
-                isawake = true;
-                Visible = true;
+                Parent.Text = "Channel_" + result.SignalChannel;
+                pm.Title = "Ch" + result.SignalChannel + "_" + result.ExperimentID;
+                isprepared = true;
             }
             if (string.IsNullOrEmpty(x1factor)) return;
 
-            var alluuid = result.CondResponse.Where(i => i != null).SelectMany(i => i.Keys).Distinct().ToList();
+            var alluuid = result.UnitCondTestResponse.Keys.ToList();
             alluuid.Sort();
-            var nct = result.CondResponse.Count;
+            var nct = ctc.Values.First().Count;
             // XY plot
             if (!string.IsNullOrEmpty(x1factor) && string.IsNullOrEmpty(x2factor))
             {
                 Type x1type; string[] dimunits;
-                var fvs = result.CondTestCond[x1factor].GetFactorValues(factorvaluetype[x1factor], factorvalueelementtype[x1factor],
+                var fvs = ctc[x1factor].GetFactorValues(factorvaluetype[x1factor], factorvalueelementtype[x1factor],
                     factorvaluendim[x1factor], new[] { x1dimidx }, out x1type, out dimunits)[0];
-                if (fvs == null) return;
+                if (fvs == null || fvs.Count == 0) return;
                 var x1 = fvs.Distinct().ToArray(); var x1dimunit = dimunits[0]; var n1 = x1.Length; Array.Sort(x1);
                 var y = new Dictionary<int, double[]>(); var yse = new Dictionary<int, double[]>();
 
@@ -325,14 +324,17 @@ namespace VLabAnalysis
                         var flur = new List<double>();
                         foreach (var ci in cis)
                         {
-                            var r = result.CondResponse[ci];
-                            flur.Add(r == null ? 0 : r.ContainsKey(u) ? r[u] : 0);
+                            flur.Add(result.UnitCondTestResponse[u][ci]);
                         }
                         y[u][xi1] = flur.Mean(); yse[u][xi1] = flur.SEM();
                     }
                 }
-                if (x1type.IsNumeric())
+                if (x1type.IsNumeric() && y.Count > 0)
                 {
+                    if (!Visible)
+                    {
+                        Visible = true;
+                    }
                     D1Visualize(x1.Select(i => i.Convert<double>()).ToArray(), y, yse, x1factor.JoinFactorTitle(x1dimunit, factorunit[x1factor]), ytitle);
                 }
             }
@@ -340,11 +342,11 @@ namespace VLabAnalysis
             if (!string.IsNullOrEmpty(x1factor) && !string.IsNullOrEmpty(x2factor))
             {
                 Type x1type, x2type; string[] dimunits1, dimunits2;
-                var fvs1 = result.CondTestCond[x1factor].GetFactorValues(factorvaluetype[x1factor], factorvalueelementtype[x1factor],
+                var fvs1 = ctc[x1factor].GetFactorValues(factorvaluetype[x1factor], factorvalueelementtype[x1factor],
                     factorvaluendim[x1factor], new[] { x1dimidx }, out x1type, out dimunits1)[0];
-                var fvs2 = result.CondTestCond[x2factor].GetFactorValues(factorvaluetype[x2factor], factorvalueelementtype[x2factor],
+                var fvs2 = ctc[x2factor].GetFactorValues(factorvaluetype[x2factor], factorvalueelementtype[x2factor],
                     factorvaluendim[x2factor], new[] { x2dimidx }, out x2type, out dimunits2)[0];
-                if (fvs1 == null || fvs2 == null) return;
+                if (fvs1 == null || fvs2 == null || fvs1.Count == 0 || fvs2.Count == 0) return;
                 var x1 = fvs1.Distinct().ToArray(); var x1dimunit = dimunits1[0]; var n1 = x1.Length; Array.Sort(x1);
                 var x2 = fvs2.Distinct().ToArray(); var x2dimunit = dimunits2[0]; var n2 = x2.Length; Array.Sort(x2);
                 var y = new Dictionary<int, double[,]>(); var yse = new Dictionary<int, double[,]>();
@@ -364,15 +366,18 @@ namespace VLabAnalysis
                             var flur = new List<double>();
                             foreach (var ci in cis)
                             {
-                                var r = result.CondResponse[ci];
-                                flur.Add(r == null ? 0 : r.ContainsKey(u) ? r[u] : 0);
+                                flur.Add(result.UnitCondTestResponse[u][ci]);
                             }
                             y[u][xi1, xi2] = flur.Mean(); yse[u][xi1, xi2] = flur.SEM();
                         }
                     }
                 }
-                if (x1type.IsNumeric() && x2type.IsNumeric())
+                if (x1type.IsNumeric() && x2type.IsNumeric() && y.Count > 0)
                 {
+                    if (!Visible)
+                    {
+                        Visible = true;
+                    }
                     D2Visualize(x1.Select(i => i.Convert<double>()).ToArray(), x2.Select(i => i.Convert<double>()).ToArray(), y, yse,
                         x1factor.JoinFactorTitle(x1dimunit, factorunit[x1factor]), x2factor.JoinFactorTitle(x2dimunit, factorunit[x2factor]), ytitle);
                 }
@@ -423,7 +428,7 @@ namespace VLabAnalysis
                 pm.DefaultXAxis.Reset();
                 pm.DefaultYAxis.Reset();
             }
-            if (!isstart)
+            if (!isupdated)
             {
                 if (pm.DefaultXAxis != null)
                 {
@@ -435,7 +440,7 @@ namespace VLabAnalysis
                     pm.DefaultXAxis.Title = xtitle;
                     pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
                     pm.DefaultYAxis.Title = ytitle;
-                    isstart = true;
+                    isupdated = true;
                 }
             }
             pm.InvalidatePlot(true);
@@ -475,17 +480,17 @@ namespace VLabAnalysis
             {
                 pm.DefaultXAxis.Maximum = x1max;
                 pm.DefaultXAxis.Minimum = x1min;
-                pm.DefaultXAxis.MajorStep = Math.Round((x1max - x1min) / 2,1);
+                pm.DefaultXAxis.MajorStep = Math.Round((x1max - x1min) / 2, 1);
                 pm.DefaultXAxis.MinorStep = pm.DefaultXAxis.MajorStep / 2;
                 pm.DefaultYAxis.Maximum = x2max;
                 pm.DefaultYAxis.Minimum = x2min;
-                pm.DefaultYAxis.MajorStep =Math.Round( (x2max - x2min) / 2,1);
+                pm.DefaultYAxis.MajorStep = Math.Round((x2max - x2min) / 2, 1);
                 pm.DefaultYAxis.MinorStep = pm.DefaultYAxis.MajorStep / 2;
 
                 pm.DefaultXAxis.Reset();
                 pm.DefaultYAxis.Reset();
             }
-            if (!isstart)
+            if (!isupdated)
             {
                 if (pm.DefaultXAxis != null)
                 {
@@ -497,7 +502,7 @@ namespace VLabAnalysis
                     pm.DefaultXAxis.Title = x1title;
                     pm.DefaultYAxis.TickStyle = OxyPlot.Axes.TickStyle.Outside;
                     pm.DefaultYAxis.Title = x2title;
-                    isstart = true;
+                    isupdated = true;
                 }
             }
             pm.InvalidatePlot(true);
@@ -505,7 +510,7 @@ namespace VLabAnalysis
 
         public void Save(string path, int width, int height, int dpi)
         {
-            if (isawake)
+            if (isprepared)
             {
                 using (var stream = File.Create(path + ".png"))
                 {

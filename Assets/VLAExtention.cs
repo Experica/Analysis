@@ -101,7 +101,7 @@ namespace VLabAnalysis
             switch (signaltype)
             {
                 case SignalType.Spike:
-                    return new MFRAnalyzer(new Signal(electrodeid, signaltype));
+                    return new CTMFRAnalyzer(new SignalDescription(electrodeid, signaltype));
                 default:
                     return null;
             }
@@ -111,7 +111,7 @@ namespace VLabAnalysis
         {
             if (typeof(IAnalyzer).IsAssignableFrom(analyzertype))
             {
-                return (IAnalyzer)Activator.CreateInstance(analyzertype, new Signal(electrodeid, signaltype));
+                return (IAnalyzer)Activator.CreateInstance(analyzertype, new SignalDescription(electrodeid, signaltype));
             }
             return null;
         }
@@ -219,17 +219,33 @@ namespace VLabAnalysis
             return v;
         }
 
-        public static List<double> FindEventTime(this List<Dictionary<string, double>> events, string eventname)
+        public static List<double> FindEventTime(this List<Dictionary<string,double>> events,List<string> eventnames)
         {
             List<double> ts = new List<double>();
-            foreach (var e in events)
+            int sidx = 0;int net = events.Count;
+            foreach(var e in eventnames)
             {
-                if (e.ContainsKey(eventname))
+                for(var i=sidx;i<net;i++)
                 {
-                    ts.Add(e[eventname]);
+                    if(events[i].ContainsKey(e))
+                    {
+                        ts.Add(events[i][e]);
+                        sidx = i++;
+                        break;
+                    }
                 }
             }
             return ts;
+        }
+
+        public static Dictionary<string,List<double>> UniqueEventTime(this List<double> eventtimes, List<string> eventnames)
+        {
+            var uets = eventnames.Distinct().ToDictionary(i=>i,i=>new List<double>());
+            for(var i=0;i<eventnames.Count;i++)
+            {
+                uets[eventnames[i]].Add(eventtimes[i]);
+            }
+            return uets;
         }
 
         public static double TrySearchTime(this double starttime,List<double> data,double sr)
@@ -252,6 +268,28 @@ namespace VLabAnalysis
             {
                 return double.NaN;
             }
+        }
+
+        public static List<double> EventFirstTime(this List<List<double>> eventtimes)
+        {
+            var eft = new List<double>();
+            foreach (var ts in eventtimes)
+            {
+                var dt = double.NaN;
+                if (ts != null)
+                {
+                    foreach (var t in ts)
+                    {
+                        if (t != double.NaN)
+                        {
+                            dt = t;
+                            break;
+                        }
+                    }
+                }
+                eft.Add(dt);
+            }
+            return eft;
         }
 
         public static double MFR(this List<double> st, double start, double end, int timeunitpersec = 1000)
@@ -423,7 +461,7 @@ namespace VLabAnalysis
         public static string GetResultTitle(this IResult result)
         {
             var rt = result.GetType();
-            if (rt == typeof(MFRResult))
+            if (rt == typeof(CTMFRResult))
             {
                 return "Mean Firing Rate (spike/s)";
             }

@@ -37,34 +37,44 @@ using System.Data;
 
 namespace VLabAnalysis
 {
+    public enum TimeVersion
+    {
+        None,
+        VLab,
+        Sync,
+        Measure
+    }
+
     /// <summary>
-    /// Thread safe data container for an experiment
+    /// Thread safe Data container for an experiment, internal data shouldn't be changed other by analysis engine
     /// </summary>
     public class VLADataSet
     {
         Experiment ex;
+        VLACFG config;
         List<double>[] spike;
         List<int>[] uid;
         List<double[,]> lfp;
         List<double> lfpstarttime;
         List<double>[] dintime;
         List<int>[] dinvalue;
-
-        List<int> _condindex ;
+        List<int> _condindex;
         List<List<Dictionary<string, double>>> _event;
         List<List<string>> _syncevent;
 
         Dictionary<string, List<List<double>>> _eventtime = new Dictionary<string, List<List<double>>>();
         List<string> _synceventstream = new List<string>();
         List<int> _synceventstreamctidx = new List<int>();
+        List<double> condontime = new List<double>();
+        List<double> condofftime = new List<double>();
+        Dictionary<string, List<object>> condtestcond = new Dictionary<string, List<object>>();
 
-        List<double> condontime, condofftime;
-        Dictionary<string, List<object>> condtestcond;
-
-        int nctpull; double _vlabt0; bool isdineventsync,isdineventmeasure,isdineventsyncerror,isdineventmeasureerror;
-        List<double> dineventsynctime,  dineventmeasuretime ;
-        List<int> dineventsyncvalue, dineventmeasurevalue;
+        double _vlabt0; int nctpull;
+        bool isdineventsync, isdineventmeasure, isdineventsyncerror, isdineventmeasureerror;
+        int eventsyncintegrity, eventmeasureintegrity;
+        bool isvlabcondon, issynccondon, ismeasurecondon, isvlabcondoff, issynccondoff, ismeasurecondoff;
         readonly object apilock = new object();
+
 
         public VLADataSet()
         {
@@ -76,24 +86,38 @@ namespace VLabAnalysis
             lock (apilock)
             {
                 ex = null;
+                config = null;
                 spike = null;
                 uid = null;
                 lfp = null;
                 lfpstarttime = null;
                 dintime = null;
                 dinvalue = null;
-
                 _condindex = null;
-                _syncevent = null;
                 _event = null;
-                condontime = new List<double>();
-                condofftime = new List<double>();
-                condtestcond = new Dictionary<string, List<object>>();
+                _syncevent = null;
 
-                nctpull = 0;
+                _eventtime.Clear();
+                _synceventstream.Clear();
+                _synceventstreamctidx.Clear();
+                condontime.Clear();
+                condofftime.Clear();
+                condtestcond.Clear();
+
                 _vlabt0 = 0;
+                nctpull = 0;
                 isdineventsync = false;
-                isdinmarkerror = false;
+                isdineventmeasure = false;
+                isdineventsyncerror = false;
+                isdineventmeasureerror = false;
+                Interlocked.Exchange(ref eventsyncintegrity, 1);
+                Interlocked.Exchange(ref eventmeasureintegrity, 1);
+                isvlabcondon = false;
+                issynccondon = false;
+                ismeasurecondon = false;
+                isvlabcondoff = false;
+                issynccondoff = false;
+                ismeasurecondoff = false;
             }
             GC.Collect();
         }
@@ -102,6 +126,32 @@ namespace VLabAnalysis
         {
             get { lock (apilock) { return ex; } }
             set { lock (apilock) { ex = value; } }
+        }
+
+        public void ParseEx()
+        {
+            lock (apilock)
+            {
+                if (ex == null) return;
+                if (ex.EnvParam != null)
+                {
+
+                }
+                if (ex.Param != null)
+                {
+
+                }
+                if (ex.Cond != null)
+                {
+
+                }
+            }
+        }
+
+        public VLACFG Config
+        {
+            get { lock (apilock) { return config; } }
+            set { lock (apilock) { config = value; } }
         }
 
         public List<double>[] Spike { get { lock (apilock) { return spike; } } }
@@ -114,14 +164,26 @@ namespace VLabAnalysis
 
         public List<int> CondIndex { get { lock (apilock) { return _condindex; } } }
 
-        public List<List<Dictionary<string,double>>> Event { get { lock (apilock) { return _event; } } }
+        public List<List<Dictionary<string, double>>> Event { get { lock (apilock) { return _event; } } }
 
         public List<List<string>> SyncEvent { get { lock (apilock) { return _syncevent; } } }
+
+        public Dictionary<string, List<List<double>>> EventTime { get { lock (apilock) { return _eventtime; } } }
+
+        public List<string> SyncEventStream { get { lock (apilock) { return _synceventstream; } } }
+
+        public List<int> SyncEventStreamCondTestIndex { get { lock (apilock) { return _synceventstreamctidx; } } }
+
+        public List<double> CondOnTime { get { lock (apilock) { return condontime; } } }
+
+        public List<double> CondOffTime { get { lock (apilock) { return condofftime; } } }
+
+        public Dictionary<string, List<object>> CondTestCond { get { lock (apilock) { return condtestcond; } } }
 
         public double VLabTimeZero
         {
             get { lock (apilock) { return _vlabt0; } }
-            set { lock(apilock) { _vlabt0 = value; } }
+            set { lock (apilock) { _vlabt0 = value; } }
         }
 
         public double VLabTimeToDataTime(double vlabtime, bool adddatalatency = false)
@@ -140,14 +202,14 @@ namespace VLabAnalysis
                 {
                     if (ex != null)
                     {
-                        return ex.DisplayLatency + ex.ResponseDelay+ ex.Config.MaxDisplayLatencyError + ex.Config.OnlineSignalLatency;
+                        return ex.DisplayLatency + ex.ResponseDelay + ex.Config.MaxDisplayLatencyError + ex.Config.OnlineSignalLatency;
                     }
                     return 0;
                 }
             }
         }
 
-        public uint EventSyncDCh { get { lock (apilock) {return ex == null ? 1 : ex.Config.EventSyncCh; } } }
+        public uint EventSyncDCh { get { lock (apilock) { return ex == null ? 1 : ex.Config.EventSyncCh; } } }
 
         public uint EventMeasureDCh { get { lock (apilock) { return ex == null ? 2 : ex.Config.EventMeasureCh; } } }
 
@@ -155,17 +217,30 @@ namespace VLabAnalysis
 
         public uint StopSyncDCh { get { lock (apilock) { return ex == null ? 4 : ex.Config.StopSyncCh; } } }
 
+        public int EventSyncIntegrity { get { return Interlocked.CompareExchange(ref eventsyncintegrity, 0, int.MinValue); } }
 
+        public int EventMeasureIntegrity { get { return Interlocked.CompareExchange(ref eventmeasureintegrity, 0, int.MinValue); } }
 
-        public List<double> CondOnTime { get { lock (apilock) { return condontime; } } }
-
-        public List<double> CondOffTime { get { lock (apilock) { return condofftime; } } }
-
-        public Dictionary<string, List<object>> CondTestCond { get { lock (apilock) { return condtestcond; } } }
-
-        
-
-        
+        public bool IsData(int electrodeidx, SignalType signaltype)
+        {
+            lock (apilock)
+            {
+                switch (signaltype)
+                {
+                    case SignalType.Spike:
+                        if (spike == null)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return spike[electrodeidx].Count > 0;
+                        }
+                    default:
+                        return false;
+                }
+            }
+        }
 
         public void Remove(double time)
         {
@@ -257,7 +332,7 @@ namespace VLabAnalysis
                     {
                         dintime = odintime;
                         dinvalue = odinvalue;
-                        // The falling edge time of the first digital input pulse in startsync-triggerchannel 
+                        // The falling edge time of the first digital input pulse in startsync trigger channel 
                         // marks the start of the experiment timer in VLab
                         var sstime = dintime[StartSyncDCh];
                         if (sstime != null && sstime.Count > 1)
@@ -277,64 +352,62 @@ namespace VLabAnalysis
 
                 if (_condindex != null && nctpull > 0)
                 {
-                    _ParseCondTest();
-                    _ParseCondTestCond();
+                    var nct = _condindex.Count; var ctsidx = nct - nctpull;
+                    _ParseCondTest(nct, nctpull, ctsidx);
+                    _ParseCondTestCond(nct, nctpull, ctsidx);
                 }
             }
         }
 
-        void _ParseCondTest()
+        void _ParseCondTest(int nct, int nctpull, int ctsidx)
         {
             if (_event == null || _syncevent == null) return;
-            var nct = _condindex.Count;var ctsidx = nct - nctpull;var nsepull = 0;
+            var nsepull = 0;
             // Parse Sync Event VLab Timing
-            for(var i=ctsidx;i<nct;i++)
+            for (var i = ctsidx; i < nct; i++)
             {
                 var es = _event[i];
                 var ses = _syncevent[i];
-                if (es != null && ses!=null)
+                if (es != null && ses != null)
                 {
-                    foreach (var se in ses)
+                    _synceventstream.AddRange(ses);
+                    _synceventstreamctidx.AddRange(Enumerable.Repeat(i, ses.Count));
+                    nsepull += ses.Count;
+                    var uets = es.FindEventTime(ses).Select(t => t.VLabTimeToRefTime(_vlabt0, ex.TimerDriftSpeed)).ToList().UniqueEventTime(ses);
+                    foreach (var se in uets.Keys)
                     {
-                        _synceventstream.Add(se);
-                        _synceventstreamctidx.Add(i);
-                        nsepull++;
                         var vse = "VLab_" + se;
-                        if(!_eventtime.ContainsKey(vse))
+                        if (!_eventtime.ContainsKey(vse))
                         {
-                            _eventtime[vse] = new List<double>[nctpull].ToList();
+                            _eventtime[vse] = new List<List<double>>();
                         }
-                        else
+                        var nvset = _eventtime[vse].Count;
+                        if (nvset < i)
                         {
-                            _eventtime[vse].AddRange(new List<double>[nctpull]);
+                            _eventtime[vse].AddRange(Enumerable.Repeat(default(List<double>), i - nvset));
                         }
-                        _eventtime[vse][i] = es.FindEventTime(se).Select(t=>t.VLabTimeToRefTime(_vlabt0,ex.TimerDriftSpeed)).ToList();
+                        _eventtime[vse].Add(uets[se]);
                     }
                 }
             }
             // Check Sync Event Data
-            if(dintime!=null)
+            if (dintime != null)
             {
-                if(ex.EventSyncProtocol.nSyncChannel==1&&ex.EventSyncProtocol.nSyncpEvent==1)
+                if (ex.EventSyncProtocol.nSyncChannel == 1 && ex.EventSyncProtocol.nSyncpEvent == 1)
                 {
                     if (!isdineventsync)
                     {
                         isdineventsync = dintime[EventSyncDCh].Count > 0;
                     }
-                    if(isdineventsync)
+                    if (isdineventsync)
                     {
-                        if(dineventsynctime==null)
+                        if (!isdineventsyncerror && _synceventstream.Count == dintime[EventSyncDCh].Count && dinvalue[EventSyncDCh].InterMap((i, j) => i != j).All(i => i))
                         {
-                            dineventsynctime = dintime[EventSyncDCh];
-                            dineventsyncvalue = dinvalue[EventSyncDCh];
-                        }
-                        if(_synceventstream.Count<= dineventsyncvalue.Count && dineventsyncvalue.InterMap((i,j)=>i!=j).All(i=>i))
-                        {
-                            isdineventsyncerror = false;
                         }
                         else
                         {
                             isdineventsyncerror = true;
+                            Interlocked.Exchange(ref eventsyncintegrity, 0);
                         }
                     }
 
@@ -344,45 +417,41 @@ namespace VLabAnalysis
                     }
                     if (isdineventmeasure)
                     {
-                        if(dineventmeasuretime==null)
+                        if (!isdineventmeasureerror && _synceventstream.Count == dintime[EventMeasureDCh].Count && dinvalue[EventMeasureDCh].InterMap((i, j) => i != j).All(i => i))
                         {
-                            dineventmeasuretime = dintime[EventMeasureDCh];
-                            dineventmeasurevalue = dinvalue[EventMeasureDCh];
-                        }
-                        if (_synceventstream.Count <= dineventmeasurevalue.Count && dineventmeasurevalue.InterMap((i, j) => i != j).All(i => i ))
-                        {
-                            isdineventmeasureerror = false;
                         }
                         else
                         {
                             isdineventmeasureerror = true;
+                            Interlocked.Exchange(ref eventmeasureintegrity, 0);
                         }
                     }
                 }
             }
             // Parse Syn Event Timing
-            var nse = _synceventstream.Count;var sesidx = nse - nsepull;
-            if(isdineventsync)
+            var nse = _synceventstream.Count; var sesidx = nse - nsepull;
+            if (isdineventsync)
             {
-                if(!isdineventsyncerror)
+                if (!isdineventsyncerror)
                 {
                     for (var i = sesidx; i < nse; i++)
                     {
                         var se = "Sync_" + _synceventstream[i];
-                        if(!_eventtime.ContainsKey(se))
+                        if (!_eventtime.ContainsKey(se))
                         {
-                            _eventtime[se] = Enumerable.Range(0, nsepull).Select(t => new List<double>()).ToList();
+                            _eventtime[se] = new List<List<double>>();
                         }
-                        else
+                        var nset = _eventtime[se].Count;
+                        if (nset <= _synceventstreamctidx[i])
                         {
-                            _eventtime[se].AddRange(Enumerable.Range(0, nsepull).Select(t => new List<double>()));
+                            _eventtime[se].AddRange(Enumerable.Repeat(new List<double>(), nset - _synceventstreamctidx[i] + 1));
                         }
-                        _eventtime[se][_synceventstreamctidx[i]].Add(dineventsynctime[i]);
+                        _eventtime[se][_synceventstreamctidx[i]].Add(dintime[EventSyncDCh][i]);
                     }
                 }
                 else
                 {
-                    SearchRecover(_eventtime, "VLab_", "Sync_", ctsidx, nctpull, dineventsynctime, 0, ex.Config.MaxDisplayLatencyError);
+                    SearchRecover(_eventtime, "VLab_", "Sync_", ctsidx, nct, dintime[EventSyncDCh], 0, ex.Config.MaxDisplayLatencyError);
                 }
             }
             // Parse Sync Event Measure Timing
@@ -395,221 +464,228 @@ namespace VLabAnalysis
                         var mse = "Measure_" + _synceventstream[i];
                         if (!_eventtime.ContainsKey(mse))
                         {
-                            _eventtime[mse] = Enumerable.Range(0, nsepull).Select(t => new List<double>()).ToList();
+                            _eventtime[mse] = new List<List<double>>();
                         }
-                        else
+                        var nmset = _eventtime[mse].Count;
+                        if (nmset <= _synceventstreamctidx[i])
                         {
-                            _eventtime[mse].AddRange(Enumerable.Range(0, nsepull).Select(t => new List<double>()));
+                            _eventtime[mse].AddRange(Enumerable.Repeat(new List<double>(), nmset - _synceventstreamctidx[i] + 1));
                         }
-                        _eventtime[mse][_synceventstreamctidx[i]].Add(dineventmeasuretime[i]);
+                        _eventtime[mse][_synceventstreamctidx[i]].Add(dintime[EventMeasureDCh][i]);
                     }
                 }
                 else
                 {
-                    SearchRecover(_eventtime, "Sync_", "Measure_", ctsidx, nctpull, dineventmeasuretime, ex.DisplayLatency, ex.Config.MaxDisplayLatencyError);
+                    SearchRecover(_eventtime, "Sync_", "Measure_", ctsidx, nct, dintime[EventMeasureDCh], ex.DisplayLatency, ex.Config.MaxDisplayLatencyError);
                 }
             }
-        }
+            // Try to get the most accurate and complete Cond On/Off Time
+            if (!isvlabcondon) isvlabcondon = _eventtime.ContainsKey("VLab_COND");
+            if (!issynccondon) issynccondon = _eventtime.ContainsKey("Sync_COND");
+            if (!ismeasurecondon) ismeasurecondon = _eventtime.ContainsKey("Measure_COND");
+            if (!isvlabcondoff) isvlabcondoff = _eventtime.ContainsKey("VLab_SUFICI");
+            if (!issynccondoff) issynccondoff = _eventtime.ContainsKey("Sync_SUFICI");
+            if (!ismeasurecondoff) ismeasurecondoff = _eventtime.ContainsKey("Measure_SUFICI");
+            TimeVersion condonversion = TimeVersion.None; TimeVersion condoffversion = TimeVersion.None;
+            List<List<double>> condon = null, condoff = null;
+            if (ismeasurecondon)
+            {
+                condon = _eventtime["Measure_COND"].GetRange(ctsidx, nctpull).Select(ct => ct.ToList()).ToList(); // deep copy
+                condonversion = TimeVersion.Measure;
+            }
+            else if (issynccondon)
+            {
+                condon = _eventtime["Sync_COND"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
+                condonversion = TimeVersion.Sync;
+            }
+            else if (isvlabcondon)
+            {
+                condon = _eventtime["VLab_COND"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
+                condonversion = TimeVersion.VLab;
+            }
 
-        void SearchRecover(Dictionary<string,List<List<double>>> eventtimes,string from,string to,int ctsidx,int nctpull,List<double> data,double latency,double sr)
-        {
-            var fromnames = eventtimes.Keys.Where(i => i.StartsWith(from));
-            foreach(var fromname in fromnames)
+            if (ismeasurecondoff)
             {
-                var toname = fromname.Replace(from, to);
-                for(var i=ctsidx;i<ctsidx+nctpull;i++)
-                {
-                    var recovered = new List<double>();
-                    var fromctses = eventtimes[fromname][i];
-                    if(fromctses!=null&&fromctses.Count>0)
-                    {
-                        foreach(var set in fromctses)
-                        {
-                            recovered.Add((set + latency).TrySearchTime(data, sr));
-                        }
-                    }
-                    if (recovered.Count>0 && recovered.All(t=>t==double.NaN))
-                    {
-                        recovered.Clear();
-                    }
-                    eventtimes[toname][i] = recovered;
-                }
+                condoff = _eventtime["Measure_SUFICI"].GetRange(ctsidx, nctpull).Select(ct => ct.ToList()).ToList();
+                condoffversion = TimeVersion.Measure;
             }
-        }
+            else if (issynccondoff)
+            {
+                condoff = _eventtime["Sync_SUFICI"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList(); ;
+                condoffversion = TimeVersion.Sync;
+            }
+            else if (isvlabcondoff)
+            {
+                condoff = _eventtime["VLab_SUFICI"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
+                condoffversion = TimeVersion.VLab;
+            }
 
-        void _ParseCondTestCond()
-        {
-            if (ex.Cond == null || ex.Cond.Count == 0) return;
-        }
-
-        void ParseCondTestCond1()
-        {
-            if (ex.Cond == null || ex.Cond.Count == 0) return;
-            var nct = _condindex.Count; var nc = condtestcond.Count == 0 ? 0 : condtestcond.Values.First().Count;
-            if (nc < nct)
+            if (condon != null && condonversion == TimeVersion.Measure && isdineventmeasureerror && issynccondon)
             {
-                for (var i = nc; i < nct; i++)
-                {
-                    foreach (var f in ex.Cond.Keys.ToArray())
-                    {
-                        if (!condtestcond.ContainsKey(f))
-                        {
-                            condtestcond[f] = new List<object>();
-                        }
-                        condtestcond[f].Add(ex.Cond[f][_condindex[i]]);
-                    }
-                    // Final Conditions
-                    bool isori = condtestcond.ContainsKey("Ori");
-                    bool isorioffset = condtestcond.ContainsKey("OriOffset");
-                    var ori = (float)(isori ? condtestcond["Ori"][i] :
-                        ex.EnvParam.ContainsKey("Ori") ? ex.EnvParam["Ori"] : 0);
-                    var orioffset = (float)(isorioffset ? condtestcond["OriOffset"][i] :
-                        ex.EnvParam.ContainsKey("OriOffset") ? ex.EnvParam["OriOffset"] : 0);
-                    if (isori || isorioffset)
-                    {
-                        if (!condtestcond.ContainsKey("Ori_Final"))
-                        {
-                            condtestcond["Ori_Final"] = new List<object>();
-                        }
-                        condtestcond["Ori_Final"].Add(ori + orioffset);
-                    }
-                    bool isposition = condtestcond.ContainsKey("Position");
-                    bool ispositionoffset = condtestcond.ContainsKey("PositionOffset");
-                    bool isoripositionoffset = ex.EnvParam.ContainsKey("OriPositionOffset") ? (bool)ex.EnvParam["OriPositionOffset"] : false;
-                    var position = (Vector3)(isposition ? condtestcond["Position"][i] :
-                        ex.EnvParam.ContainsKey("Position") ? ex.EnvParam["Position"] : Vector3.zero);
-                    var positionoffset = (Vector3)(ispositionoffset ? condtestcond["PositionOffset"][i] :
-                        ex.EnvParam.ContainsKey("PositionOffset") ? ex.EnvParam["PositionOffset"] : Vector3.zero);
-                    if (isposition || ispositionoffset)
-                    {
-                        var finalposition = position + (isoripositionoffset ? positionoffset.RotateZCCW(ori + orioffset) : positionoffset);
-                        if (!condtestcond.ContainsKey("Position_Final"))
-                        {
-                            condtestcond["Position_Final"] = new List<object>();
-                        }
-                        condtestcond["Position_Final"].Add(finalposition);
-                    }
-                }
+                CombineTime(_eventtime["Sync_COND"].GetRange(ctsidx, nctpull), condon, ex.DisplayLatency);
+                condonversion = TimeVersion.Sync;
             }
-        }
-
-        bool TrySearchMarkTime(double tssearchpoint, double tesearchpoint, out double ts, out double te)
-        {
-            List<double> dinmarktime = dintime[markch]; List<int> dinmarkvalue = dinvalue[markch];
-            int msv = dinmarkvalue[0];
-            double dts, dte; List<int> tssidx = new List<int>(); List<int> tesidx = new List<int>();
-            for (var i = dinmarktime.Count - 1; i >= 0; i--)
+            if (condoff != null && condoffversion == TimeVersion.Measure && isdineventmeasureerror && issynccondoff)
             {
-                dts = dinmarktime[i] - tssearchpoint;
-                dte = dinmarktime[i] - tesearchpoint;
-                if (dinmarkvalue[i] == msv)
-                {
-                    if (Math.Abs(dts) <= msr)
-                    {
-                        tssidx.Add(i);
-                    }
-                }
-                else
-                {
-                    if (Math.Abs(dte) <= msr)
-                    {
-                        tesidx.Add(i);
-                    }
-                }
-                if (dts < -msr && dte < -msr)
-                {
-                    break;
-                }
+                CombineTime(_eventtime["Sync_SUFICI"].GetRange(ctsidx, nctpull), condoff, ex.DisplayLatency);
+                condoffversion = TimeVersion.Sync;
             }
-            if (tssidx.Count == 1 && tesidx.Count == 1)
+            if (condon != null && condonversion == TimeVersion.Sync && isdineventsyncerror && isvlabcondon)
             {
-                ts = dinmarktime[tssidx[0]];
-                te = dinmarktime[tesidx[0]];
-                return true;
+                CombineTime(_eventtime["VLab_COND"].GetRange(ctsidx, nctpull), condon, ex.DisplayLatency);
+                condonversion = TimeVersion.VLab;
             }
-            else
+            if (condoff != null && condoffversion == TimeVersion.Sync && isdineventsyncerror && isvlabcondoff)
             {
-                ts = 0; te = 0; return false;
+                CombineTime(_eventtime["VLab_SUFICI"].GetRange(ctsidx, nctpull), condoff, ex.DisplayLatency);
+                condoffversion = TimeVersion.VLab;
             }
-        }
-
-        void ParseCondOnOffTime()
-        {
-            var nct = _condindex.Count; var nt = condontime.Count;
-            if (nt < nct)
+            // Try to get first Cond On/Off Timing
+            if (condon != null)
             {
-                for (var i = nt; i < nct; i++)
+                var non = condontime.Count;
+                if (non < ctsidx)
                 {
-                    double ts, te;
-                    if (isdineventsync)
+                    condontime.AddRange(Enumerable.Repeat(double.NaN, ctsidx - non));
+                }
+                condontime.AddRange(condon.EventFirstTime());
+            }
+            if (condoff != null)
+            {
+                var noff = condofftime.Count;
+                if (noff < ctsidx)
+                {
+                    condofftime.AddRange(Enumerable.Repeat(double.NaN, ctsidx - noff));
+                }
+                condofftime.AddRange(condoff.EventFirstTime());
+            }
+            // Parse CondOff when no SufICI event found
+            if (condon != null && condoff == null)
+            {
+                for (var i = ctsidx; i < nct - 1; i++)
+                {
+                    var currentontime = condontime[i];
+                    var nextontime = condontime[i + 1];
+                    if ((nextontime - currentontime) > (ex.CondDur + 2 * ex.Config.MaxDisplayLatencyError))
                     {
-                        if (!isdinmarkerror)
-                        {
-                            ts = dintime[markch][i * nmpc] + ex.ResponseDelay;
-                            te = dintime[markch][i * nmpc + 1] + ex.ResponseDelay;
-                        }
-                        else
-                        {
-                            var tss = _event[i].FindEventTime(CONDSTATE.COND.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            _vlabt0 + ex.DisplayLatency;
-                            var tes = _event[i].FindEventTime(CONDSTATE.SUFICI.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            _vlabt0 + ex.DisplayLatency;
-                            if (!TrySearchMarkTime(tss, tes, out ts, out te))
-                            {
-                                ts = tss;
-                                te = tes;
-                            }
-                            ts += ex.ResponseDelay;
-                            te += ex.ResponseDelay;
-                        }
+                        condofftime.Add(currentontime + ex.CondDur);
                     }
                     else
                     {
-                        ts = _event[i].FindEventTime(CONDSTATE.COND.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            _vlabt0 + ex.DisplayLatency + ex.ResponseDelay;
-                        te = _event[i].FindEventTime(CONDSTATE.SUFICI.ToString()) * (1 + ex.TimerDriftSpeed) +
-                            _vlabt0 + ex.DisplayLatency + ex.ResponseDelay;
+                        condofftime.Add(nextontime);
                     }
-                    condontime.Add(ts); condofftime.Add(te);
                 }
-                // None-ICI Mark Mode
-                if (ex.PreICI == 0 && ex.SufICI == 0)
+                condofftime.Add(condontime[nct] + ex.CondDur);
+            }
+        }
+
+        void SearchRecover(Dictionary<string, List<List<double>>> eventtimes, string from, string to, int ctsidx, int nct, List<double> data, double latency, double sr)
+        {
+            foreach (var fromname in eventtimes.Keys.Where(i => i.StartsWith(from)))
+            {
+                var toname = fromname.Replace(from, to);
+                if (!eventtimes.ContainsKey(toname))
                 {
-                    for (var i = nt; i < nct - 1; i++)
+                    eventtimes[toname] = new List<List<double>>();
+                }
+                var ntoet = eventtimes[toname].Count;
+                if (ntoet < ctsidx)
+                {
+                    eventtimes[toname].AddRange(Enumerable.Repeat<List<double>>(null, ctsidx - ntoet));
+                }
+                for (var i = ctsidx; i < nct; i++)
+                {
+                    var recovered = new List<double>();
+                    var fromctes = eventtimes[fromname][i];
+                    if (fromctes != null && fromctes.Count > 0)
                     {
-                        var currentontime = condontime[i];
-                        var nextontime = condontime[i + 1];
-                        if (nextontime - currentontime > (ex.CondDur + 2 * msr))
-                        {
-                            condofftime[i] = currentontime + ex.CondDur;
-                        }
-                        else
-                        {
-                            condofftime[i] = nextontime;
-                        }
+                        recovered.AddRange(fromctes.Select(t => (t + latency).TrySearchTime(data, sr)));
                     }
-                    condofftime[nct - 1] = condontime[nct - 1] + ex.CondDur;
+                    if (recovered.Count > 0 && recovered.All(t => t == double.NaN))
+                    {
+                        recovered.Clear();
+                    }
+                    eventtimes[toname].Add(recovered);
                 }
             }
         }
 
-        public bool IsData(int electrodeidx, SignalType signaltype)
+        void CombineTime(List<List<double>> from, List<List<double>> to, double latency)
         {
-            lock (apilock)
+            for (var i = 0; i < from.Count; i++)
             {
-                switch (signaltype)
+                var fromts = from[i];
+                var tots = to[i];
+                List<double> combined = null;
+                if (tots == null || tots.Count == 0)
                 {
-                    case SignalType.Spike:
-                        if (spike == null)
+                    if (fromts != null && fromts.Count > 0) combined = fromts.ToList(); // copy data
+                }
+                else
+                {
+                    combined = tots;
+                    if (fromts != null)
+                    {
+                        for (var j = 0; j < combined.Count; j++)
                         {
-                            return false;
+                            if (combined[j] == double.NaN && fromts[j] != double.NaN)
+                            {
+                                combined[j] = fromts[j];
+                            }
                         }
-                        else
-                        {
-                            return spike[electrodeidx].Count > 0;
-                        }
-                    default:
-                        return false;
+                    }
+                }
+                if (combined != null && combined.Count > 0 && combined.All(t => t == double.NaN))
+                {
+                    combined = null;
+                }
+                to[i] = combined;
+            }
+        }
+
+        void _ParseCondTestCond(int nct, int nctpull, int ctsidx)
+        {
+            if (ex.Cond == null || ex.Cond.Count == 0) return;
+            for (var i = ctsidx; i < nct; i++)
+            {
+                foreach (var f in ex.Cond.Keys.ToArray())
+                {
+                    if (!condtestcond.ContainsKey(f))
+                    {
+                        condtestcond[f] = new List<object>();
+                    }
+                    condtestcond[f].Add(ex.Cond[f][_condindex[i]]);
+                }
+                // Final Orientation
+                bool isori = condtestcond.ContainsKey("Ori");
+                bool isorioffset = condtestcond.ContainsKey("OriOffset");
+                var ori = (float)(isori ? condtestcond["Ori"][i] :
+                    ex.EnvParam.ContainsKey("Ori") ? ex.EnvParam["Ori"] : 0);
+                var orioffset = (float)(isorioffset ? condtestcond["OriOffset"][i] :
+                    ex.EnvParam.ContainsKey("OriOffset") ? ex.EnvParam["OriOffset"] : 0);
+                if (isori || isorioffset)
+                {
+                    if (!condtestcond.ContainsKey("Ori_Final"))
+                    {
+                        condtestcond["Ori_Final"] = new List<object>();
+                    }
+                    condtestcond["Ori_Final"].Add(ori + orioffset);
+                }
+                // Final Position
+                bool isposition = condtestcond.ContainsKey("Position");
+                bool ispositionoffset = condtestcond.ContainsKey("PositionOffset");
+                bool isoripositionoffset = ex.EnvParam.ContainsKey("OriPositionOffset") ? (bool)ex.EnvParam["OriPositionOffset"] : false;
+                var position = (Vector3)(isposition ? condtestcond["Position"][i] :
+                    ex.EnvParam.ContainsKey("Position") ? ex.EnvParam["Position"] : Vector3.zero);
+                var positionoffset = (Vector3)(ispositionoffset ? condtestcond["PositionOffset"][i] :
+                    ex.EnvParam.ContainsKey("PositionOffset") ? ex.EnvParam["PositionOffset"] : Vector3.zero);
+                if (isposition || ispositionoffset)
+                {
+                    if (!condtestcond.ContainsKey("Position_Final"))
+                    {
+                        condtestcond["Position_Final"] = new List<object>();
+                    }
+                    condtestcond["Position_Final"].Add(position + (isoripositionoffset ? positionoffset.RotateZCCW(ori + orioffset) : positionoffset));
                 }
             }
         }

@@ -19,7 +19,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using System.Collections;
+using System.Collections.Immutable;
 using System.Collections.Generic;
 using System;
 using System.Linq;
@@ -32,43 +32,45 @@ using System.Collections.Concurrent;
 
 namespace VLabAnalysis
 {
+    /// <summary>
+    /// Ripple Signal cached by internal thread through xippmex wrapper
+    /// </summary>
     public class RippleSignal : ISignal
     {
-        // Interlocked variables
         int disposecount = 0;
         int gotothreadevent = 0;
+        readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec,sleepduration;
+        readonly bool diginbitchange;
+            int maxdigitalbuffersize; // 0.5hr spikes of each channel
 
         XippmexDotNet xippmexdotnet = new XippmexDotNet();
-        readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec,
-            sleepresolution, maxdigitalinchannel, maxdigitalbuffersize; // 0.5hr spikes of each channel
-        int[] _eids;
+        ImmutableArray<int> _electrodeids = ImmutableArray.Create<int>();
         // Linear Data Buffers
-        List<double>[] spike;
-        List<int>[] uid;
+        Dictionary<int, List<double>> spike;
+        Dictionary<int, List<int>> uid;
+        Dictionary<int, List<double>> dintime;
+        Dictionary<int, List<int>> dinvalue;
         List<double[,]> lfp;
         List<double> lfpstarttime;
-        List<double>[] dintime;
-        List<int>[] dinvalue;
 
         readonly object xippmexlock = new object();
         readonly object apilock = new object();
         readonly object gotoeventlock = new object();
         Thread datathread;
         ManualResetEvent datathreadevent = new ManualResetEvent(false);
-        bool running = false;
-        public bool IsRunning { get { lock (apilock) { return running; } } }
-        public SignalSource Source { get { return SignalSource.Ripple; } }
+        bool _running = false;
+
 
         public RippleSignal(int tickfreq = 30000, int maxelectrodeid = 5120, int timeunitpersec = 1000,
-            int digitalIPI = 800, int analogIPI = 4500, int sleepresolution = 1, int maxdigitalinchannel = 6, int maxdigitalbuffersize = 1800000)
+            int digitalIPI = 800, int analogIPI = 4500, int sleepduration = 1, int maxdigitalbuffersize = 1800000,bool diginbitchange=true)
         {
             this.tickfreq = tickfreq;
             this.maxelectrodeid = maxelectrodeid;
             this.timeunitpersec = timeunitpersec;
             this.digitalIPI = digitalIPI;
             this.analogIPI = analogIPI;
-            this.sleepresolution = Math.Max(1, sleepresolution);
-            this.maxdigitalinchannel = maxdigitalinchannel;
+            this.sleepduration = Math.Max(1, sleepduration);
+            this.diginbitchange = diginbitchange;
             this.maxdigitalbuffersize = maxdigitalbuffersize;
         }
 
@@ -89,9 +91,12 @@ namespace VLabAnalysis
             {
                 return;
             }
-            Stop(false);
-            xippmexdotnet.xippmex("close");
-            xippmexdotnet.Dispose();
+            lock (apilock)
+            {
+                Stop(false);
+                Close();
+                xippmexdotnet.Dispose();
+            }
         }
 
         string SignalTypeToRipple(SignalType signaltype)
@@ -145,122 +150,174 @@ namespace VLabAnalysis
             return (SignalType)Enum.Parse(typeof(SignalType), ripple);
         }
 
-        public SignalType[] GetSignalTypes(int channel, bool isonlyreturnsignalontype = true)
-        {
-            lock (xippmexlock)
-            {
-                SignalType[] v = null;
-                if (IsReady && Channels.Contains(channel))
-                {
-                    var ts = xippmexdotnet.xippmex(1, "signal", channel)[0] as MWCellArray;
-                    var tn = ts.NumberOfElements;
-                    if (tn > 0)
-                    {
-                        v = new SignalType[tn];
-                        for (var i = 0; i < tn; i++)
-                        {
-                            v[i] = RippleToSignalType(((MWCharArray)ts[new[] { 1, i + 1 }]).ToString());
-                        }
-                    }
-                }
-                if (v != null && isonlyreturnsignalontype)
-                {
-                    v = v.Where(i => IsSignalOn(channel, i)).ToArray();
-                }
-                return v;
-            }
-        }
+        public SignalSource Source { get { return SignalSource.Ripple; } }
 
-        public bool IsSignalOn(int channel, SignalType signaltype)
+        public bool Connect()
         {
-            lock (xippmexlock)
-            {
-                if (IsReady && Channels.Contains(channel))
-                {
-                    var t = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", channel, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
-                    return t == 1 ? true : false;
-                }
-                return false;
-            }
-        }
-
-        public bool IsOnline
-        {
-            get
+            bool r = false;
+            try
             {
                 lock (xippmexlock)
                 {
-                    var isonline = ((MWLogicalArray)xippmexdotnet.xippmex(1)[0]).ToVector()[0];
-                    if (isonline)
-                    {
-                        try
-                        {
-                            var t = (double[])((MWNumericArray)xippmexdotnet.xippmex(1, "elec", "all")[0]).ToVector(MWArrayComponent.Real);
-                            _eids = t.Where(i => i <= maxelectrodeid).Select(i => (int)i).ToArray();
-                        }
-                        catch (Exception ex)
-                        {
-                            isonline = false;
-                            _eids = null;
-                        }
-                    }
-                    else
-                    {
-                        _eids = null;
-                    }
-                    return isonline;
+                    r = ((MWLogicalArray)xippmexdotnet.xippmex(1)[0]).ToVector()[0];
                 }
             }
-        }
-
-        public int[] Channels
-        {
-            get
+            finally { }
+            if (!r)
             {
-                lock (xippmexlock)
+                lock (apilock)
                 {
-                    return _eids;
+                    _electrodeids = ImmutableArray.Create<int>();
                 }
+            }
+            else
+            {
+                RefreshChannels();
+            }
+            return r;
+        }
+
+        public void Close()
+        {
+            lock (xippmexlock)
+            {
+                xippmexdotnet.xippmex("close");
+            }
+            lock (apilock)
+            {
+                _electrodeids = ImmutableArray.Create<int>();
             }
         }
 
-        public bool IsReady { get { lock (xippmexlock) { return _eids != null; } } }
+        public void RefreshChannels()
+        {
+            try
+            {
+                double[] t = null;
+                lock (xippmexdotnet)
+                {
+                    t = (double[])((MWNumericArray)xippmexdotnet.xippmex(1, "elec", "all")[0]).ToVector(MWArrayComponent.Real);
+                }
+                if (t != null)
+                {
+                    lock (apilock)
+                    {
+                        _electrodeids = t.Where(i => i <= maxelectrodeid).Select(i => (int)i).ToImmutableArray();
+                    }
+                    if(_electrodeids.Length>0 && diginbitchange)
+                    {
+                        lock (xippmexlock)
+                        {
+                            xippmexdotnet.diginbitchange(new MWNumericArray(1.0));
+                        }
+                    }
+                }
+            }
+            finally { }
+        }
+
+        public ImmutableArray<int> Channels { get { lock (apilock) { return _electrodeids; } } }
+
+        public bool IsChannel { get { lock (apilock) { return _electrodeids.Length > 0; } } }
 
         public double Time
         {
             get
             {
-                lock (xippmexlock)
+                double t = double.NaN;
+                try
                 {
-                    return ((MWNumericArray)xippmexdotnet.xippmex(1, "time")[0]).ToScalarDouble() / tickfreq * timeunitpersec;
+                    lock (xippmexlock)
+                    {
+                        t = ((MWNumericArray)xippmexdotnet.xippmex(1, "time")[0]).ToScalarDouble() / tickfreq * timeunitpersec;
+                    }
                 }
+                finally { }
+                return t;
             }
         }
+
+        public ImmutableArray<SignalType> GetSignalTypes(int channel, bool onlyreturnsignalontype = true)
+        {
+            lock (apilock)
+            {
+                ImmutableArray<SignalType> sts = ImmutableArray.Create<SignalType>();
+                if (IsChannel && Channels.Contains(channel))
+                {
+                    MWCellArray ts = null;
+                    try
+                    {
+                        lock (xippmexlock)
+                        {
+                            ts = xippmexdotnet.xippmex(1, "signal", channel)[0] as MWCellArray;
+                        }
+                    }
+                    finally { }
+                    if (ts != null)
+                    {
+                        var tn = ts.NumberOfElements;
+                        if (tn > 0)
+                        {
+                            var vs = new SignalType[tn];
+                            for (var i = 0; i < tn; i++)
+                            {
+                                vs[i] = RippleToSignalType(((MWCharArray)ts[new[] { 1, i + 1 }]).ToString());
+                            }
+                            sts = vs.ToImmutableArray();
+                        }
+                    }
+                }
+                if (sts.Length > 0 && onlyreturnsignalontype)
+                {
+                    sts = sts.Where(i => IsSignalOn(channel, i)).ToImmutableArray();
+                }
+                return sts;
+            }
+        }
+
+        public bool IsSignalOn(int channel, SignalType signaltype)
+        {
+            int r = 0;
+            if (IsChannel && Channels.Contains(channel))
+            {
+                try
+                {
+                    lock (xippmexlock)
+                    {
+                        r = ((MWNumericArray)xippmexdotnet.xippmex(1, "signal", channel, SignalTypeToRipple(signaltype))[0]).ToScalarInteger();
+                    }
+                }
+                finally { }
+            }
+            return r == 1 ? true : false;
+        }
+
+        public bool IsRunning { get { lock (apilock) { return _running; } } }
 
         public bool Start(bool isclean = true)
         {
             lock (apilock)
             {
-                if (IsReady)
+                if (IsChannel)
                 {
                     if (datathread == null)
                     {
                         datathread = new Thread(CollectDataThreadFunction);
                         datathread.Name = "RippleSignal";
-                        NewDataBuffer(Channels.Length);
+                        NewDataBuffer();
                         datathreadevent.Set();
-                        running = true;
+                        _running = true;
                         datathread.Start();
                     }
                     else
                     {
-                        if (!running)
+                        if (!_running)
                         {
                             if (isclean)
                             {
-                                NewDataBuffer(Channels.Length);
+                                NewDataBuffer();
                             }
-                            running = true;
+                            _running = true;
                             datathreadevent.Set();
                         }
                     }
@@ -273,11 +330,11 @@ namespace VLabAnalysis
             }
         }
 
-        public bool Stop(bool iscollectallbeforestop = true)
+        public bool Stop(bool collectallbeforestop = true)
         {
             lock (apilock)
             {
-                if (datathread != null && running)
+                if (datathread != null && _running)
                 {
                     lock (gotoeventlock)
                     {
@@ -286,14 +343,14 @@ namespace VLabAnalysis
                     }
                     while (true)
                     {
-                        if (0 == Interlocked.CompareExchange(ref gotothreadevent, 0, 255))
+                        if (0 == Interlocked.CompareExchange(ref gotothreadevent, 0, int.MinValue))
                         {
-                            if (iscollectallbeforestop)
+                            if (collectallbeforestop)
                             {
                                 // make sure to get all data until the time this function is called.
                                 CollectData();
                             }
-                            running = false;
+                            _running = false;
                             break;
                         }
                     }
@@ -314,11 +371,8 @@ namespace VLabAnalysis
                 if (iscleanall)
                 {
                     // Clear xippmex buffer
-                    lock (xippmexlock)
-                    {
-                        xippmexdotnet.xippmex("close");
-                        xippmexdotnet.xippmex(1);
-                    }
+                    Close();
+                    Connect();
                 }
                 return Start(true);
             }
@@ -327,7 +381,6 @@ namespace VLabAnalysis
         #region Collect Data
         void CollectDataThreadFunction()
         {
-            // here we use local, readonly and interlocked variables.
             string fcs, scs;
             int fi, si, fn;
             if (digitalIPI < analogIPI)
@@ -368,9 +421,9 @@ namespace VLabAnalysis
                     {
                         goto ThreadEvent;
                     }
-                    for (var j = 0; j < fi / sleepresolution; j++)
+                    for (var j = 0; j < fi / sleepduration; j++)
                     {
-                        Thread.Sleep(sleepresolution);
+                        Thread.Sleep(sleepduration);
                         if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
                         {
                             goto ThreadEvent;
@@ -396,9 +449,9 @@ namespace VLabAnalysis
                     {
                         goto ThreadEvent;
                     }
-                    for (var j = 0; j < si / sleepresolution; j++)
+                    for (var j = 0; j < si / sleepduration; j++)
                     {
-                        Thread.Sleep(sleepresolution);
+                        Thread.Sleep(sleepduration);
                         if (1 == Interlocked.CompareExchange(ref gotothreadevent, 0, 1))
                         {
                             goto ThreadEvent;
@@ -430,20 +483,31 @@ namespace VLabAnalysis
 
         void CollectDigitalIn()
         {
-            MWArray[] d;
-            lock (xippmexlock)
+            MWArray[] d=null;
+            try
             {
-                d = xippmexdotnet.digin(2);
+                lock (xippmexlock)
+                {
+                    d = xippmexdotnet.digin(3);
+                }
             }
+            finally { }
+            if (d == null) return;
+
             var d0 = d[0] as MWCellArray;
             var d1 = d[1] as MWCellArray;
-            for (var i = 0; i < maxdigitalinchannel; i++)
+            for (var i = 1; i <= d0.NumberOfElements; i++)
             {
-                var idx = new[] { i + 1, 1 };
+                var idx = new[] { i, 1 };
                 var dt = d0[idx] as MWNumericArray;
                 var dv = d1[idx] as MWNumericArray;
                 if (!dt.IsEmpty)
                 {
+                    if(!dintime.ContainsKey(i))
+                    {
+                        dintime[i] = new List<double>();
+                        dinvalue[i] = new List<int>();
+                    }
                     var t = (double[])dt.ToVector(MWArrayComponent.Real);
                     var v = (double[])dv.ToVector(MWArrayComponent.Real);
                     var n = t.Length;
@@ -464,36 +528,47 @@ namespace VLabAnalysis
 
         void CollectSpike()
         {
-            var sid = Channels;
-            MWArray[] s;
-            lock (xippmexlock)
+            var eids = Channels;
+            MWArray[] s=null;
+            try
             {
-                // xippmex works only when electrode ids are in (1,n) row vector of doubles
-                s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, sid.Length, sid, null, true, false));
+                lock (xippmexlock)
+                {
+                    // xippmex works only when electrode ids are in (1,n) row vector of doubles
+                    s = xippmexdotnet.xippmex(4, "spike", new MWNumericArray(1, eids.Length, eids.ToArray(), null, true, false));
+                }
             }
+            finally { }
+            if (s == null) return;
+
             var s1 = s[1] as MWCellArray;
             var s3 = s[3] as MWCellArray;
-            for (var i = 0; i < sid.Length; i++)
+            for (var i = 0; i < eids.Length; i++)
             {
                 // Indexing is 1-based
                 var idx = new int[] { i + 1, 1 };
                 var st = s1[idx] as MWNumericArray;
                 if (!st.IsEmpty)
                 {
+                    var eid = eids[i];
+                    if(!spike.ContainsKey(eid))
+                    {
+                        spike[eid] = new List<double>();
+                        uid[eid] = new List<int>();
+                    }
                     var ss = (double[])st.ToVector(MWArrayComponent.Real);
                     var us = (double[])(s3[idx] as MWNumericArray).ToVector(MWArrayComponent.Real);
-                    var sidx = sid[i] - 1;
                     var n = ss.Length;
                     for (var j = 0; j < n; j++)
                     {
-                        spike[sidx].Add((ss[j] / tickfreq) * timeunitpersec);
-                        uid[sidx].Add((int)us[j]);
+                        spike[eid].Add((ss[j] / tickfreq) * timeunitpersec);
+                        uid[eid].Add((int)us[j]);
                     }
-                    var l = spike[sidx].Count - maxdigitalbuffersize;
+                    var l = spike[eid].Count - maxdigitalbuffersize;
                     if (l > 0)
                     {
-                        spike[sidx].RemoveRange(0, l);
-                        uid[sidx].RemoveRange(0, l);
+                        spike[eid].RemoveRange(0, l);
+                        uid[eid].RemoveRange(0, l);
                     }
                 }
             }
@@ -504,23 +579,23 @@ namespace VLabAnalysis
         }
         #endregion
 
-        public bool Read(out List<double>[] ospike, out List<int>[] ouid,
+        public bool Read(out Dictionary<int, List<double>> ospike, out Dictionary<int, List<int>> ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
-            out List<double>[] odintime, out List<int>[] odinvalue)
+            out Dictionary<int, List<double>> odintime, out Dictionary<int, List<int>> odinvalue)
         {
             lock (apilock)
             {
-                if (IsReady)
+                if (IsChannel)
                 {
-                    if (running)
+                    if (_running)
                     {
                         Stop(true);
-                        GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue, Channels.Length);
+                        GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                         Start(false);
                     }
                     else
                     {
-                        GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue, Channels.Length);
+                        GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                     }
                     return true;
                 }
@@ -532,9 +607,9 @@ namespace VLabAnalysis
             }
         }
 
-        void GetDataBuffer(out List<double>[] ospike, out List<int>[] ouid,
+        void GetDataBuffer(out Dictionary<int, List<double>> ospike, out Dictionary<int, List<int>> ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
-            out List<double>[] odintime, out List<int>[] odinvalue, int en = 1)
+            out Dictionary<int, List<double>> odintime, out Dictionary<int, List<int>> odinvalue)
         {
             ospike = spike;
             ouid = uid;
@@ -542,27 +617,17 @@ namespace VLabAnalysis
             olfpstarttime = lfpstarttime;
             odintime = dintime;
             odinvalue = dinvalue;
-            NewDataBuffer(en);
+            NewDataBuffer();
         }
 
-        void NewDataBuffer(int en)
+        void NewDataBuffer()
         {
-            spike = new List<double>[en];
-            uid = new List<int>[en];
-            for (var i = 0; i < en; i++)
-            {
-                spike[i] = new List<double>();
-                uid[i] = new List<int>();
-            }
+            spike = new Dictionary<int, List<double>>();
+            uid = new Dictionary<int, List<int>>();
             lfp = new List<double[,]>();
             lfpstarttime = new List<double>();
-            dintime = new List<double>[maxdigitalinchannel];
-            dinvalue = new List<int>[maxdigitalinchannel];
-            for (var i = 0; i < maxdigitalinchannel; i++)
-            {
-                dintime[i] = new List<double>();
-                dinvalue[i] = new List<int>();
-            }
+            dintime = new Dictionary<int, List<double>>();
+            dinvalue = new Dictionary<int, List<int>>();
         }
     }
 }

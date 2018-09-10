@@ -39,14 +39,15 @@ namespace VLabAnalysis
         [ClientRpc]
         public void RpcNotifyStartExperiment()
         {
-            als?.Restart();
+            if (als == null) return;
+            als.Restart();
+            uicontroller.UpdateAnalysisState(als.IsAnalyzing, "Analysis Engine Started");
         }
 
         [ClientRpc]
         public void RpcNotifyStopExperiment()
         {
-            if (als == null) return;
-            als.ExperimentEndEnqueue();
+            als?.ExperimentEndEnqueue();
         }
 
         [ClientRpc]
@@ -75,24 +76,47 @@ namespace VLabAnalysis
         public void RpcNotifyExperiment(byte[] value)
         {
             if (als == null) return;
-            // Set Experiment
             using (var stream = new MemoryStream(value))
             {
-                als.DataSet.Ex = VLMsgPack.ExSerializer.Unpack(stream);
-            }
-            // Set VLabTimeZero
-            if (als.Signal != null)
-            {
-                var t = new VLTimer();
-                t.Timeout(als.DataSet.DataLatency);
-                List<double>[] ospike;
-                List<int>[] ouid;
-                List<double[,]> olfp;
-                List<double> olfpstarttime;
-                List<double>[] odintime;
-                List<int>[] odinvalue;
-                als.Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
-                als.DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue, null, null, null);
+                var ex = VLMsgPack.ExSerializer.Unpack(stream);
+                var config = uicontroller.appmanager.config;
+                bool isallowed = false;
+                switch (config.RegisteredEx)
+                {
+                    case ExRegistry.WhiteList:
+                        if (config.WhiteList.Contains(ex.ID)) isallowed = true;
+                        break;
+                    case ExRegistry.BlackList:
+                        if (!config.BlackList.Contains(ex.ID)) isallowed = true;
+                        break;
+                }
+                if (isallowed)
+                {
+                    als.DataSet.Config = config;
+                    als.DataSet.Ex = ex;
+                    als.DataSet.ParseEx();
+                    // Set VLabTimeZero
+                    if (als.Signal != null)
+                    {
+                        var t = new VLTimer();
+                        t.Timeout(als.DataSet.DataLatency);
+                        List<double>[] ospike;
+                        List<int>[] ouid;
+                        List<double[,]> olfp;
+                        List<double> olfpstarttime;
+                        List<double>[] odintime;
+                        List<int>[] odinvalue;
+                        als.Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+                        als.DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue, null, null, null);
+                    }
+                }
+                else
+                {
+                    als.Signal?.Stop(false);
+                    als.Stop();
+                    uicontroller.UpdateAnalysisState(als.IsAnalyzing, $"ID={ex.ID} is not allowed by registry in config");
+                    return;
+                }
             }
         }
 
@@ -137,45 +161,22 @@ namespace VLabAnalysis
 
         void LateUpdate()
         {
-            if (als == null || als.Analyzers == null) return;
-
-            var isfront = Input.GetButton("ShowInFront"); var isalign = Input.GetButton("Align");
-            var cn = 4f;
-            if (isalign)
-            {
-                cn = Mathf.Floor(Screen.currentResolution.width / uicontroller.appmanager.config.VisualizerWidth);
-            }
-            foreach (var i in als.Analyzers.Keys.ToList())
-            {
-                IAnalyzer a;
-                if (als.Analyzers.TryGetValue(i, out a) && a != null && a.Visualizer != null)
-                {
-                    if (isfront)
-                    {
-                        if (isalign)
-                        {
-                            var ci = (a.Signal.Channel - 1) % cn; var ri = Mathf.Floor((a.Signal.Channel - 1) / cn);
-                            a.Visualizer.Position = new Vector2(ci * uicontroller.appmanager.config.VisualizerWidth,
-                                ri * uicontroller.appmanager.config.VisualizerHeight);
-                        }
-                        a.Visualizer.ShowInFront();
-                    }
-                }
-            }
-
+            if (als == null) return;
+            als.LayoutVisualization(Input.GetButton("ShowInFront"), Input.GetButton("Align"));
             als.VisualizeResults(VisualizeMode.First);
-            if (als.IsExperimentEnd)
+            if (als.ExperimentAnalysisStage == 1)
             {
                 als.VisualizeResults(VisualizeMode.Last);
-                if (uicontroller.appmanager.config.SaveVisualizationWhenExperimentAnalysisDone)
-                {
-                    als.SaveVisualization(uicontroller.appmanager.config.PlotExportWidth, uicontroller.appmanager.config.PlotExportHeight, uicontroller.appmanager.config.PlotExportDPI);
-                }
-                als.IsExperimentEnd = false;
+                als.SaveVisualization();
+                als.ExperimentAnalysisStage = 2;
+                als.Stop();
+                uicontroller.UpdateAnalysisState(als.IsAnalyzing, "All Finished");
             }
-            uicontroller.UpdateAnalysisEventIndex(als.AnalysisEventCount);
-            uicontroller.UpdateAnalysisDone(als.AnalysisDoneCount);
-            uicontroller.UpdateVisualizationDone(als.VisualizationDoneCount);
+            uicontroller.UpdateAnalysisEventCount(als.AnalysisEventCount);
+            uicontroller.UpdateAnalysisDoneCount(als.AnalysisDoneCount);
+            uicontroller.UpdateVisualizationDoneCount(als.VisualizationDoneCount);
+            uicontroller.UpdateEventSyncIntegrity(als.DataSet.EventSyncIntegrity);
+            uicontroller.UpdateEventMeasureIntegrity(als.DataSet.EventMeasureIntegrity);
         }
 
     }

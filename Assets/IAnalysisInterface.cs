@@ -29,26 +29,23 @@ namespace VLabAnalysis
 {
     public interface IAnalyzer : IDisposable
     {
-        Guid ID { get;  }
-        Signal Signal { get; set; }
-        void Analyze(VLADataSet dataset);
+        Guid ID { get; }
+        SignalDescription SignalDescription { get; set; }
         IVisualizer Visualizer { get; set; }
         IController Controller { get; set; }
         ConcurrentQueue<IResult> ResultVisualizeQueue { get; }
         IResult Result { get; }
         void Reset();
+        void Analyze(VLADataSet dataset);
     }
 
     public interface IResult
     {
-        IResult DeepCopy();
-        int SignalID { get; }
+        IResult Copy();
+        int SignalChannel { get; }
         string ExperimentID { get; }
-        List<Dictionary<int, double>> CondResponse { get; }
-        List<int> CondIndex { get; }
-        List<int> CondRepeat { get; }
-        Dictionary<string, List<object>> CondTestCond { get; }
-        Dictionary<string, object> EnvParam { get; }
+        VLADataSet DataSet { get; }
+        Dictionary<int,List< double>> UnitCondTestResponse { get; }
     }
 
     public interface IController : IDisposable

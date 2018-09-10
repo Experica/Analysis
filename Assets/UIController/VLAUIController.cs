@@ -185,19 +185,34 @@ namespace VLabAnalysis
             }
         }
 
-        public void UpdateVisualizationDone(int done)
+        public void UpdateVisualizationDoneCount(int nvd)
         {
-            controlpanel.visualizationdone.text = done.ToString();
+            controlpanel.visualizationdone.text = nvd.ToString();
         }
 
-        public void UpdateAnalysisEventIndex(int aeidx)
+        public void UpdateAnalysisEventCount(int nae)
         {
-            controlpanel.analysiseventindex.text = aeidx.ToString();
+            controlpanel.analysiseventindex.text = nae.ToString();
         }
 
-        public void UpdateAnalysisDone(int done)
+        public void UpdateAnalysisDoneCount(int nad)
         {
-            controlpanel.analysisdone.text = done.ToString();
+            controlpanel.analysisdone.text = nad.ToString();
+        }
+
+        public void UpdateEventSyncIntegrity(int esi)
+        {
+
+        }
+
+        public void UpdateEventMeasureIntegrity(int emi)
+        {
+
+        }
+
+        public void UpdateAnalysisState(bool isanalysing, string msg=null)
+        {
+
         }
 
         public void UpdateSystemInformation()

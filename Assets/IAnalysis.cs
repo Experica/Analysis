@@ -74,7 +74,7 @@ namespace VLabAnalysis
         int ClearDataPerAnalysis { get; set; }
         int RetainAnalysisPerClear { get; set; }
         int SleepDuration { get; set; }
-        bool IsExperimentEnd { get; set; }
+        int ExperimentAnalysisStage { get; set; }
         bool IsAnalyzing { get; }
         int AnalysisEventCount { get; }
         int AnalysisDoneCount { get; }
@@ -86,6 +86,8 @@ namespace VLabAnalysis
         void Stop();
         void Restart();
         void VisualizeResults(VisualizeMode mode);
-        void SaveVisualization(int width, int height, int dpi);
+        void SaveVisualization();
+        void SaveVisualization(string dir, string name, int width, int height, int dpi);
+        void LayoutVisualization(bool isfront, bool isalign);
     }
 }

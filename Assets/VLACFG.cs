@@ -25,6 +25,13 @@ using UnityEngine;
 
 namespace VLabAnalysis
 {
+    public enum ExRegistry
+    {
+        None,
+        WhiteList,
+        BlackList
+    }
+
     public class VLACFG
     {
         public bool AutoConnect { get; set; } = true;
@@ -37,6 +44,9 @@ namespace VLabAnalysis
         public bool SearchSignalWhenConnect { get; set; } = true;
         public bool AddSpikeAnalysisWhenSignalOnLine { get; set; } = true;
         public bool SaveVisualizationWhenExperimentAnalysisDone { get; set; } = true;
+        public ExRegistry RegisteredEx { get; set; } = ExRegistry.None;
+        public List<string> WhiteList { get; set; } = new List<string>();
+        public List<string> BlackList { get; set; } = new List<string>();
         public int VisualizerWidth { get; set; } = 400;
         public int VisualizerHeight { get; set; } = 380;
         public int PlotExportWidth { get; set; } = 1280;
