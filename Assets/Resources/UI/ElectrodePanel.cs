@@ -22,9 +22,10 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
+using System;
 using System.Collections.Generic;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class ElectrodePanel : MonoBehaviour
     {
@@ -32,11 +33,11 @@ namespace VLabAnalysis
         public Text title;
         public int electrodeid;
         public GameObject analysisgroupprefab,analysispanel;
-        public Dictionary<int, AnalysisGroup> analysisgroup = new Dictionary<int, AnalysisGroup>();
+        public Dictionary<Guid, AnalysisGroup> analysisgroup = new Dictionary<Guid, AnalysisGroup>();
         public List<Toggle> analysisgroupselect = new List<Toggle>();
 
 
-        void AddAnalysisGroup(int analyzerid, string analyzer, string visualizer, string controller)
+        void AddAnalysisGroup(Guid analyzerid, string analyzer, string visualizer, string controller)
         {
             var ag = Instantiate(analysisgroupprefab);
             var agag = ag.GetComponent<AnalysisGroup>();
@@ -52,7 +53,7 @@ namespace VLabAnalysis
             if( uicontroller.alsmanager.als.Signal.IsSignalOn(electrodeid,signaltype))
             {
                 var a = electrodeid.GetAnalyzer(signaltype);
-                uicontroller.alsmanager.als.AddAnalyzer(a);
+                uicontroller.alsmanager.als.AddAnalyzer(a,0);
                 AddAnalysisGroup(a.ID, a.GetType().Name,a.Visualizer.GetType().Name,a.Controller.GetType().Name);
             }
         }

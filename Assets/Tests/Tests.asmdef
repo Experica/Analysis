@@ -1,8 +1,8 @@
 {
     "name": "Tests",
     "references": [
-        "VLabAnalysis",
-        "VLab"
+        "IExSys",
+        "IExSys.Analysis"
     ],
     "optionalUnityReferences": [
         "TestAssemblies"
@@ -10,5 +10,10 @@
     "includePlatforms": [
         "Editor"
     ],
-    "excludePlatforms": []
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": []
 }

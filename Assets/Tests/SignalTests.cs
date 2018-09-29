@@ -17,18 +17,18 @@ public class SignalTests
     int maxapicall = 900000000;
     MersenneTwister rng = new MersenneTwister(true);
 
-    List<double>[] spike;
-    List<int>[] uid;
+    Dictionary<int,List<double>> spike;
+    Dictionary<int, List<int>> uid;
     List<double[,]> lfp;
     List<double> lfpstarttime;
-    List<double>[] dintime;
-    List<int>[] dinvalue;
+    Dictionary<int, List<double>> dintime;
+    Dictionary<int, List<int>> dinvalue;
 
     [Test]
     public void MultiThreadRandomCall()
     {
         threads = new[] { new Thread(threadrandomcall), new Thread(threadrandomcall), new Thread(threadrandomcall) };
-        Assert.True(signal.IsOnline);
+        Assert.True(signal.IsChannel);
         foreach (var t in threads)
         {
             t.Start();
@@ -56,7 +56,7 @@ public class SignalTests
                     Assert.True(signal.Restart(true));
                     break;
                 case 4:
-                    Assert.True(signal.Read(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue));
+                   signal.Read(out spike, out uid, out lfp, out lfpstarttime, out dintime, out dinvalue);
                     break;
                 default:
                     Assert.Positive(signal.Time);

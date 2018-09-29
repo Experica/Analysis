@@ -26,7 +26,7 @@ using System.Threading;
 using System.Collections.Concurrent;
 using System;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class OPTController : IController
     {

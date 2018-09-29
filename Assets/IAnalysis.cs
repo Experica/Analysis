@@ -26,28 +26,14 @@ using System;
 using System.Collections.Concurrent;
 using VLab;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
-    public enum AnalysisSystem
+    public enum AnalysisEngine
     {
         ConditionTest
     }
 
-    public enum AnalysisInterface
-    {
-        IAnalyzer,
-        IVisualizer,
-        IController
-    }
-
-    public enum VisualizeMode
-    {
-        First,
-        Last,
-        All
-    }
-
-    public struct AnalysisEvent
+    public readonly struct AnalysisEvent
     {
         public readonly int Index;
         public readonly bool IsClear;
@@ -67,7 +53,7 @@ namespace VLabAnalysis
     public interface IAnalysis : IDisposable
     {
         ISignal Signal { get; set; }
-        VLADataSet DataSet { get; }
+        DataSet DataSet { get; }
         ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>> Analyzers { get; }
         void AddAnalyzer(IAnalyzer analyzer, int rank);
         void RemoveAnalyzer(Guid id);
@@ -89,5 +75,66 @@ namespace VLabAnalysis
         void SaveVisualization();
         void SaveVisualization(string dir, string name, int width, int height, int dpi);
         void LayoutVisualization(bool isfront, bool isalign);
+    }
+
+    public enum AnalysisInterface
+    {
+        IAnalyzer,
+        IVisualizer,
+        IController
+    }
+
+    public enum VisualizeMode
+    {
+        First,
+        Last,
+        All
+    }
+
+    public interface IAnalyzer : IDisposable
+    {
+        Guid ID { get; }
+        SignalDescription SignalDescription { get; set; }
+        IVisualizer Visualizer { get; set; }
+        IController Controller { get; set; }
+        ConcurrentQueue<IResult> ResultVisualizeQueue { get; }
+        IResult Result { get; }
+        void Reset();
+        void Analyze(DataSet dataset);
+    }
+
+    public interface IResult
+    {
+        IResult Copy();
+        int SignalChannel { get; }
+        string ExperimentID { get; }
+        DataSet DataSet { get; }
+        Dictionary<int, List<double>> UnitCondTestResponse { get; }
+    }
+
+    public interface IController : IDisposable
+    {
+        void Control(IResult result);
+        void Reset();
+        ConcurrentQueue<IControlResult> ControlResultQueue { get; }
+    }
+
+    public interface IControlResult
+    {
+
+    }
+
+    public class UpdateCommand : IControlResult
+    {
+
+    }
+
+    public interface IVisualizer : IDisposable
+    {
+        void Visualize(IResult result);
+        void Reset();
+        void Save(string path, int width, int height, int dpi);
+        void ShowInFront();
+        Vector2 Position { get; set; }
     }
 }

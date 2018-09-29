@@ -30,14 +30,12 @@ using VLab;
 using System;
 using MathNet.Numerics.Statistics;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class CTMFRAnalyzer : IAnalyzer
     {
         int disposecount = 0;
         readonly object apilock = new object();
-
-        Guid id = Guid.NewGuid();
         SignalDescription signaldescription;
         IVisualizer visualizer;
         IController controller;
@@ -103,10 +101,7 @@ namespace VLabAnalysis
             }
         }
 
-        public Guid ID
-        {
-            get { lock (apilock) { return id; } }
-        }
+        public Guid ID { get; } = Guid.NewGuid();
 
         public SignalDescription SignalDescription
         {
@@ -130,7 +125,7 @@ namespace VLabAnalysis
 
         public IResult Result { get { lock (apilock) { return result; } } }
 
-        public void Analyze(VLADataSet dataset)
+        public void Analyze(DataSet dataset)
         {
             lock (apilock)
             {
@@ -144,10 +139,10 @@ namespace VLabAnalysis
                 if (condindex == null || condindex.Count != on.Count) return;
                 var nct = condindex.Count;
                 var uctmfr = result.UnitCondTestResponse;
-                if (dataset.IsData(SignalDescription.Channel - 1, SignalDescription.Type))
+                if (dataset.IsData(SignalDescription.Channel, SignalDescription.Type))
                 {
-                    var st = dataset.Spike[SignalDescription.Channel - 1];
-                    var uid = dataset.UID[SignalDescription.Channel - 1];
+                    var st = dataset.Spike[SignalDescription.Channel];
+                    var uid = dataset.UID[SignalDescription.Channel];
                     var uuid = uid.Distinct().ToArray();
                     foreach (var u in uuid)
                     {
@@ -170,32 +165,27 @@ namespace VLabAnalysis
 
     public class CTMFRResult : IResult
     {
-        int signalchannel;
-        string experimentid;
-        VLADataSet dataset;
-        Dictionary<int, List<double>> uctmfr = new Dictionary<int, List<double>>();
-
-        public CTMFRResult(int signalchannel, string experimentid, VLADataSet dataset)
+        public CTMFRResult(int signalchannel, string experimentid, DataSet dataset)
         {
-            this.signalchannel = signalchannel;
-            this.experimentid = experimentid;
-            this.dataset = dataset;
+            SignalChannel = signalchannel;
+            ExperimentID = experimentid;
+            DataSet = dataset;
         }
 
         public IResult Copy()
         {
             var clone = (CTMFRResult)MemberwiseClone();
-            clone.experimentid = string.Copy(experimentid);
-            clone.uctmfr = uctmfr.ToDictionary(i => i.Key, i => i.Value.ToList());
+            clone.ExperimentID = string.Copy(ExperimentID);
+            clone.UnitCondTestResponse = UnitCondTestResponse.ToDictionary(i => i.Key, i => i.Value.ToList());
             return clone;
         }
 
-        public int SignalChannel { get { return signalchannel; } }
+        public int SignalChannel { get; }
 
-        public string ExperimentID { get { return experimentid; } }
+        public string ExperimentID { get; private set; }
 
-        public VLADataSet DataSet { get { return dataset; } }
+        public DataSet DataSet { get; }
 
-        public Dictionary<int, List<double>> UnitCondTestResponse { get { return uctmfr; } }
+        public Dictionary<int, List<double>> UnitCondTestResponse { get; private set; } = new Dictionary<int, List<double>>();
     }
 }

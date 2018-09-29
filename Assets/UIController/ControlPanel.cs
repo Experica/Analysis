@@ -26,13 +26,14 @@ using VLab;
 using System;
 using System.Linq;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class ControlPanel : MonoBehaviour
     {
         public VLAUIController uicontroller;
         public Dropdown signalsourcedropdown;
-        public Text visualizationdone, analysiseventindex,analysisdone;
+        public Text visualizationdone, analysiseventdone,analysisdone,analysisstate;
+        public Toggle analysisenginestate, eventsyncintegrity,eventmeasureintegrity;
 
         void Start()
         {

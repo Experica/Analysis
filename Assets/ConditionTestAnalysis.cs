@@ -35,7 +35,7 @@ using System.Collections.Concurrent;
 using MathNet.Numerics.Statistics;
 using MathNet.Numerics;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     /// <summary>
     /// Analysis Engine for Condition Test Experiment. Use internal analysis thread, triggered by analysis event.
@@ -53,6 +53,13 @@ namespace VLabAnalysis
         public int AnalysisDoneCount { get { return Interlocked.CompareExchange(ref _analysisdonecount, 0, int.MinValue); } }
         int _visualizationdonecount = 0;
         public int VisualizationDoneCount { get { return Interlocked.CompareExchange(ref _visualizationdonecount, 0, int.MinValue); } }
+        // 0: in analysis, 1: analysis done, 2: visualization done
+        int _experimentanalysisstage;
+        public int ExperimentAnalysisStage
+        {
+            get { return Interlocked.CompareExchange(ref _experimentanalysisstage, 0, int.MinValue); }
+            set { Interlocked.Exchange(ref _experimentanalysisstage, value); }
+        }
         int _cleardataperanalysis = 1;
         public int ClearDataPerAnalysis
         {
@@ -71,12 +78,6 @@ namespace VLabAnalysis
             get { return Interlocked.CompareExchange(ref _sleepduration, 1, int.MinValue); }
             set { Interlocked.Exchange(ref _sleepduration, value); }
         }
-        int _experimentanalysisstage;
-        public int ExperimentAnalysisStage
-        {
-            get { return Interlocked.CompareExchange(ref _experimentanalysisstage, 0, int.MinValue); }
-            set { Interlocked.Exchange(ref _experimentanalysisstage, value); }
-        }
 
         ISignal _signal;
         public ISignal Signal
@@ -84,10 +85,10 @@ namespace VLabAnalysis
             get { lock (apilock) { return _signal; } }
             set { lock (apilock) { _signal = value; } }
         }
-        public VLADataSet DataSet { get; } = new VLADataSet();
+        public DataSet DataSet { get; } = new DataSet();
         public ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>> Analyzers { get; } = new ConcurrentDictionary<int, ConcurrentDictionary<Guid, IAnalyzer>>();
         ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>> condtest = new ConcurrentDictionary<CONDTESTPARAM, ConcurrentQueue<object>>();
-        ConcurrentQueue<AnalysisEvent> analysisqueue = new ConcurrentQueue<AnalysisEvent>();
+        ConcurrentQueue<AnalysisEvent> analysiseventqueue = new ConcurrentQueue<AnalysisEvent>();
         ConcurrentDictionary<int, double> analysistime = new ConcurrentDictionary<int, double>();
         Thread analysisthread;
         ManualResetEvent analysisthreadevent = new ManualResetEvent(false);
@@ -119,15 +120,20 @@ namespace VLabAnalysis
             {
                 return;
             }
-            Stop();
-            Signal?.Dispose();
-            foreach (var ra in Analyzers.Values.ToArray())
+            lock (apilock)
             {
-                if (ra != null)
+                Stop();
+                analysisthread?.Abort();
+                analysisthreadevent?.Dispose();
+                Signal?.Dispose();
+                foreach (var ra in Analyzers.Values.ToArray())
                 {
-                    foreach (var a in ra.Values.ToArray())
+                    if (ra != null)
                     {
-                        a?.Dispose();
+                        foreach (var a in ra.Values.ToArray())
+                        {
+                            a?.Dispose();
+                        }
                     }
                 }
             }
@@ -160,7 +166,7 @@ namespace VLabAnalysis
                 {
                     iscleardata = _analysiseventcount % cleardataperanalysis == 0;
                 }
-                analysisqueue.Enqueue(new AnalysisEvent(_analysiseventcount - 1, iscleardata, time));
+                analysiseventqueue.Enqueue(new AnalysisEvent(_analysiseventcount - 1, iscleardata, time));
             }
         }
 
@@ -170,7 +176,7 @@ namespace VLabAnalysis
             {
                 Interlocked.Increment(ref _analysiseventcount);
                 _signal?.Stop(true);
-                analysisqueue.Enqueue(new AnalysisEvent(-1));
+                analysiseventqueue.Enqueue(new AnalysisEvent(-1));
             }
         }
 
@@ -217,8 +223,10 @@ namespace VLabAnalysis
             {
                 if (analysisthread == null)
                 {
-                    analysisthread = new Thread(ProcessAnalysisQueue);
-                    analysisthread.Name = "ConditionTestAnalysis";
+                    analysisthread = new Thread(ProcessAnalysisQueue)
+                    {
+                        Name = "ConditionTestAnalysis"
+                    };
                     analysisthreadevent.Set();
                     _isanalyzing = true;
                     analysisthread.Start();
@@ -240,16 +248,16 @@ namespace VLabAnalysis
             {
                 if (analysisthread != null && _isanalyzing)
                 {
-                    // lock the analysis threadevent region and set thread stop and jump to stoppoint flags
+                    // lock the analysis threadevent region and set thread stop and jump flags
                     lock (gotoeventlock)
                     {
                         analysisthreadevent.Reset();
                         Interlocked.Exchange(ref _gotothreadevent, 1);
                     }
-                    // wait until thread jumped to thread stoppoint
+                    // wait until thread jumped to thread stop point
                     while (true)
                     {
-                        // just check the value, never change it so it's compared with an arbitrary value other than 0 or 1.
+                        // just check the value, so it's compared with an arbitrary value other than 0 or 1.
                         if (0 == Interlocked.CompareExchange(ref _gotothreadevent, 0, int.MinValue))
                         {
                             _isanalyzing = false;
@@ -267,7 +275,7 @@ namespace VLabAnalysis
                 Stop();
                 _signal?.Restart(true);
                 condtest.Clear();
-                analysisqueue = new ConcurrentQueue<AnalysisEvent>();
+                analysiseventqueue = new ConcurrentQueue<AnalysisEvent>();
                 analysistime.Clear();
                 DataSet.Reset();
                 foreach (var ra in Analyzers.Values.ToArray())
@@ -291,12 +299,12 @@ namespace VLabAnalysis
         #region ThreadAnalysisFunction
         void ProcessAnalysisQueue()
         {
-            List<double>[] ospike;
-            List<int>[] ouid;
+            Dictionary<int, List<double>> ospike;
+            Dictionary<int, List<int>> ouid;
             List<double[,]> olfp;
             List<double> olfpstarttime;
-            List<double>[] odintime;
-            List<int>[] odinvalue;
+            Dictionary<int, List<double>> odintime;
+            Dictionary<int, List<int>> odinvalue;
             object ocondindex = null, oevent = null, osyncevent = null;
             AnalysisEvent aqevent; bool isaqevent;
 
@@ -308,7 +316,7 @@ namespace VLabAnalysis
                     Interlocked.Exchange(ref _gotothreadevent, 0);
                     analysisthreadevent.WaitOne();
                 }
-                isaqevent = analysisqueue.TryDequeue(out aqevent);
+                isaqevent = analysiseventqueue.TryDequeue(out aqevent);
                 if (isaqevent)
                 {
                     // experiment end event
@@ -340,16 +348,16 @@ namespace VLabAnalysis
                 {
                     var datalatency = DataSet.DataLatency;
                     var aqeventanalysistime = DataSet.VLabTimeToDataTime(aqevent.Time) + datalatency;
-                    analysistime[aqevent.Index] = aqeventanalysistime;
                     if (Signal != null)
                     {
                         // Wait the corresponding signal data to be buffered before analysis
                         double slept = 0;
-                        while (Signal.Time <= aqeventanalysistime || slept <= datalatency)
+                        while ((DataSet.IsAccurateVLabTimeZero && Signal.Time <= aqeventanalysistime) || slept <= datalatency)
                         {
                             Thread.Sleep(SleepDuration);
                             slept += SleepDuration;
                         }
+                        analysistime[aqevent.Index] = Signal.Time;
                         Signal.Read(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
                         DataSet.Add(ospike, ouid, olfp, olfpstarttime, odintime, odinvalue,
                         (List<int>)ocondindex, (List<List<Dictionary<string, double>>>)oevent, (List<List<string>>)osyncevent);
@@ -387,10 +395,7 @@ namespace VLabAnalysis
                             }
                         }
                     }
-                    catch (Exception exc)
-                    {
-                        Debug.Log(exc.Message);
-                    }
+                    catch (Exception e) { Debug.LogException(e); }
 
                     Interlocked.Increment(ref _analysisdonecount);
                     if (1 == Interlocked.CompareExchange(ref _gotothreadevent, 0, 1))
@@ -505,7 +510,7 @@ namespace VLabAnalysis
         public void LayoutVisualization(bool isfront, bool isalign)
         {
             if (!isfront) return;
-            var cn = 4f;
+            var cn = 5f;
             if (isalign)
             {
                 cn = Mathf.Floor(Screen.currentResolution.width / DataSet.Config.VisualizerWidth);

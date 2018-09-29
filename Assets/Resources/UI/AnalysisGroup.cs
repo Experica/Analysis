@@ -24,7 +24,7 @@ using UnityEngine.UI;
 using System.Linq;
 using System.Collections;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class AnalysisGroup : MonoBehaviour
     {

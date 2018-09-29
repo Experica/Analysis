@@ -23,7 +23,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-namespace VLabAnalysis
+namespace IExSys.Analysis
 {
     public class SignalPanel : MonoBehaviour
     {
@@ -81,7 +81,7 @@ namespace VLabAnalysis
             ep.uicontroller = uicontroller;
             ep.electrodeid = electrodeid;
             ep.title.text = electrodeid.ToString();
-            if (uicontroller.appmanager.config.AddSpikeAnalysisWhenSignalOnLine)
+            if (uicontroller.config.AddSpikeAnalysisWhenSignalOnLine)
             {
                 ep.AddAnalysis(SignalType.Spike);
             }
