@@ -1,5 +1,5 @@
 ﻿/*
-VLADataSet.cs is part of the VLAB project.
+DataSet.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -22,7 +22,6 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using UnityEngine;
 using System.Collections.Immutable;
 using System.Collections.Generic;
-using VLab;
 using System;
 using System.Linq;
 using System.IO;
@@ -35,7 +34,7 @@ using System.Collections.Concurrent;
 using MathNet.Numerics.Statistics;
 using System.Data;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public enum TimeVersion
     {
@@ -51,7 +50,7 @@ namespace IExSys.Analysis
     public class DataSet
     {
         Experiment ex;
-        AnaConfig config;
+        AnalysisConfig config;
         ConcurrentDictionary<int, List<double>> spike;
         ConcurrentDictionary<int, List<int>> uid;
         List<double[,]> lfp;
@@ -149,7 +148,7 @@ namespace IExSys.Analysis
             }
         }
 
-        public AnaConfig Config
+        public AnalysisConfig Config
         {
             get { lock (apilock) { return config; } }
             set { lock (apilock) { config = value; } }
@@ -255,7 +254,7 @@ namespace IExSys.Analysis
                     {
                         if (spike[e].Count > 0)
                         {
-                            AnaExtention.Sub(spike[e], uid[e], time, double.PositiveInfinity);
+                            AnalysisExtention.Sub(spike[e], uid[e], time, double.PositiveInfinity);
                         }
                     }
                 }

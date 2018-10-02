@@ -1,5 +1,5 @@
 ﻿/*
-AnalysisGroup.cs is part of the VLAB project.
+AnalysisGroup.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -24,7 +24,7 @@ using UnityEngine.UI;
 using System.Linq;
 using System.Collections;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public class AnalysisGroup : MonoBehaviour
     {
@@ -35,17 +35,17 @@ namespace IExSys.Analysis
         {
             if(analyzer.options.Count==0)
             {
-                var ia = VLAExtention.FindAll(AnalysisInterface.IAnalyzer);
+                var ia = AnalysisExtention.FindAll(AnalysisInterface.IAnalyzer);
                 analyzer.AddOptions(ia.Select(i => i.Name).ToList());
             }
             if (visualizer.options.Count == 0)
             {
-                var iv = VLAExtention.FindAll( AnalysisInterface.IVisualizer);
+                var iv = AnalysisExtention.FindAll( AnalysisInterface.IVisualizer);
                 visualizer.AddOptions(iv.Select(i => i.Name).ToList());
             }
             if (controller.options.Count == 0)
             {
-                var ic = VLAExtention.FindAll( AnalysisInterface.IController);
+                var ic = AnalysisExtention.FindAll( AnalysisInterface.IController);
                 controller.AddOptions(ic.Select(i => i.Name).ToList());
             }
             analyzer.value = analyzer.options.Select(i=>i.text).ToList().IndexOf(a);

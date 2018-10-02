@@ -1,5 +1,5 @@
 ﻿/*
-SignalPanel.cs is part of the VLAB project.
+SignalPanel.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -23,11 +23,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public class SignalPanel : MonoBehaviour
     {
-        public VLAUIController uicontroller;
+        public UIController uicontroller;
         public GameObject electrodepanelprefab, content;
         public Text title;
 

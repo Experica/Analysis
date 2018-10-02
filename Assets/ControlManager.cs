@@ -1,5 +1,5 @@
 ﻿/*
-FilePathInput.cs is part of the Experica.
+ControlManager.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -19,42 +19,46 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using UnityEngine;
-using UnityEngine.UI;
 using System.Collections;
-using System.Windows.Forms;
-using System.IO;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Networking;
 
-namespace Experica
+namespace Experica.Analysis
 {
-    public class FilePathInput : MonoBehaviour
+    [NetworkSettings(channel = 0, sendInterval = 0)]
+    public class ControlManager : NetworkBehaviour
     {
-        public InputField input;
+        public UIController uicontroller;
 
-        public void OpenFile()
+        [Command]
+        public void CmdRF()
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Title = "Choose File";
-            dialog.InitialDirectory = Directory.GetCurrentDirectory();
-            dialog.Filter = "File (*.yaml;*.cs)|*.yaml;*.cs|All Files (*.*)|*.*";
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.FileName;
-                input.onEndEdit.Invoke(input.text);
-            }
         }
 
-        public void OpenDirectory()
-        {
-            FolderBrowserDialog dialog = new FolderBrowserDialog();
-            dialog.ShowNewFolderButton = true;
-            dialog.Description = "Choose Directory";
-            if(dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.SelectedPath;
-                input.onEndEdit.Invoke(input.text);
-            }
-        }
+        //[Command]
+        //public void CmdNotifyUpdate()
+        //{
+        //    if (als == null) return;
+        //}
 
+        //void Update()
+        //{
+        //    if (als == null) return;
+        //    if (als.Signal != null && als.Analyzers != null)
+        //    {
+        //        foreach (var a in als.Analyzers.Values)
+        //        {
+        //            if (a.Controller != null)
+        //            {
+        //                IControlResult command;
+        //                if (a.Controller.ControlResultQueue.TryDequeue(out command))
+        //                {
+        //                    CmdNotifyUpdate();
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
     }
 }

@@ -1,5 +1,6 @@
-﻿/*
-ControlPanel.cs is part of the Experica.
+extensions: .cs .cpp .h .shader
+/*
+%FileName% is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -19,27 +20,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using UnityEngine;
-using UnityEngine.UI;
-using System.Collections.Generic;
-using System;
-using System.Linq;
-
-namespace Experica.Analysis
-{
-    public class ControlPanel : MonoBehaviour
-    {
-        public UIController uicontroller;
-        public Dropdown signalsourcedropdown;
-        public Text visualizationdone, analysiseventdone,analysisdone,analysisstate;
-        public Toggle analysisenginestate, eventsyncintegrity,eventmeasureintegrity;
-
-        void Start()
-        {
-            var ss = new List<string> { "All" };
-            ss.AddRange(Enum.GetNames(typeof(SignalSource)).ToList());
-            signalsourcedropdown.AddOptions(ss);
-        }
-
-    }
-}

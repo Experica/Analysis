@@ -1,5 +1,5 @@
 ﻿/*
-FilePathInput.cs is part of the Experica.
+YamlTests.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -20,41 +20,35 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.TestTools;
+using NUnit.Framework;
+using System;
+using System.Collections.Generic;
 using System.Collections;
-using System.Windows.Forms;
-using System.IO;
 
-namespace Experica
+namespace Experica.Test
 {
-    public class FilePathInput : MonoBehaviour
+    public class YamlTests
     {
-        public InputField input;
+        string yaml = "Ori: [!!float 0, 45, 90, 135]\n" +
+             "SpatialPhase: [0, 0.25, 0.5, 0.75]";
 
-        public void OpenFile()
+        [Test]
+        public void YamlReadWrite()
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Title = "Choose File";
-            dialog.InitialDirectory = Directory.GetCurrentDirectory();
-            dialog.Filter = "File (*.yaml;*.cs)|*.yaml;*.cs|All Files (*.*)|*.*";
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.FileName;
-                input.onEndEdit.Invoke(input.text);
-            }
+            var cond = yaml.DeserializeYaml<Dictionary<string, List<object>>>();
+            cond["Position"] = new List<object> { Vector3.zero, Vector3.one };
+            var syaml = cond.SerializeYaml();
         }
 
-        public void OpenDirectory()
+        // A UnityTest behaves like a coroutine in PlayMode
+        // and allows you to yield null to skip a frame in EditMode
+        [UnityTest]
+        public IEnumerator NewTestScriptWithEnumeratorPasses()
         {
-            FolderBrowserDialog dialog = new FolderBrowserDialog();
-            dialog.ShowNewFolderButton = true;
-            dialog.Description = "Choose Directory";
-            if(dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.SelectedPath;
-                input.onEndEdit.Invoke(input.text);
-            }
+            // Use the Assert class to test conditions.
+            // yield to skip a frame
+            yield return null;
         }
-
     }
 }

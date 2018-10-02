@@ -1,5 +1,5 @@
 ﻿/*
-D2Visualizer.cs is part of the VLAB project.
+D2Visualizer.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -25,7 +25,6 @@ using System.Windows.Forms;
 using System.Linq;
 using System;
 using System.IO;
-using VLab;
 using MsgPack;
 using OxyPlot;
 using OxyPlot.WindowsForms;
@@ -34,7 +33,7 @@ using OxyPlot.Axes;
 using MathNet.Numerics.Statistics;
 using MathNet.Numerics.Interpolation;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public class D2Visualizer : Form, IVisualizer
     {
@@ -395,14 +394,14 @@ namespace IExSys.Analysis
                 {
                     Title = "U" + u,
                     StrokeThickness = 2,
-                    Color = AnaExtention.Unit5Colors[u],
+                    Color = AnalysisExtention.Unit5Colors[u],
                     TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
                 };
                 var error = new ScatterErrorSeries()
                 {
                     ErrorBarStopWidth = 2,
                     ErrorBarStrokeThickness = 1.5,
-                    ErrorBarColor = OxyColor.FromAColor(180, AnaExtention.Unit5Colors[u]),
+                    ErrorBarColor = OxyColor.FromAColor(180, AnalysisExtention.Unit5Colors[u]),
                     MarkerSize = 0,
                     TrackerFormatString = "{0}\nX: {2:0.0}\nY: {4:0.0}"
                 };
@@ -463,10 +462,10 @@ namespace IExSys.Analysis
                     LineStyle = LineStyle.Solid,
                     StrokeThickness = 2,
                     ContourLevels = new double[] { ymin + 0.6 * yrange, ymin + 0.7 * yrange, ymin + 0.8 * yrange },
-                    ContourColors = new OxyColor[] { OxyColor.FromAColor(102,AnaExtention.Unit5Colors[u]),
-                        OxyColor.FromAColor(153, AnaExtention.Unit5Colors[u]), OxyColor.FromAColor(204, AnaExtention.Unit5Colors[u]) },
+                    ContourColors = new OxyColor[] { OxyColor.FromAColor(102,AnalysisExtention.Unit5Colors[u]),
+                        OxyColor.FromAColor(153, AnalysisExtention.Unit5Colors[u]), OxyColor.FromAColor(204, AnalysisExtention.Unit5Colors[u]) },
                     LabelStep = 3,
-                    TextColor = AnaExtention.Unit5Colors[u],
+                    TextColor = AnalysisExtention.Unit5Colors[u],
                     FontSize = 9,
                     LabelFormatString = "F0",
                     LabelBackground = OxyColors.Undefined,

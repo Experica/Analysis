@@ -1,5 +1,5 @@
 ﻿/*
-CTMFRAnalyzer.cs is part of the VLAB project.
+CTMFRAnalyzer.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -26,11 +26,10 @@ using System.Linq;
 using MathNet.Numerics.LinearAlgebra.Double;
 using System.Collections.Concurrent;
 using System.Threading;
-using VLab;
 using System;
 using MathNet.Numerics.Statistics;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public class CTMFRAnalyzer : IAnalyzer
     {

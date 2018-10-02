@@ -1,5 +1,5 @@
 ﻿/*
-FilePathInput.cs is part of the Experica.
+Environment.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -19,42 +19,41 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF 
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-using UnityEngine;
-using UnityEngine.UI;
 using System.Collections;
-using System.Windows.Forms;
-using System.IO;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Experica
 {
-    public class FilePathInput : MonoBehaviour
+    public enum EnvironmentObject
     {
-        public InputField input;
+        None,
+        Quad,
+        GratingQuad,
+        ImageQuad,
+        ImageArrayQuad
+    }
 
-        public void OpenFile()
-        {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Title = "Choose File";
-            dialog.InitialDirectory = Directory.GetCurrentDirectory();
-            dialog.Filter = "File (*.yaml;*.cs)|*.yaml;*.cs|All Files (*.*)|*.*";
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.FileName;
-                input.onEndEdit.Invoke(input.text);
-            }
-        }
+    public enum MaskType
+    {
+        None,
+        Disk,
+        Gaussian,
+        DiskFade
+    }
 
-        public void OpenDirectory()
-        {
-            FolderBrowserDialog dialog = new FolderBrowserDialog();
-            dialog.ShowNewFolderButton = true;
-            dialog.Description = "Choose Directory";
-            if(dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.SelectedPath;
-                input.onEndEdit.Invoke(input.text);
-            }
-        }
+    public enum Corner
+    {
+        TopLeft,
+        TopRight,
+        BottomRight,
+        BottomLeft
+    }
 
+    public enum GratingType
+    {
+        Square,
+        Sinusoidal,
+        Linear
     }
 }

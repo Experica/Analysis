@@ -1,5 +1,5 @@
 ﻿/*
-DotNetAnalysis.cs is part of the VLAB project.
+ConditionTestAnalysis.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -22,7 +22,6 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using VLab;
 using System;
 using System.Linq;
 using System.IO;
@@ -35,7 +34,7 @@ using System.Collections.Concurrent;
 using MathNet.Numerics.Statistics;
 using MathNet.Numerics;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     /// <summary>
     /// Analysis Engine for Condition Test Experiment. Use internal analysis thread, triggered by analysis event.

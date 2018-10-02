@@ -1,5 +1,5 @@
 ﻿/*
-FilePathInput.cs is part of the Experica.
+Net.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -20,41 +20,58 @@ WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
 OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.Networking;
 using System.Collections;
-using System.Windows.Forms;
-using System.IO;
 
 namespace Experica
 {
-    public class FilePathInput : MonoBehaviour
+    public class MsgType
     {
-        public InputField input;
+        public const short PeerType = UnityEngine.Networking.MsgType.Highest + 1;
 
-        public void OpenFile()
+        public const short AspectRatio = PeerType + 1;
+
+        public const short Highest = AspectRatio;
+
+        internal static string[] msgLabels = new string[]
         {
-            OpenFileDialog dialog = new OpenFileDialog();
-            dialog.Title = "Choose File";
-            dialog.InitialDirectory = Directory.GetCurrentDirectory();
-            dialog.Filter = "File (*.yaml;*.cs)|*.yaml;*.cs|All Files (*.*)|*.*";
-            if (dialog.ShowDialog() == DialogResult.OK)
+            "PeerType",
+            "AspectRatio"
+        };
+
+        public static string MsgTypeToString(short value)
+        {
+            if (value < PeerType || value > Highest)
             {
-                input.text = dialog.FileName;
-                input.onEndEdit.Invoke(input.text);
+                return string.Empty;
             }
+            string text = msgLabels[value - UnityEngine.Networking.MsgType.Highest - 1];
+            if (string.IsNullOrEmpty(text))
+            {
+                text = "[" + value + "]";
+            }
+            return text;
+        }
+    }
+
+    public enum PeerType
+    {
+        Command,
+        Environment,
+        Analysis
+    }
+
+    public class FloatMessage: MessageBase
+    {
+        public float value;
+
+        public FloatMessage()
+        {
         }
 
-        public void OpenDirectory()
+        public FloatMessage(float value)
         {
-            FolderBrowserDialog dialog = new FolderBrowserDialog();
-            dialog.ShowNewFolderButton = true;
-            dialog.Description = "Choose Directory";
-            if(dialog.ShowDialog() == DialogResult.OK)
-            {
-                input.text = dialog.SelectedPath;
-                input.onEndEdit.Invoke(input.text);
-            }
+            this.value = value;
         }
-
     }
 }

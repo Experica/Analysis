@@ -1,5 +1,5 @@
 ﻿/*
-IAnalysis.cs is part of the VLAB project.
+IAnalysis.cs is part of the Experica.
 Copyright (c) 2016 Li Alex Zhang and Contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a 
@@ -24,9 +24,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.Collections.Concurrent;
-using VLab;
 
-namespace IExSys.Analysis
+namespace Experica.Analysis
 {
     public enum AnalysisEngine
     {
