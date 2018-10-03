@@ -255,7 +255,7 @@ PlayerSettings:
     banner: {fileID: 0}
   androidGamepadSupportLevel: 0
   AndroidJvmMaxHeapSize: 4096
-  resolutionDialogBanner: {fileID: 0}
+  resolutionDialogBanner: {fileID: 2800000, guid: bab51923f9b260c4285fbca246cc6ef7, type: 3}
   m_BuildTargetIcons:
   - m_BuildTarget: 
     m_Icons:

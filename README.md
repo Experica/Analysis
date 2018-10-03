@@ -1,4 +1,3 @@
-# VLabAnalysis
-___
+# Analysis
 
-VLabAnalysis is a client for VLab server.
+Analysis is a client for Command server.
