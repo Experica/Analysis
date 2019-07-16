@@ -27,7 +27,7 @@ namespace Experica
 {
     public enum SignalSource
     {
-        IExSys,
+        Demo,
         Ripple,
         Plexon,
         TDT

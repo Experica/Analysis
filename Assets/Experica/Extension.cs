@@ -33,6 +33,8 @@ namespace Experica
     {
         CondIndex,
         CondRepeat,
+        TrialIndex,
+        TrialRepeat,
         BlockIndex,
         BlockRepeat,
         Event,

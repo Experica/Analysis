@@ -51,7 +51,7 @@ namespace Experica.Analysis
         public override void OnStartClient(NetworkClient client)
         {
             // override default handler with our own to deal with server's ChangeScene message.
-            //client.RegisterHandler(MsgType.Scene, new NetworkMessageDelegate(OnClientScene));
+            client.RegisterHandler(MsgType.Scene, new NetworkMessageDelegate(OnClientScene));
         }
 
         /// <summary>
