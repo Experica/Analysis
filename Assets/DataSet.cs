@@ -393,7 +393,7 @@ namespace Experica.Analysis
                     _synceventstream.AddRange(ses);
                     _synceventstreamctidx.AddRange(Enumerable.Repeat(i, ses.Count));
                     nsepull += ses.Count;
-                    var usets = es.FindEventTime(ses).Select(t => t.VLabTimeToRefTime(_vlabt0, ex.TimerDriftSpeed)).ToList().UniqueEventTime(ses);
+                    var usets = es.FindEventTime(ses).Select(t => VLabTimeToDataTime(t)).ToList().UniqueEventTime(ses);
                     foreach (var se in usets.Keys)
                     {
                         var vse = "VLab_" + se;

@@ -73,8 +73,8 @@ namespace Experica.Analysis
             }
             else
             {
-                s.Dispose();
-                return null;
+                if (s != null) s.Dispose();
+                return new DemoSignal();
             }
         }
 
@@ -91,8 +91,8 @@ namespace Experica.Analysis
         public static Type[] FindAll(this AnalysisInterface i)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            var ts = assemblies.Where(a => a.GetName().Name == "VLabAnalysis").SelectMany(a => a.GetTypes())
-                .Where(t => t.Namespace == "VLabAnalysis" && t.IsClass && t.GetInterface(i.ToString()) != null).ToArray();
+            var ts = assemblies.Where(a => a.GetName().Name == "Analysis").SelectMany(a => a.GetTypes())
+                .Where(t => t.Namespace == "Analysis" && t.IsClass && t.GetInterface(i.ToString()) != null).ToArray();
             return ts;
         }
 

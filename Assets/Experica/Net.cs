@@ -27,6 +27,7 @@ namespace Experica
 {
     public class MsgType
     {
+        public const short Scene = UnityEngine.Networking.MsgType.Scene;
         public const short PeerType = UnityEngine.Networking.MsgType.Highest + 1;
 
         public const short AspectRatio = PeerType + 1;
