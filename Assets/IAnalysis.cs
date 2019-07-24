@@ -120,12 +120,7 @@ namespace Experica.Analysis
 
     public interface IControlResult
     {
-
-    }
-
-    public class UpdateCommand : IControlResult
-    {
-
+        int CTIdx { get; }
     }
 
     public interface IVisualizer : IDisposable

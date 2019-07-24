@@ -23,6 +23,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Networking;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
+using System;
+using System.Linq;
 
 namespace Experica.Analysis
 {
@@ -30,9 +35,15 @@ namespace Experica.Analysis
     public class ControlManager : NetworkBehaviour
     {
         public UIController uicontroller;
+        public IAnalysis als;
 
         [Command]
         public void CmdRF()
+        {
+        }
+
+        [Command]
+        public void CmdManualCTIndex(int idx)
         {
         }
 
@@ -42,23 +53,41 @@ namespace Experica.Analysis
         //    if (als == null) return;
         //}
 
-        //void Update()
-        //{
-        //    if (als == null) return;
-        //    if (als.Signal != null && als.Analyzers != null)
-        //    {
-        //        foreach (var a in als.Analyzers.Values)
-        //        {
-        //            if (a.Controller != null)
-        //            {
-        //                IControlResult command;
-        //                if (a.Controller.ControlResultQueue.TryDequeue(out command))
-        //                {
-        //                    CmdNotifyUpdate();
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
+        void ParseControlResult (IControlResult command)
+        {
+            if (command.GetType() == typeof(ControlResult))
+            {
+                CmdManualCTIndex(command.CTIdx);
+            }
+        }
+
+        void Update()
+        {
+            if (als == null) return;
+            if (als.Signal != null && als.Analyzers != null)
+            {
+                // sequential analysis in rank order: high to low
+                var ranks = als.Analyzers.Keys.ToArray();
+                Array.Sort(ranks, (i, j) => j.CompareTo(i));
+                ConcurrentDictionary<Guid, IAnalyzer> ra;
+                foreach (var rank in ranks)
+                {
+                    if (als.Analyzers.TryGetValue(rank, out ra) && ra != null)
+                    {
+                        foreach (var a in ra.Values.ToArray())
+                        {
+                            if (a != null)
+                            {
+                                IControlResult command;
+                                if (a.Controller.ControlResultQueue.TryDequeue(out command))
+                                {
+                                    ParseControlResult(command);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

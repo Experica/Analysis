@@ -383,7 +383,7 @@ namespace Experica.Analysis
         {
             if (_event == null || _syncevent == null) return;
             var nsepull = 0;
-            // Parse Sync Event VLab Timing
+            // Parse Command Event Timing
             for (var i = ctsidx; i < nct; i++)
             {
                 var es = _event[i];
@@ -396,7 +396,7 @@ namespace Experica.Analysis
                     var usets = es.FindEventTime(ses).Select(t => VLabTimeToDataTime(t)).ToList().UniqueEventTime(ses);
                     foreach (var se in usets.Keys)
                     {
-                        var vse = "VLab_" + se;
+                        var vse = "Command_" + se;
                         if (!_eventtime.ContainsKey(vse))
                         {
                             _eventtime[vse] = new List<List<double>>();
@@ -471,7 +471,7 @@ namespace Experica.Analysis
                 }
                 else
                 {
-                    SearchRecover(_eventtime, "VLab_", "Sync_", ctsidx, nct, dintime[EventSyncDCh], 0, ex.Config.MaxDisplayLatencyError);
+                    SearchRecover(_eventtime, "Command_", "Sync_", ctsidx, nct, dintime[EventSyncDCh], 0, ex.Config.MaxDisplayLatencyError);
                 }
             }
             // Parse Sync Event Measure Timing
@@ -500,10 +500,10 @@ namespace Experica.Analysis
                 }
             }
             // Try to get the most accurate and complete Cond On/Off Time
-            if (!isvlabcondon) isvlabcondon = _eventtime.ContainsKey("VLab_COND");
+            if (!isvlabcondon) isvlabcondon = _eventtime.ContainsKey("Command_COND");
             if (!issynccondon) issynccondon = _eventtime.ContainsKey("Sync_COND");
             if (!ismeasurecondon) ismeasurecondon = _eventtime.ContainsKey("Measure_COND");
-            if (!isvlabcondoff) isvlabcondoff = _eventtime.ContainsKey("VLab_SUFICI");
+            if (!isvlabcondoff) isvlabcondoff = _eventtime.ContainsKey("Command_SUFICI");
             if (!issynccondoff) issynccondoff = _eventtime.ContainsKey("Sync_SUFICI");
             if (!ismeasurecondoff) ismeasurecondoff = _eventtime.ContainsKey("Measure_SUFICI");
             TimeVersion condonversion = TimeVersion.None; TimeVersion condoffversion = TimeVersion.None;
@@ -520,9 +520,12 @@ namespace Experica.Analysis
             }
             else if (isvlabcondon)
             {
-                condon = _eventtime["VLab_COND"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
+                condon = _eventtime["Command_COND"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
                 condonversion = TimeVersion.Command;
             }
+
+            // Check if we got enough SUFICI before trying to parse
+            if (_eventtime["Command_SUFICI"].Count < _eventtime["Command_COND"].Count) nctpull--; // a bit dodgy
 
             if (ismeasurecondoff)
             {
@@ -536,9 +539,10 @@ namespace Experica.Analysis
             }
             else if (isvlabcondoff)
             {
-                condoff = _eventtime["VLab_SUFICI"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
+                condoff = _eventtime["Command_SUFICI"].GetRange(ctsidx, nctpull).Select(ct => ct.Select(i => i + ex.DisplayLatency).ToList()).ToList();
                 condoffversion = TimeVersion.Command;
             }
+
 
             if (condon != null && condonversion == TimeVersion.Measure && isdineventmeasureerror && issynccondon)
             {
@@ -552,12 +556,12 @@ namespace Experica.Analysis
             }
             if (condon != null && condonversion == TimeVersion.Sync && isdineventsyncerror && isvlabcondon)
             {
-                CombineTime(_eventtime["VLab_COND"].GetRange(ctsidx, nctpull), condon, ex.DisplayLatency);
+                CombineTime(_eventtime["Command_COND"].GetRange(ctsidx, nctpull), condon, ex.DisplayLatency);
                 condonversion = TimeVersion.Command;
             }
             if (condoff != null && condoffversion == TimeVersion.Sync && isdineventsyncerror && isvlabcondoff)
             {
-                CombineTime(_eventtime["VLab_SUFICI"].GetRange(ctsidx, nctpull), condoff, ex.DisplayLatency);
+                CombineTime(_eventtime["Command_SUFICI"].GetRange(ctsidx, nctpull), condoff, ex.DisplayLatency);
                 condoffversion = TimeVersion.Command;
             }
             // Try to get first Cond On/Off Timing

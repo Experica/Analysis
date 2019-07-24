@@ -34,6 +34,7 @@ namespace Experica
 
         readonly int digitalIPI, analogIPI, tickfreq, maxelectrodeid, timeunitpersec, sleepduration, diginbitchange;
         ImmutableArray<int> _electrodeids;
+        long tstart;
         public int CacheMaxDuration
         {
             get { return 0; }
@@ -60,6 +61,7 @@ namespace Experica
             int[] el = new int[1];
             el[0] = 1;
             _electrodeids = el.ToImmutableArray();
+            tstart = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             NewDataBuffer();
         }
 
@@ -70,7 +72,14 @@ namespace Experica
         public void RefreshChannels() {}
         public ImmutableArray<int> Channels { get { return _electrodeids; } }
         public bool IsChannel { get { return true; } }
-        public double Time { get { return 0 * timeunitpersec; } }
+        public double Time
+        {
+            get
+            {
+                long milliseconds = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - tstart;
+                return milliseconds / 1000 * timeunitpersec;
+            }
+        }
         public ImmutableArray<SignalType> GetSignalTypes(int channel, bool onlyreturnsignalontype = true)
         {
             var vs = new SignalType[1];
@@ -79,14 +88,37 @@ namespace Experica
         }
         public bool IsSignalOn(int channel, SignalType signaltype) { return true; }
         public bool IsRunning { get { return true; } }
-        public bool Start(bool isclean = true) { return true; }
+        public bool Start(bool isclean = true) {
+            tstart = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            return true;
+        }
         public bool Stop(bool collectallbeforestop = true) { return true; }
-        public bool Restart(bool iscleanall = true) { return true; }
+        public bool Restart(bool iscleanall = true) {
+            tstart = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            return true;
+        }
         public void Read(out Dictionary<int, List<double>> ospike, out Dictionary<int, List<int>> ouid,
             out List<double[,]> olfp, out List<double> olfpstarttime,
             out Dictionary<int, List<double>> odintime, out Dictionary<int, List<int>> odinvalue)
         {
+            FakeSomeData();
             GetDataBuffer(out ospike, out ouid, out olfp, out olfpstarttime, out odintime, out odinvalue);
+        }
+
+        void FakeSomeData()
+        {
+            long milliseconds = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond - tstart;
+            System.Random r = new System.Random();
+            int spikes = r.Next(0,10);
+            var newspike = new List<double>(new double[spikes]);
+            var newuid = new List<int>(new int[spikes]);
+            for (int i = 0; i < spikes; i++)
+            {
+                newspike[i] = (milliseconds - r.Next(0, 1000)) * (timeunitpersec / 1000);
+                newuid[i] = 0;
+            }
+            spike.Add(1, newspike);
+            uid.Add(1, newuid);
         }
 
         void GetDataBuffer(out Dictionary<int, List<double>> ospike, out Dictionary<int, List<int>> ouid,

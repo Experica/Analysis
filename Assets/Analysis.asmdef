@@ -1,6 +1,7 @@
 {
     "name": "Analysis",
     "references": [
+        "Command",
         "Experica",
         "com.unity.multiplayer-hlapi.Runtime"
     ],

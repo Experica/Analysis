@@ -148,6 +148,10 @@ namespace Experica.Analysis
                 var rapc = config.RetainAnalysisPerClear;
                 var asd = config.AnalysisSleepDuration;
                 alsmanager.als = ae.GetAnalysisEngine(cdpa, rapc, asd);
+                if (ctrlmanager != null && ctrlmanager.als == null)
+                {
+                    ctrlmanager.als = alsmanager.als;
+                }
             }
 
             if (config.SearchSignalWhenConnect)
@@ -161,11 +165,16 @@ namespace Experica.Analysis
             if (alsmanager != null)
             {
                 autoconnecttext.text = "Ready";
+                if (ctrlmanager.als == null)
+                {
+                    ctrlmanager.als = alsmanager.als;
+                }
             }
             else
             {
                 autoconnecttext.text = "ControlManager Online";
             }
+            
         }
 
         public void OnClientDisconnect()

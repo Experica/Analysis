@@ -25,6 +25,9 @@ using System.Collections;
 using System.Threading;
 using System.Collections.Concurrent;
 using System;
+using System.Collections.Generic;
+using MathNet.Numerics.Statistics;
+using MathNet.Numerics.Random;
 
 namespace Experica.Analysis
 {
@@ -32,6 +35,14 @@ namespace Experica.Analysis
     {
         int disposecount = 0;
         ConcurrentQueue<IControlResult> controlresultqueue = new ConcurrentQueue<IControlResult>();
+        int el, unit, mindatapoints, currentnode;
+
+        public OPTController() {
+            el = 1;
+            unit = 0;
+            mindatapoints = 1;
+            currentnode = -1;
+        }
 
         ~OPTController()
         {
@@ -59,12 +70,102 @@ namespace Experica.Analysis
 
         public void Control(IResult result)
         {
+            if (result.SignalChannel != el) { return; }
+            List<double> unitresponses = result.UnitCondTestResponse[unit];
+            ControlResult command;
+            var ci = result.DataSet.CondIndex;
+            int nci = result.DataSet.Ex.Cond.Values.Select(i => i.Count).Aggregate((total, next) => total * next);
+
+            // Start node
+            if (currentnode < 0) currentnode = ci[0];
+            var noderesponses = EvalNode(currentnode, unitresponses, ci);
+            if (noderesponses.Count < mindatapoints)
+            {
+                command = new ControlResult(currentnode);
+                controlresultqueue.Enqueue(command);
+                Debug.Log("Eval current node, idx " + currentnode);
+                return;
+            }
+
+            // Check neighboring nodes
+            int nextnode = -1;
+            double nexteval = noderesponses.Mean();
+            List<int> neighbors = GetNeighbors(currentnode, nci);
+            foreach (int n in neighbors) {
+                var neighborresponses = EvalNode(n, unitresponses, ci);
+                if (neighborresponses.Count < mindatapoints) { // neighbor doesn't have enough data
+                    command = new ControlResult(n);
+                    controlresultqueue.Enqueue(command);
+                    Debug.Log("Eval neighbor, idx " + n);
+                    return;
+                } else // compare neighbor's score to ours
+                {
+                    if (neighborresponses.Mean() > nexteval) {  // neighbor scores higher than all others
+                        nexteval = neighborresponses.Mean();
+                        nextnode = n;
+                    }
+                }
+            }
+
+            if (nextnode == -1)
+            {
+                // No better nodes were found
+                MersenneTwister rng = new MersenneTwister();
+                nextnode = rng.Next(nci-1); // rng would be better
+                currentnode = nextnode;
+                Debug.Log("Search finished. Eval random node, idx " + nextnode);
+            }
+            else
+            {
+                currentnode = nextnode;
+                List<int> newneighbors = GetNeighbors(currentnode, nci);
+                nextnode = newneighbors[0];
+                Debug.Log("Found new maximum, idx " + currentnode);
+            }
+            command = new ControlResult(nextnode);
+            controlresultqueue.Enqueue(command);
+        }
+
+        protected List<int> GetNeighbors(int node, int nci)
+        {
+            // for now assume neighboring ci's are real neighbors
+            List<int> n = new List<int>();
+            n.Add(node - 1 < 0 ? nci - 1 : node - 1);
+            n.Add(node + 1 > nci - 1 ? 0 : node + 1);
+            return n;
+        }
+
+        protected List<double> EvalNode(int node, List<double> unitresponses, List<int> ci)
+        {
+            List<double> y = new List<double>();
+            int nct = ci.Count;
+            var cis = Enumerable.Range(0, nct).Where(i => ci[i] == node).ToList();
+            if (cis.Count == 0) return y;
+            foreach (var i in cis)
+            {
+                y.Add(unitresponses[i]);
+            }
+            return y;
         }
 
 
         public void Reset()
         {
+            controlresultqueue = new ConcurrentQueue<IControlResult>();
+            currentnode = -1;
         }
 
+    }
+
+    class ControlResult : IControlResult
+    {
+        public int idx;
+
+        public ControlResult(int idxin)
+        {
+            idx = idxin;
+        }
+
+        public int CTIdx { get { return idx; } }
     }
 }
