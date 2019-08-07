@@ -38,9 +38,9 @@ namespace Experica.Analysis
         int el, unit, mindatapoints, currentnode;
 
         public OPTController() {
-            el = 1;
+            el = 5;
             unit = 0;
-            mindatapoints = 1;
+            mindatapoints = 5;
             currentnode = -1;
         }
 
@@ -70,11 +70,13 @@ namespace Experica.Analysis
 
         public void Control(IResult result)
         {
-            if (result.SignalChannel != el) { return; }
+            if (result.SignalChannel != el) return;
+            if (result.UnitCondTestResponse.Count == 0 || !result.UnitCondTestResponse.ContainsKey(unit)) return;
             List<double> unitresponses = result.UnitCondTestResponse[unit];
             ControlResult command;
             var ci = result.DataSet.CondIndex;
-            int nci = result.DataSet.Ex.Cond.Values.Select(i => i.Count).Aggregate((total, next) => total * next);
+            int nci = result.DataSet.Ex.Cond.Values.Select(i => i.Count).Aggregate((total, next) => total * next); // not a great way of counting unique factor levels
+            if (unitresponses.Count != ci.Count) return;
 
             // Start node
             if (currentnode < 0) currentnode = ci[0];
@@ -83,7 +85,6 @@ namespace Experica.Analysis
             {
                 command = new ControlResult(currentnode);
                 controlresultqueue.Enqueue(command);
-                Debug.Log("Eval current node, idx " + currentnode);
                 return;
             }
 
@@ -96,7 +97,6 @@ namespace Experica.Analysis
                 if (neighborresponses.Count < mindatapoints) { // neighbor doesn't have enough data
                     command = new ControlResult(n);
                     controlresultqueue.Enqueue(command);
-                    Debug.Log("Eval neighbor, idx " + n);
                     return;
                 } else // compare neighbor's score to ours
                 {
@@ -113,14 +113,12 @@ namespace Experica.Analysis
                 MersenneTwister rng = new MersenneTwister();
                 nextnode = rng.Next(nci-1); // rng would be better
                 currentnode = nextnode;
-                Debug.Log("Search finished. Eval random node, idx " + nextnode);
             }
             else
             {
                 currentnode = nextnode;
                 List<int> newneighbors = GetNeighbors(currentnode, nci);
                 nextnode = newneighbors[0];
-                Debug.Log("Found new maximum, idx " + currentnode);
             }
             command = new ControlResult(nextnode);
             controlresultqueue.Enqueue(command);

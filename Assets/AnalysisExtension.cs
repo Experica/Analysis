@@ -49,6 +49,7 @@ namespace Experica.Analysis
         {
             foreach (var ss in Enum.GetValues(typeof(SignalSource)))
             {
+                if ((SignalSource)ss == SignalSource.Demo) continue;
                 var s = SearchSignal((SignalSource)ss);
                 if (s != null)
                 {
@@ -66,6 +67,9 @@ namespace Experica.Analysis
                 case SignalSource.Ripple:
                     s = new RippleSignal();
                     break;
+                case SignalSource.Demo:
+                    s = new DemoSignal();
+                    break;
             }
             if (s != null && s.Connect() && s.IsChannel)
             {
@@ -74,7 +78,7 @@ namespace Experica.Analysis
             else
             {
                 if (s != null) s.Dispose();
-                return new DemoSignal();
+                return s;
             }
         }
 
