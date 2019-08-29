@@ -120,7 +120,7 @@ namespace Experica.Analysis
 
     public interface IControlResult
     {
-        int CTIdx { get; }
+        Control Ctl { get; set; }
     }
 
     public interface IVisualizer : IDisposable

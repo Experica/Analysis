@@ -28,6 +28,7 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System;
 using System.Linq;
+using System.IO;
 
 namespace Experica.Analysis
 {
@@ -38,12 +39,7 @@ namespace Experica.Analysis
         public IAnalysis als;
 
         [Command]
-        public void CmdRF()
-        {
-        }
-
-        [Command]
-        public void CmdManualCTIndex(int idx)
+        public void CmdControlSignal(object signal)
         {
         }
 
@@ -52,14 +48,6 @@ namespace Experica.Analysis
         //{
         //    if (als == null) return;
         //}
-
-        void ParseControlResult (IControlResult command)
-        {
-            if (command.GetType() == typeof(ControlResult))
-            {
-                CmdManualCTIndex(command.CTIdx);
-            }
-        }
 
         void Update()
         {
@@ -78,10 +66,13 @@ namespace Experica.Analysis
                         {
                             if (a != null)
                             {
-                                IControlResult command;
-                                if (a.Controller.ControlResultQueue.TryDequeue(out command))
+                                if (a.Controller.ControlResultQueue.TryDequeue(out IControlResult result))
                                 {
-                                    ParseControlResult(command);
+                                    using (var stream = new MemoryStream())
+                                    {
+                                        MsgPack.CtlSerializer.Pack(stream, result.Ctl);
+                                        if (stream.Length > 0) CmdControlSignal(stream.ToArray());
+                                    }
                                 }
                             }
                         }

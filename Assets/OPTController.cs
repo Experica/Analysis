@@ -35,13 +35,11 @@ namespace Experica.Analysis
     {
         int disposecount = 0;
         ConcurrentQueue<IControlResult> controlresultqueue = new ConcurrentQueue<IControlResult>();
-        int el, unit, mindatapoints, currentnode;
+        int el, unit;
 
         public OPTController() {
             el = 5;
             unit = 0;
-            mindatapoints = 5;
-            currentnode = -1;
         }
 
         ~OPTController()
@@ -73,97 +71,84 @@ namespace Experica.Analysis
             if (result.SignalChannel != el) return;
             if (result.UnitCondTestResponse.Count == 0 || !result.UnitCondTestResponse.ContainsKey(unit)) return;
             List<double> unitresponses = result.UnitCondTestResponse[unit];
-            ControlResult command;
+
             var ci = result.DataSet.CondIndex;
             int nci = result.DataSet.Ex.Cond.Values.Select(i => i.Count).Aggregate((total, next) => total * next); // not a great way of counting unique factor levels
+            int nct = ci.Count;
             if (unitresponses.Count != ci.Count) return;
 
-            // Start node
-            if (currentnode < 0) currentnode = ci[0];
-            var noderesponses = EvalNode(currentnode, unitresponses, ci);
-            if (noderesponses.Count < mindatapoints)
+            // Generate mfr and sem for each unique condition index
+            List<double> y = new List<double>();
+            List<double> yse = new List<double>();
+            int maxncis = 0;
+            for (var x = 0; x < nci; x++)
             {
-                command = new ControlResult(currentnode);
-                controlresultqueue.Enqueue(command);
-                return;
-            }
-
-            // Check neighboring nodes
-            int nextnode = -1;
-            double nexteval = noderesponses.Mean();
-            List<int> neighbors = GetNeighbors(currentnode, nci);
-            foreach (int n in neighbors) {
-                var neighborresponses = EvalNode(n, unitresponses, ci);
-                if (neighborresponses.Count < mindatapoints) { // neighbor doesn't have enough data
-                    command = new ControlResult(n);
-                    controlresultqueue.Enqueue(command);
-                    return;
-                } else // compare neighbor's score to ours
+                var cis = Enumerable.Range(0, nct).Where(i => ci[i] == i).ToList();
+                if (cis.Count > maxncis) maxncis = cis.Count;
+                var flur = new List<double>();
+                foreach (var idx in cis)
                 {
-                    if (neighborresponses.Mean() > nexteval) {  // neighbor scores higher than all others
-                        nexteval = neighborresponses.Mean();
-                        nextnode = n;
-                    }
+                    flur.Add(unitresponses[idx]);
+                }
+                if (cis.Count == 0)
+                {
+                    y[x] = -1;
+                    yse[x] = 0;
+                }
+                else
+                {
+                    y[x] = flur.Mean();
+                    yse[x] = flur.SEM();
                 }
             }
 
-            if (nextnode == -1)
+            if (maxncis > result.DataSet.Ex.CondRepeat)
             {
-                // No better nodes were found
-                MersenneTwister rng = new MersenneTwister();
-                nextnode = rng.Next(nci-1); // rng would be better
-                currentnode = nextnode;
+                controlresultqueue.Enqueue(new StopControlResult());
+                return;
             }
-            else
-            {
-                currentnode = nextnode;
-                List<int> newneighbors = GetNeighbors(currentnode, nci);
-                nextnode = newneighbors[0];
-            }
-            command = new ControlResult(nextnode);
-            controlresultqueue.Enqueue(command);
-        }
 
-        protected List<int> GetNeighbors(int node, int nci)
-        {
-            // for now assume neighboring ci's are real neighbors
-            List<int> n = new List<int>();
-            n.Add(node - 1 < 0 ? nci - 1 : node - 1);
-            n.Add(node + 1 > nci - 1 ? 0 : node + 1);
-            return n;
-        }
+            // Untested indices have uniformly distributed weights; tested ones weighted according to mfr
+            List<double> resp = y.Where(i => i != -1).ToList();
+            double sum = resp.Sum();
+            int nunresp = nci - resp.Count;
+            double uniformprob = 1.0 / nci;
+            double remainingprob = (1 - (1.0 * nunresp / nci));
+            List<double> weights = y.Select(i => i == -1 ? uniformprob : remainingprob * i / sum).ToList();
 
-        protected List<double> EvalNode(int node, List<double> unitresponses, List<int> ci)
-        {
-            List<double> y = new List<double>();
-            int nct = ci.Count;
-            var cis = Enumerable.Range(0, nct).Where(i => ci[i] == node).ToList();
-            if (cis.Count == 0) return y;
-            foreach (var i in cis)
-            {
-                y.Add(unitresponses[i]);
-            }
-            return y;
+            controlresultqueue.Enqueue(new IdxWeightControlResult(weights));
         }
 
 
         public void Reset()
         {
             controlresultqueue = new ConcurrentQueue<IControlResult>();
-            currentnode = -1;
         }
 
     }
 
-    class ControlResult : IControlResult
+    class IdxWeightControlResult : IControlResult
     {
-        public int idx;
-
-        public ControlResult(int idxin)
+        Control ctl = new Control();
+        
+        public IdxWeightControlResult(List<double> weights)
         {
-            idx = idxin;
+            ctl.Type = ControlType.SamplingDistribution;
+            ctl.Param.Add("weights", weights);
         }
 
-        public int CTIdx { get { return idx; } }
+        public Control Ctl { get; set; }
+    }
+
+    class StopControlResult : IControlResult
+    {
+        Control ctl = new Control();
+
+        public StopControlResult()
+        {
+            ctl.Type = ControlType.StopExperiment;
+        }
+
+        public Control Ctl { get; set; }
     }
 }
