@@ -187,6 +187,10 @@ namespace Experica
                     {
                         return v.x.ToString("G4") + " " + v.y.ToString("G4");
                     }
+                    if (CT == typeof(IList))
+                    {
+                        return new List<float> { v.x, v.y };
+                    }
                 }
                 else if (VT == TVector3)
                 {
@@ -195,6 +199,10 @@ namespace Experica
                     {
                         return String.Join(" ", Enumerable.Range(0, 3).Select(i => v[i].ToString("G4")));
                     }
+                    if (CT == typeof(IList))
+                    {
+                        return new List<float> { v.x, v.y, v.z };
+                    }
                 }
                 else if (VT == TVector4)
                 {
@@ -202,6 +210,10 @@ namespace Experica
                     if (CT == TString)
                     {
                         return String.Join(" ", Enumerable.Range(0, 4).Select(i => v[i].ToString("G4")));
+                    }
+                    if (CT == typeof(IList))
+                    {
+                        return new List<float> { v.x, v.y, v.z, v.w };
                     }
                 }
                 else if (VT == TColor)

@@ -364,7 +364,8 @@ namespace Experica.Analysis
                             {
                                 flur.Add(result.UnitCondTestResponse[u][ci]);
                             }
-                            y[u][xi1, xi2] = flur.Mean(); yse[u][xi1, xi2] = flur.SEM();
+                            y[u][xi1, xi2] = cis.Count == 0 ? 0 : flur.Mean();
+                            yse[u][xi1, xi2] = cis.Count == 0 ? 0 : flur.SEM();
                         }
                     }
                 }

@@ -39,15 +39,9 @@ namespace Experica.Analysis
         public IAnalysis als;
 
         [Command]
-        public void CmdControlSignal(object signal)
+        public void CmdControlSignal(byte[] signal)
         {
         }
-
-        //[Command]
-        //public void CmdNotifyUpdate()
-        //{
-        //    if (als == null) return;
-        //}
 
         void Update()
         {
@@ -70,6 +64,7 @@ namespace Experica.Analysis
                                 {
                                     using (var stream = new MemoryStream())
                                     {
+                                        Debug.Log("Sending command: " + result.Ctl.Type.ToString());
                                         MsgPack.CtlSerializer.Pack(stream, result.Ctl);
                                         if (stream.Length > 0) CmdControlSignal(stream.ToArray());
                                     }

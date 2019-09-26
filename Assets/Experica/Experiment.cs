@@ -114,7 +114,8 @@ namespace Experica
         Ascending,
         Descending,
         UniformWithReplacement,
-        UniformWithoutReplacement
+        UniformWithoutReplacement,
+        OnlineWeighted
     }
 
     public class EventSyncProtocol

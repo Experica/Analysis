@@ -78,12 +78,12 @@ namespace Experica.Analysis
             if (unitresponses.Count != ci.Count) return;
 
             // Generate mfr and sem for each unique condition index
-            List<double> y = new List<double>();
-            List<double> yse = new List<double>();
+            double[] y = new double[nci];
+            double[] yse = new double[nci];
             int maxncis = 0;
             for (var x = 0; x < nci; x++)
             {
-                var cis = Enumerable.Range(0, nct).Where(i => ci[i] == i).ToList();
+                var cis = Enumerable.Range(0, nct).Where(i => ci[i] == x).ToList();
                 if (cis.Count > maxncis) maxncis = cis.Count;
                 var flur = new List<double>();
                 foreach (var idx in cis)
@@ -109,14 +109,16 @@ namespace Experica.Analysis
             }
 
             // Untested indices have uniformly distributed weights; tested ones weighted according to mfr
-            List<double> resp = y.Where(i => i != -1).ToList();
+            List<double> resp = y.Where(i => i > 0).ToList();
             double sum = resp.Sum();
-            int nunresp = nci - resp.Count;
+            int nunresp = y.Where(i => i == 0).Count();
+            int nuntested = y.Where(i => i == -1).Count();
             double uniformprob = 1.0 / nci;
-            double remainingprob = (1 - (1.0 * nunresp / nci));
-            List<double> weights = y.Select(i => i == -1 ? uniformprob : remainingprob * i / sum).ToList();
+            double remainingprob = (1 - (1.0 * (nunresp + nuntested) / nci));
+            List<double> weights = y.Select(i => i <= 0 ? uniformprob : remainingprob * i / sum).ToList();
 
-            controlresultqueue.Enqueue(new IdxWeightControlResult(weights));
+            IControlResult ctl = new IdxWeightControlResult(weights);
+            controlresultqueue.Enqueue(ctl);
         }
 
 
@@ -129,12 +131,12 @@ namespace Experica.Analysis
 
     class IdxWeightControlResult : IControlResult
     {
-        Control ctl = new Control();
-        
+       
         public IdxWeightControlResult(List<double> weights)
         {
-            ctl.Type = ControlType.SamplingDistribution;
-            ctl.Param.Add("weights", weights);
+            Ctl = new Control();
+            Ctl.Type = ControlType.SamplingDistribution;
+            Ctl.Param.Add("weights", weights);
         }
 
         public Control Ctl { get; set; }
@@ -142,11 +144,11 @@ namespace Experica.Analysis
 
     class StopControlResult : IControlResult
     {
-        Control ctl = new Control();
 
         public StopControlResult()
         {
-            ctl.Type = ControlType.StopExperiment;
+            Ctl = new Control();
+            Ctl.Type = ControlType.StopExperiment;
         }
 
         public Control Ctl { get; set; }

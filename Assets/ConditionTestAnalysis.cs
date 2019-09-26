@@ -479,7 +479,7 @@ namespace Experica.Analysis
             if (config != null && config.SaveVisualizationWhenExperimentAnalysisDone)
             {
                 var datapath = DataSet.Ex.DataPath;
-                SaveVisualization(Path.GetDirectoryName(datapath), Path.GetFileNameWithoutExtension(datapath), config.PlotExportWidth, config.PlotExportHeight, config.PlotExportDPI);
+                if (datapath != "") SaveVisualization(Path.GetDirectoryName(datapath), Path.GetFileNameWithoutExtension(datapath), config.PlotExportWidth, config.PlotExportHeight, config.PlotExportDPI);
             }
         }
 
