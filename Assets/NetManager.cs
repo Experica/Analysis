@@ -132,6 +132,8 @@ namespace Experica.Analysis
         {
             NetworkClient.ShutdownAll();
             client = null;
+
+            Start();
         }
     }
 }
