@@ -95,9 +95,9 @@ namespace Experica.Analysis
         public static Type[] FindAll(this AnalysisInterface i)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            var ts = assemblies.Where(a => a.GetName().Name == "Analysis").SelectMany(a => a.GetTypes())
-                .Where(t => t.Namespace == "Analysis" && t.IsClass && t.GetInterface(i.ToString()) != null).ToArray();
-            return ts;
+            var types = assemblies.SelectMany(a => a.GetTypes())
+                .Where(p => p.Namespace == "Experica.Analysis" && p.IsClass && p.GetInterface(i.ToString()) != null).ToArray();
+            return types;
         }
 
         public static IAnalyzer GetAnalyzer(this int electrodeid, SignalType signaltype)

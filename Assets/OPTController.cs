@@ -35,10 +35,9 @@ namespace Experica.Analysis
     {
         int disposecount = 0;
         ConcurrentQueue<IControlResult> controlresultqueue = new ConcurrentQueue<IControlResult>();
-        int el, unit;
+        int unit;
 
         public OPTController() {
-            el = 5;
             unit = 0;
         }
 
@@ -68,7 +67,6 @@ namespace Experica.Analysis
 
         public void Control(IResult result)
         {
-            if (result.SignalChannel != el) return;
             if (result.UnitCondTestResponse.Count == 0 || !result.UnitCondTestResponse.ContainsKey(unit)) return;
             List<double> unitresponses = result.UnitCondTestResponse[unit];
 

@@ -21,8 +21,10 @@ OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 using UnityEngine;
 using UnityEngine.UI;
+using System;
 using System.Linq;
 using System.Collections;
+using System.Collections.Concurrent;
 
 namespace Experica.Analysis
 {
@@ -30,6 +32,52 @@ namespace Experica.Analysis
     {
         public Dropdown analyzer, visualizer, controller;
         public ElectrodePanel electrodepanel;
+
+        void Start()
+        {
+            controller.onValueChanged.AddListener(delegate
+            {
+                OnControllerChanged(controller);
+            });
+        }
+
+        void Destroy()
+        {
+            controller.onValueChanged.RemoveAllListeners();
+        }
+
+        private void OnControllerChanged(Dropdown target)
+        {
+            var wanted = target.options[target.value].text;
+            
+            // Find corresponding analyzer
+            var analyzers = electrodepanel.uicontroller.alsmanager.als.Analyzers;
+            int electrodeid = electrodepanel.electrodeid;
+            IAnalyzer analyzer = null;
+            foreach (var rank in analyzers.Keys.ToArray())
+            {
+                if (analyzers.TryGetValue(rank, out ConcurrentDictionary<Guid, IAnalyzer> ra) && ra != null)
+                {
+                    foreach (var a in ra.Values.ToArray())
+                    {
+                        if (a != null && a.SignalDescription.Channel == electrodeid) analyzer = a;
+                    }
+                }
+            }
+            if (analyzer == null) return;
+
+            // Change controller
+            switch (wanted)
+            {
+                case "NoneController":
+                    analyzer.Controller = new NoneController();
+                    break;
+
+                case "OPTController":
+                    analyzer.Controller = new OPTController();
+                    break;
+            }
+        }
 
         public void UpdateUI( string a,string v, string c)
         {

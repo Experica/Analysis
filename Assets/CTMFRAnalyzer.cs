@@ -41,7 +41,7 @@ namespace Experica.Analysis
         ConcurrentQueue<IResult> resultvisualizequeue = new ConcurrentQueue<IResult>();
         IResult result;
 
-        public CTMFRAnalyzer(SignalDescription s) : this(s, new D2Visualizer(), new OPTController()) { }
+        public CTMFRAnalyzer(SignalDescription s) : this(s, new D2Visualizer(), new NoneController()) { }
 
         public CTMFRAnalyzer(SignalDescription s, IVisualizer v, IController c)
         {
